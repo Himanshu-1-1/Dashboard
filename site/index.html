@@ -475,7 +475,7 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
     </article>
     <div class="cc-grid">
       <article class="cc-card" id="ref-partners-card">
-        <div class="cc-card-head"><h3>Referred deals by partner</h3><p>Deals each partner sent us, by stage, with the status of their referral agreement.</p></div>
+        <div class="cc-card-head"><h3>Referral partners</h3><p>Every referral partner, their agreement stage, and the client deals they’ve sent us so far.</p></div>
         <div class="cc-legend" id="leg-ref-partners"></div>
         <div class="cc-refbars dash-skeleton" data-source="referral_partners"></div>
       </article>
@@ -855,6 +855,29 @@ dash.loader('referral_links', {
     return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
   },
 });
+dash.loader('partner_agreements', {
+  description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text, counts and amounts become numbers.',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? (answer.trim() ? JSON.parse(answer) : {}) : (answer || {});
+    if (a.status === 'error' || (a.code && !a.data)) throw new Error(a.message || a.code || 'Zoho CRM refused the query');
+    const body = a.data && !Array.isArray(a.data) ? a.data : a;
+    const list = Array.isArray(body.data) ? body.data : [];
+    const rename = { 'COUNT(id)': 'count', 'SUM(Amount)': 'amount_sum' };
+    const numeric = ['count', 'amount_sum', 'Amount', 'Total_Meetings_Created'];
+    const rows = list.map((r) => {
+      const o = {};
+      for (const [k, v] of Object.entries(r)) {
+        const key = rename[k] || k;
+        if (Array.isArray(v)) o[key] = v.join(', ');
+        else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
+        else o[key] = v;
+      }
+      for (const n of numeric) if (o[n] != null && o[n] !== '') o[n] = Number(o[n]);
+      return o;
+    });
+    return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
+  },
+});
 dash.loader('meetings', {
   description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text, counts and amounts become numbers.',
   fn: ({ answer }) => {
@@ -942,23 +965,37 @@ dash.calc('referrals', {
 });
 
 dash.calc('referral_partners', {
-  title: 'Referred deals by partner',
-  description: 'For each partner with a recorded referral: deals sent, how many are open, on hold, won or lost, the amount won, and their agreement’s stage.',
-  inputs: ['referrals'],
-  fn: (referrals) => {
+  title: 'Referral partners',
+  description: 'Every referral partner (each Reseller/ Referral Partner deal), its agreement stage, and the client deals it has sent us: how many are open, on hold, won or lost, and the amount won.',
+  inputs: ['referrals', 'partner_agreements'],
+  fn: (referrals, partner_agreements) => {
     const open = ['Identify', 'Discovery', 'Proposals'];
     const lost = ['Closed Lost', 'Closed Lost to Competition'];
+    const rank = (stage) => (stage === 'Closed' ? 3 : open.includes(stage) ? 2 : stage === 'Hold' ? 1 : 0);
     const by = new Map();
+    for (const a of partner_agreements) {
+      const name = a.Contact_Name || a.Account_Name;
+      if (!name) continue;
+      const cur = by.get(name);
+      if (!cur || rank(a.Stage) > rank(cur.agreement)) {
+        by.set(name, { partner: name, partner_contact: a.Contact_Name ? a.Account_Name : null, account: a.Account_Name, agreement: a.Stage, recorded: true, deals: 0, open: 0, hold: 0, won: 0, lost: 0, won_amount: 0 });
+      }
+    }
+    const find = (r) => [...by.values()].find((p) => (r.partner_contact && p.partner === r.partner_contact) || (r.partner && (p.partner === r.partner || p.account === r.partner)));
     for (const r of referrals) {
-      const cur = by.get(r.partner) || { partner: r.partner, partner_contact: r.partner_contact, agreement: r.agreement, recorded: r.recorded, deals: 0, open: 0, hold: 0, won: 0, lost: 0, won_amount: 0 };
+      let cur = r.recorded ? find(r) : null;
+      if (!cur) {
+        const key = r.recorded ? (r.partner_contact || r.partner) : r.partner;
+        cur = by.get(key) || { partner: key, partner_contact: r.recorded && r.partner_contact ? r.partner : null, account: r.partner, agreement: r.agreement, recorded: r.recorded, deals: 0, open: 0, hold: 0, won: 0, lost: 0, won_amount: 0 };
+        by.set(key, cur);
+      }
       cur.deals += 1;
       if (open.includes(r.stage)) cur.open += 1;
       else if (r.stage === 'Hold') cur.hold += 1;
       else if (r.stage === 'Closed') { cur.won += 1; cur.won_amount += r.amount || 0; }
       else if (lost.includes(r.stage)) cur.lost += 1;
-      by.set(r.partner, cur);
     }
-    return [...by.values()].sort((a, b) => Number(b.recorded) - Number(a.recorded) || b.deals - a.deals);
+    return [...by.values()].sort((a, b) => Number(b.recorded) - Number(a.recorded) || b.deals - a.deals || rank(b.agreement) - rank(a.agreement) || a.partner.localeCompare(b.partner));
   },
 });
 
@@ -1934,7 +1971,7 @@ dash.calc('attention', {
     box.classList.remove('dash-skeleton');
     const rows = rowsOf('referral_partners');
     if (!rows) { box.replaceChildren(failNode()); return; }
-    if (!rows.length) { box.replaceChildren(el('p', 'cc-empty', 'No referred deals yet.')); return; }
+    if (!rows.length) { box.replaceChildren(el('p', 'cc-empty', 'No referral partners yet.')); return; }
     const max = d3.max(rows, (r) => r.deals) || 1;
     box.replaceChildren(...rows.map((r) => {
       const wrap = el('div', 'cc-refrow');
@@ -1943,8 +1980,8 @@ dash.calc('attention', {
       who.append(el('span', 'cc-who', r.partner));
       if (r.partner_contact) who.append(el('span', 'cc-sub', ' · ' + r.partner_contact));
       const right = el('span');
-      right.append(markEl('b', 'referral_partners', 'deals', { partner: r.partner }, r.deals, 'int'), document.createTextNode(r.deals === 1 ? ' deal ' : ' deals '));
-      if (r.recorded) {
+      right.append(markEl('b', 'referral_partners', 'deals', { partner: r.partner }, r.deals, 'int'), document.createTextNode(r.deals === 1 ? ' client deal ' : ' client deals '));
+      if (r.recorded && r.agreement) {
         const pill = el('span', 'cc-pill ' + (r.agreement === 'Closed' ? 'cc-pill-ok' : 'cc-pill-warn'));
         pill.append(document.createTextNode(r.agreement === 'Closed' ? 'Agreement signed · ' : 'Agreement: '), markEl('span', 'referral_partners', 'agreement', { partner: r.partner }, r.agreement, null));
         right.append(pill);
@@ -1964,8 +2001,12 @@ dash.calc('attention', {
         bar.append(seg);
       });
       outer.append(bar);
-      wrap.append(top, outer);
-      clickable(wrap, 'ref-partners', r.partner, 'Show deals referred by ' + r.partner);
+      if (r.deals) {
+        wrap.append(top, outer);
+        clickable(wrap, 'ref-partners', r.partner, 'Show deals referred by ' + r.partner);
+      } else {
+        wrap.append(top);
+      }
       return wrap;
     }));
     const s = rowsOf('referral_summary');
@@ -2091,7 +2132,7 @@ dash.calc('attention', {
       },
     },
     'ref-flow': { card: '#ref-flow-card', build: (id) => ({ title: 'Referral detail', source: 'referrals', rowKey: 'link_id', cols: REF_COLS, rows: (rowsOf('referrals') || []).filter((r) => r.link_id === id) }) },
-    'ref-partners': { card: '#ref-partners-card', build: (partner) => ({ title: 'Deals referred by ' + partner, source: 'referrals', rowKey: 'link_id', cols: REF_COLS.filter(([f]) => !['partner', 'partner_contact', 'agreement'].includes(f)), rows: (rowsOf('referrals') || []).filter((r) => r.partner === partner) }) },
+    'ref-partners': { card: '#ref-partners-card', build: (partner) => ({ title: 'Deals referred by ' + partner, source: 'referrals', rowKey: 'link_id', cols: REF_COLS.filter(([f]) => !['partner', 'partner_contact', 'agreement'].includes(f)), rows: (rowsOf('referrals') || []).filter((r) => r.partner === partner || (r.recorded && r.partner_contact === partner)) }) },
   };
   const pick = (key, value) => {
     picked[key] = picked[key] === value ? null : value;
