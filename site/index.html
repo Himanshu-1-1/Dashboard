@@ -468,7 +468,7 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
   <section class="cc-page" id="ref" role="tabpanel" aria-labelledby="tab-ref" hidden>
     <p class="cc-intro">Which partner sent us which client, where each referred deal stands, and whether that partner's agreement is signed.</p>
     <article class="cc-card" id="ref-flow-card">
-      <div class="cc-card-head"><h3>Who referred whom</h3><p>Each line runs from a referral partner to a client deal they sent us, colored by where the deal stands.</p></div>
+      <div class="cc-card-head"><h3>Who referred whom</h3><p>Every referral partner is on the left. A line runs from a partner to each client deal they sent us, colored by where the deal stands; partners with no line haven’t sent a client deal yet.</p></div>
       <div class="cc-legend" id="leg-ref-flow"></div>
       <div class="cc-svgchart dash-skeleton" id="chart-ref-flow" data-source="referrals"></div>
       <p class="cc-insight" id="ins-ref"></p>
@@ -1912,10 +1912,24 @@ dash.calc('attention', {
     if (!width) return;
     const card = box.closest('.cc-card');
     const unrec = 'Partner not recorded';
-    const partners = [...new Set(rows.map((r) => r.partner))].sort((a, c) => Number(a === unrec) - Number(c === unrec) || String(a).localeCompare(String(c)));
+    const plist = rowsOf('referral_partners') || [];
+    const nodeOf = (r) => {
+      if (!r.recorded) return unrec;
+      const p = plist.find((x) => (r.partner_contact && x.partner === r.partner_contact) || x.partner === r.partner || x.account === r.partner);
+      return p ? p.partner : r.partner;
+    };
+    const info = new Map(plist.map((p) => [p.partner, p]));
+    rows.forEach((r) => { const k = nodeOf(r); if (!info.has(k)) info.set(k, { partner: k, partner_contact: r.recorded ? r.partner_contact : null, agreement: r.agreement, deals: 0, recorded: r.recorded }); });
+    const lineCount = new Map();
+    rows.forEach((r) => { const k = nodeOf(r); lineCount.set(k, (lineCount.get(k) || 0) + 1); });
+    const partners = [...info.keys()].sort((a, c) => {
+      const la = lineCount.get(a) || 0, lc = lineCount.get(c) || 0;
+      const ga = la ? (a === unrec ? 1 : 0) : 2, gc = lc ? (c === unrec ? 1 : 0) : 2;
+      return ga - gc || lc - la || String(a).localeCompare(String(c));
+    });
     const pIndex = new Map(partners.map((p, i) => [p, i]));
     const deals = [...new Map(rows.map((r) => [r.deal_id, r])).values()]
-      .sort((a, c) => pIndex.get(a.partner) - pIndex.get(c.partner) || String(a.deal).localeCompare(String(c.deal)));
+      .sort((a, c) => pIndex.get(nodeOf(a)) - pIndex.get(nodeOf(c)) || String(a.deal).localeCompare(String(c.deal)));
     const rowH = 40;
     const height = Math.max(partners.length, deals.length) * rowH + 8;
     const side = Math.min(250, Math.max(112, width * 0.34));
@@ -1923,13 +1937,13 @@ dash.calc('attention', {
     const rx = width - side;
     const chars = Math.max(8, Math.floor((side - 16) / 6.4));
     const ly = d3.scalePoint(partners, [4, height - 4]).padding(0.5);
-    const ry = d3.scalePoint(deals.map((d) => d.deal_id), [4, height - 4]).padding(0.5);
+    const ry = d3.scalePoint(deals.map((d) => d.deal_id), [4, Math.min(height - 4, Math.max(partners.length >= deals.length ? 0 : 0, deals.length * rowH * 1.4) + 4)]).padding(0.5);
     const svg = d3.create('svg').attr('width', '100%').attr('height', height).attr('viewBox', `0 0 ${width} ${height}`).attr('role', 'img').attr('aria-label', 'Referral partners linked to the client deals they referred');
     const link = d3.linkHorizontal().x((d) => d[0]).y((d) => d[1]);
     rows.forEach((r) => {
       const ph = phaseOf(r.stage);
       const path = svg.append('path')
-        .attr('d', link({ source: [lx + 6, ly(r.partner)], target: [rx - 6, ry(r.deal_id)] }))
+        .attr('d', link({ source: [lx + 6, ly(nodeOf(r))], target: [rx - 6, ry(r.deal_id)] }))
         .attr('fill', 'none').attr('stroke', phaseColor(ph)).attr('stroke-width', 2.5).attr('stroke-linecap', 'round')
         .attr('stroke-dasharray', r.recorded ? null : '4 4');
       const hit = svg.append('path').attr('d', path.attr('d')).attr('fill', 'none').attr('stroke', 'transparent').attr('stroke-width', 16);
@@ -1949,10 +1963,23 @@ dash.calc('attention', {
     });
     partners.forEach((p) => {
       const y = ly(p);
-      const r = rows.find((x) => x.partner === p);
-      svg.append('rect').attr('x', lx - 3).attr('y', y - 11).attr('width', 6).attr('height', 22).attr('rx', 3).attr('fill', p === unrec ? 'var(--cds-chart-muted)' : HUE.rp);
-      svg.append('text').attr('class', 'cc-lbl').attr('x', lx - 12).attr('y', y).attr('dy', r.partner_contact ? '-0.15em' : '0.32em').attr('text-anchor', 'end').text(clip(p, chars));
-      if (r.partner_contact) svg.append('text').attr('x', lx - 12).attr('y', y).attr('dy', '1.05em').attr('text-anchor', 'end').text(clip(r.partner_contact, chars));
+      const r = info.get(p);
+      const linked = (lineCount.get(p) || 0) > 0;
+      const node = svg.append('rect').attr('x', lx - 3).attr('y', y - 11).attr('width', 6).attr('height', 22).attr('rx', 3);
+      if (linked) node.attr('fill', p === unrec ? 'var(--cds-chart-muted)' : HUE.rp);
+      else node.attr('fill', 'none').attr('stroke', 'var(--cds-chart-muted)').attr('stroke-width', 1.5);
+      const sub = p === unrec ? null : [r.partner_contact, r.agreement ? (r.agreement === 'Closed' ? 'Agreement signed' : 'Agreement: ' + r.agreement) : null].filter(Boolean).join(' · ');
+      const name = svg.append('text').attr('class', 'cc-lbl').attr('x', lx - 12).attr('y', y).attr('dy', sub ? '-0.15em' : '0.32em').attr('text-anchor', 'end').text(clip(p, chars));
+      if (!linked) name.attr('fill', 'var(--color-fg-muted)');
+      if (sub) svg.append('text').attr('x', lx - 12).attr('y', y).attr('dy', '1.05em').attr('text-anchor', 'end').text(clip(sub, chars));
+      if (!linked && p !== unrec) {
+        const hit = svg.append('rect').attr('x', 0).attr('y', y - rowH / 2).attr('width', lx + 6).attr('height', rowH).attr('fill', 'transparent');
+        hit.on('mousemove', (e) => showTip(card, e.clientX, e.clientY, clip(p, 40), [
+          [null, 'Company', r.partner_contact || '—'],
+          [null, 'Agreement', r.agreement || '—'],
+          [null, 'Client deals sent', '0'],
+        ])).on('mouseleave', () => hideTip(card));
+      }
     });
     deals.forEach((d) => {
       const y = ry(d.deal_id);
