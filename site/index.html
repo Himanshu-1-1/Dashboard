@@ -1,0 +1,2324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Campaign Command Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap">
+<style>
+/* Layout: one centered column of cards; tokens below match the names the dashboard code uses. */
+:root {
+  color-scheme: light;
+  --font-anthropic-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-anthropic-serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --color-bg: #f3f2ee;
+  --color-panel: #fcfcfb;
+  --color-fg: #0b0b0b;
+  --color-fg-muted: #52514e;
+  --color-border-line: rgba(11, 11, 11, 0.10);
+  --color-ok: #006300;
+  --color-warn: #8a5d00;
+  --color-bad: #b42f2f;
+  --cds-chart-grid: #e1e0d9;
+  --cds-chart-axis: #c3c2b7;
+  --cds-chart-muted: #898781;
+  --cds-chart-status-critical: #d03b3b;
+  --cds-surface-popover: #ffffff;
+  --cds-border: rgba(11, 11, 11, 0.12);
+  --cds-shadow-popover: 0 8px 24px rgba(11, 11, 11, 0.12);
+  --cds-text-secondary: #52514e;
+  --cds-radius: 8px;
+  --cds-gap-xs: 4px; --cds-gap-sm: 8px; --cds-gap-md: 16px; --cds-gap-lg: 24px; --cds-gap-xl: 32px;
+  --cds-pad-xs: 4px; --cds-pad-sm: 8px; --cds-pad-md: 12px; --cds-pad-lg: 20px; --cds-pad-xl: 28px;
+  --cds-font-size-caption: 12.5px; --cds-font-size-body: 14px; --cds-font-size-heading: 16px; --cds-font-size-title: 28px;
+  --cds-font-weight-medium: 500;
+  --cds-dur-slow: 280ms;
+  --cds-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300; --s7: #4a3aa7; --s8: #e34948;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --color-bg: #121211; --color-panel: #1a1a19; --color-fg: #ffffff; --color-fg-muted: #c3c2b7;
+    --color-border-line: rgba(255, 255, 255, 0.10); --color-ok: #0ca30c; --color-warn: #fab219; --color-bad: #e66767;
+    --cds-chart-grid: #2c2c2a; --cds-chart-axis: #383835; --cds-surface-popover: #242423; --cds-border: rgba(255, 255, 255, 0.14);
+    --cds-shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.5); --cds-text-secondary: #c3c2b7;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: #121211; --color-panel: #1a1a19; --color-fg: #ffffff; --color-fg-muted: #c3c2b7;
+  --color-border-line: rgba(255, 255, 255, 0.10); --color-ok: #0ca30c; --color-warn: #fab219; --color-bad: #e66767;
+  --cds-chart-grid: #2c2c2a; --cds-chart-axis: #383835; --cds-surface-popover: #242423; --cds-border: rgba(255, 255, 255, 0.14);
+  --cds-shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.5); --cds-text-secondary: #c3c2b7;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+}
+html, body { margin: 0; }
+body { background: var(--color-bg); color: var(--color-fg); font-family: var(--font-anthropic-sans); -webkit-font-smoothing: antialiased; }
+.cc-shell { max-width: 1320px; margin-inline: auto; padding-inline: 16px; padding-block: 28px 56px; }
+@media (min-width: 720px) { .cc-shell { padding-inline: 32px; } }
+.dash-skeleton { position: relative; color: transparent !important; }
+.dash-skeleton > * { visibility: hidden; }
+.dash-skeleton::after { content: ""; position: absolute; inset: 2px 0; border-radius: 4px; background: var(--cds-chart-grid); animation: cc-pulse 1.1s ease-in-out infinite alternate; }
+span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
+@keyframes cc-pulse { from { opacity: 0.55; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .dash-skeleton::after { animation: none; } }
+.cc-load-error { color: var(--color-bad); }
+.cc-nodata { display: grid; gap: 6px; margin-bottom: 24px; padding: 16px 20px; border: 1px solid var(--color-border-line); border-left: 4px solid var(--color-bad); border-radius: var(--cds-radius); background: var(--color-panel); font-size: var(--cds-font-size-body); line-height: 1.5; max-width: 80ch; }
+.cc-nodata p { margin: 0; color: var(--color-fg-muted); }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="data.js"></script>
+<script>
+/* Data layer: reads data.json (written daily by scripts/fetch_zoho.py) and serves it to the page
+   through the same interface the dashboard code was written against. */
+(() => {
+  const loaders = {};
+  const calcs = {};
+  const listeners = [];
+  let raw = null;
+  let loadError = null;
+  let cache = {};
+  const safe = (fn) => { try { fn(); } catch (err) { console.error(err); } };
+  const runAll = () => listeners.forEach(safe);
+  window.dash = {
+    colors: ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s5)', 'var(--s6)', 'var(--s7)', 'var(--s8)'],
+    loader(id, def) { loaders[id] = def; },
+    calc(id, def) { calcs[id] = def; },
+    data(id) {
+      if (cache[id]) return cache[id];
+      if (!raw) return { status: loadError ? 'error' : 'loading', data: [], message: loadError };
+      let out;
+      try {
+        if (raw.datasets && Object.prototype.hasOwnProperty.call(raw.datasets, id)) {
+          const answer = raw.datasets[id];
+          const shaped = loaders[id] ? loaders[id].fn({ answer }) : answer;
+          const rows = Array.isArray(shaped) ? shaped : (shaped.rows || shaped.data || []);
+          out = { status: 'ok', data: rows, columns: shaped.columns || [] };
+        } else if (calcs[id]) {
+          const inputs = calcs[id].inputs.map((i) => window.dash.data(i));
+          const notReady = inputs.find((x) => x.status !== 'ok');
+          out = notReady ? { status: notReady.status, data: [], message: notReady.message } : { status: 'ok', data: calcs[id].fn(...inputs.map((x) => x.data)) };
+        } else {
+          out = { status: 'error', data: [], message: 'Not in today’s data file: ' + id };
+        }
+      } catch (err) {
+        console.error(id, err);
+        out = { status: 'error', data: [], message: err.message };
+      }
+      cache[id] = out;
+      return out;
+    },
+    onData(fn) { listeners.push(fn); safe(fn); },
+    setLink(name) { try { history.replaceState(null, '', '#' + name); } catch (err) { /* ignore */ } },
+    params: () => ({}),
+    setParams() {},
+    resetParams() {},
+    refresh() {},
+  };
+  const stamp = (text, isError) => {
+    const node = document.getElementById('cc-refreshed');
+    if (!node) return;
+    node.textContent = text;
+    node.classList.toggle('cc-load-error', Boolean(isError));
+  };
+  const when = (iso) => {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return 'unknown time';
+    const f = (tz) => d.toLocaleString('en-US', { timeZone: tz, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    return f('Asia/Kolkata') + ' IST (' + f('America/Chicago') + ' CT)';
+  };
+  const banner = () => {
+    const shell = document.querySelector('.cc-shell');
+    if (!shell || document.getElementById('cc-nodata')) return;
+    const box = document.createElement('div');
+    box.id = 'cc-nodata';
+    box.className = 'cc-nodata';
+    box.setAttribute('role', 'alert');
+    const h = document.createElement('strong');
+    h.textContent = 'No data yet';
+    const p1 = document.createElement('p');
+    p1.textContent = 'This page fills in from data.js, which the daily Zoho job writes. It hasn’t been created yet.';
+    const p2 = document.createElement('p');
+    p2.textContent = 'On GitHub: add the three Zoho secrets, then Actions → Refresh dashboard → Run workflow. On your laptop: set ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET and ZOHO_REFRESH_TOKEN, run “python3 scripts/fetch_zoho.py”, then reload this page.';
+    box.append(h, p1, p2);
+    shell.prepend(box);
+  };
+  const start = () => {
+    const json = window.__DASH_DATA__;
+    if (json && json.datasets) {
+      raw = json;
+      cache = {};
+      runAll();
+      stamp('Data from Zoho CRM as of ' + when(json.generated_at) + '.');
+    } else {
+      loadError = 'data.js not found';
+      cache = {};
+      runAll();
+      stamp('No data loaded yet.', true);
+      banner();
+    }
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+  let resizeTimer;
+  window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(runAll, 150); });
+})();
+</script>
+</head>
+<body>
+<main class="cc-shell">
+<style>
+.cc { display: grid; gap: var(--cds-gap-lg); font-family: var(--font-anthropic-sans); font-size: var(--cds-font-size-body); color: var(--color-fg); }
+.cc * { box-sizing: border-box; }
+.cc h1, .cc h2, .cc h3 { margin: 0; text-wrap: balance; }
+.cc p { margin: 0; }
+.cc-head { display: grid; gap: var(--cds-gap-sm); }
+.cc-head h1 { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); line-height: 1.15; }
+.cc-takeaway { max-width: 74ch; line-height: 1.55; }
+.cc-takeaway b, .cc-insight b { font-weight: var(--cds-font-weight-medium); }
+.cc-meta { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+
+.cc-tabs { display: flex; flex-wrap: wrap; gap: var(--cds-gap-xs); border-bottom: 1px solid var(--color-border-line); }
+.cc-tab { appearance: none; background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; padding: var(--cds-pad-sm) var(--cds-pad-md); font: inherit; color: var(--color-fg-muted); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.cc-tab:hover { color: var(--color-fg); }
+.cc-tab[aria-selected="true"] { color: var(--color-fg); border-bottom-color: var(--color-fg); font-weight: var(--cds-font-weight-medium); }
+.cc-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+.cc-tab:focus-visible, .cc-go:focus-visible, .cc-chip:focus-visible, .cc-sort:focus-visible, .cc-search:focus-visible, .cc-hit:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+
+.cc-page { display: grid; gap: var(--cds-gap-md); }
+.cc-intro { color: var(--color-fg-muted); max-width: 74ch; line-height: 1.5; }
+.cc-grid { display: grid; gap: var(--cds-gap-md); grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); }
+.cc-grid-3 { display: grid; gap: var(--cds-gap-md); grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); }
+.cc-card { position: relative; background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: grid; gap: var(--cds-gap-md); align-content: start; min-width: 0; }
+.cc-card-head { display: grid; gap: var(--cds-gap-xs); }
+.cc-card-head h2, .cc-card-head h3 { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); display: flex; align-items: center; gap: 8px; }
+.cc-card-head p { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); line-height: 1.45; }
+.cc-insight { border-top: 1px solid var(--color-border-line); padding-top: var(--cds-pad-sm); font-size: var(--cds-font-size-caption); line-height: 1.5; min-height: 1.5em; }
+.cc-insight::before { content: "What it shows · "; color: var(--color-fg-muted); }
+
+.cc-bigs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--cds-gap-sm); margin: 0; }
+.cc-big { display: grid; gap: var(--cds-gap-xs); min-width: 0; }
+.cc-big dt { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.cc-big dd { margin: 0; }
+.cc-bignum { font-weight: var(--cds-font-weight-medium); font-size: var(--cds-font-size-title); line-height: 1.1; display: inline-block; min-width: 2ch; }
+
+.cc-goal { display: grid; gap: var(--cds-gap-xs); }
+.cc-goal-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--cds-gap-xs); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.cc-goal-top .cc-val { color: var(--color-fg); font-weight: var(--cds-font-weight-medium); }
+.cc-track { position: relative; height: 10px; border-radius: 4px; background: var(--cds-chart-grid); }
+.cc-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 4px; }
+.cc-pace { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--color-fg-muted); border-radius: 1px; }
+.cc-target { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--color-fg); border-radius: 1px; }
+@media (prefers-reduced-motion: no-preference) { .cc-fill, .cc-fbar i { transition: width var(--cds-dur-slow) var(--cds-ease-out); } }
+.cc-pct.cc-low { color: var(--color-bad); }
+.cc-pct.cc-ok { color: var(--color-ok); }
+
+.cc-legend { display: flex; flex-wrap: wrap; gap: var(--cds-gap-xs) var(--cds-gap-md); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); align-items: center; }
+.cc-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.cc-sw { width: 10px; height: 10px; border-radius: 3px; display: inline-block; flex: none; }
+.cc-sw-line { width: 2px; height: 12px; border-radius: 1px; display: inline-block; }
+
+/* Funnel */
+.cc-funnelviz { display: grid; gap: 0; min-height: 12rem; }
+.cc-frow { display: grid; grid-template-columns: minmax(7rem, 11rem) minmax(0, 1fr) auto; align-items: center; gap: var(--cds-gap-sm); padding-block: 4px; }
+.cc-flabel { font-size: var(--cds-font-size-caption); }
+.cc-fbar { height: 22px; position: relative; }
+.cc-fbar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; min-width: 3px; }
+.cc-fval { font-variant-numeric: tabular-nums; font-weight: var(--cds-font-weight-medium); text-align: right; white-space: nowrap; }
+.cc-fval small { font-weight: 400; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.cc-fdrop { display: grid; grid-template-columns: minmax(7rem, 11rem) minmax(0, 1fr); gap: var(--cds-gap-sm); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); padding-left: 2px; }
+.cc-fdrop span:last-child { padding-left: 6px; border-left: 2px solid var(--color-border-line); }
+.cc-fdrop.cc-worst span:last-child { color: var(--color-bad); border-left-color: var(--color-bad); }
+
+/* Bullets */
+.cc-bullets { display: grid; gap: var(--cds-gap-sm); min-height: 6rem; }
+.cc-bgroup { font-size: var(--cds-font-size-caption); font-weight: var(--cds-font-weight-medium); display: flex; align-items: center; gap: 6px; margin-top: var(--cds-gap-xs); }
+.cc-brow { display: grid; grid-template-columns: minmax(8rem, 13rem) minmax(0, 1fr) minmax(6.5rem, auto); align-items: center; gap: var(--cds-gap-sm); font-size: var(--cds-font-size-caption); }
+.cc-bnum { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--color-fg-muted); }
+.cc-bnum .cc-v { color: var(--color-fg); font-weight: var(--cds-font-weight-medium); }
+
+/* Donut */
+.cc-donut { display: grid; grid-template-columns: minmax(7rem, 9rem) minmax(0, 1fr); gap: var(--cds-gap-md); align-items: center; min-height: 9rem; }
+.cc-donut svg { width: 100%; height: auto; display: block; }
+.cc-dlegend { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: var(--cds-font-size-caption); }
+.cc-dlegend li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: var(--cds-gap-sm); align-items: center; }
+.cc-dlegend .cc-n { font-variant-numeric: tabular-nums; font-weight: var(--cds-font-weight-medium); text-align: right; }
+.cc-dlegend .cc-s { font-variant-numeric: tabular-nums; color: var(--color-fg-muted); text-align: right; min-width: 3.2em; }
+
+/* SVG charts */
+.cc-svgchart { min-height: 15rem; position: relative; }
+.cc-svgchart svg { display: block; width: 100%; overflow: visible; }
+.cc-svgchart text { fill: var(--color-fg-muted); font-size: 11px; font-family: var(--font-anthropic-sans); }
+.cc-svgchart .cc-lbl { fill: var(--color-fg); font-weight: 500; }
+.cc-svgchart .tick line { stroke: var(--cds-chart-grid); }
+.cc-svgchart .domain { display: none; }
+.cc-svgchart .cc-base { stroke: var(--cds-chart-axis); }
+.cc-hit { fill: transparent; cursor: default; }
+.cc-hit:hover + g rect, .cc-col.cc-hover rect { filter: brightness(1.08); }
+.cc-tip { position: absolute; pointer-events: none; z-index: 5; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); border-radius: var(--cds-radius); box-shadow: var(--cds-shadow-popover); padding: var(--cds-pad-xs) var(--cds-pad-sm); font-size: var(--cds-font-size-caption); min-width: 9rem; display: grid; gap: 3px; }
+.cc-tip .cc-tip-h { color: var(--cds-text-secondary); }
+.cc-tip .cc-tip-r { display: grid; grid-template-columns: auto 1fr auto; gap: 6px; align-items: center; }
+.cc-tip .cc-tip-r b { font-variant-numeric: tabular-nums; font-weight: var(--cds-font-weight-medium); }
+
+/* Coverage */
+.cc-cov { display: grid; gap: var(--cds-gap-md); min-height: 6rem; }
+.cc-covrow { display: grid; gap: 6px; }
+.cc-covtop { display: flex; justify-content: space-between; gap: var(--cds-gap-sm); font-size: var(--cds-font-size-caption); flex-wrap: wrap; }
+.cc-covbar { display: flex; gap: 2px; height: 18px; }
+.cc-covbar i { display: block; height: 100%; border-radius: 4px; min-width: 3px; }
+
+/* Drill-down */
+.cc-drill { display: grid; gap: var(--cds-gap-sm); border-top: 1px solid var(--color-border-line); padding-top: var(--cds-pad-md); }
+.cc-drill-head { display: flex; justify-content: space-between; align-items: center; gap: var(--cds-gap-sm); flex-wrap: wrap; }
+.cc-drill-head h4 { margin: 0; font-size: var(--cds-font-size-body); font-weight: var(--cds-font-weight-medium); display: flex; align-items: center; gap: 8px; }
+.cc-svgchart .cc-hit { cursor: pointer; }
+.cc-svgchart .cc-hit:focus-visible { outline: none; stroke: var(--color-fg); stroke-width: 2; }
+.cc-col { transition: opacity var(--cds-dur-slow); }
+
+.cc-clickable { cursor: pointer; border-radius: var(--cds-radius); transition: background var(--cds-dur-slow); }
+.cc-clickable:hover { background: var(--cds-chart-grid); }
+.cc-clickable:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+.cc-clickable.cc-picked { background: var(--cds-chart-grid); box-shadow: inset 3px 0 0 var(--color-fg); }
+.cc-covbar i.cc-clickable, .cc-covbar i.cc-clickable:hover { background-clip: padding-box; }
+.cc-covbar i.cc-picked { box-shadow: 0 0 0 2px var(--color-fg); }
+.cc-frow.cc-clickable, .cc-brow.cc-clickable, .cc-refrow.cc-clickable, .cc-goal.cc-clickable { padding-inline: 6px; margin-inline: -6px; }
+.cc-dlegend li.cc-clickable { padding: 2px 6px; margin-inline: -6px; }
+
+/* Referral bars */
+.cc-refbars { display: grid; gap: var(--cds-gap-md); min-height: 6rem; }
+.cc-refrow { display: grid; gap: 6px; }
+.cc-reftop { display: flex; justify-content: space-between; gap: var(--cds-gap-sm); flex-wrap: wrap; font-size: var(--cds-font-size-caption); }
+.cc-reftop .cc-who { font-weight: var(--cds-font-weight-medium); }
+.cc-reftop .cc-sub { color: var(--color-fg-muted); }
+.cc-pill { display: inline-block; border: 1px solid var(--color-border-line); border-radius: 999px; padding: 0 8px; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.cc-pill.cc-pill-ok { color: var(--color-ok); }
+.cc-pill.cc-pill-warn { color: var(--color-warn); }
+.cc-refbar { display: flex; gap: 2px; height: 16px; }
+.cc-refbar i { display: block; height: 100%; border-radius: 4px; min-width: 3px; }
+.cc-flow-empty { display: grid; place-items: center; text-align: center; min-height: 10rem; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); max-width: 60ch; margin-inline: auto; line-height: 1.5; }
+
+.cc-attn { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--cds-gap-sm); }
+.cc-attn-item { display: grid; grid-template-columns: 3.5rem minmax(0, 1fr) auto; align-items: center; gap: var(--cds-gap-sm); padding-block: var(--cds-pad-xs); border-bottom: 1px solid var(--color-border-line); }
+.cc-attn-item:last-child { border-bottom: 0; }
+.cc-attn-num { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); text-align: right; }
+.cc-go, .cc-chip { appearance: none; font: inherit; font-size: var(--cds-font-size-caption); border: 1px solid var(--color-border-line); background: var(--color-bg); color: var(--color-fg); border-radius: 999px; padding: var(--cds-pad-xs) var(--cds-pad-sm); cursor: pointer; white-space: nowrap; }
+.cc-go:hover, .cc-chip:hover { border-color: var(--color-fg-muted); }
+.cc-chip[aria-pressed="true"] { background: var(--color-fg); color: var(--color-bg); border-color: var(--color-fg); }
+.cc-camp-foot { display: flex; justify-content: flex-end; }
+.cc-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cds-gap-sm); }
+.cc-rowkey span::before, .cc-tbl tr.cc-row-bad td:first-child::before, .cc-tbl tr.cc-row-warn td:first-child::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.cc-rowkey .cc-l-bad::before, .cc-tbl tr.cc-row-bad td:first-child::before { background: var(--color-bad); }
+.cc-rowkey .cc-l-warn::before, .cc-tbl tr.cc-row-warn td:first-child::before { background: var(--color-warn); }
+.cc-search { font: inherit; font-size: var(--cds-font-size-caption); padding: var(--cds-pad-xs) var(--cds-pad-sm); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-bg); color: var(--color-fg); min-width: 0; width: min(100%, 18rem); }
+.cc-scroll { overflow: auto; max-height: 34rem; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); }
+.cc-tbl { width: 100%; border-collapse: collapse; font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+.cc-tbl th { position: sticky; top: 0; background: var(--color-panel); text-align: left; font-weight: var(--cds-font-weight-medium); color: var(--color-fg-muted); padding: var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); white-space: nowrap; z-index: 1; }
+.cc-tbl td { padding: var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); vertical-align: top; }
+.cc-tbl tbody tr:last-child td { border-bottom: 0; }
+.cc-tbl td.cc-num, .cc-tbl th.cc-num { text-align: right; }
+.cc-sort { appearance: none; background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; }
+.cc-sort::after { content: ""; margin-left: 4px; }
+th[aria-sort="ascending"] .cc-sort::after { content: "↑"; }
+th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
+.cc-empty { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.cc-fail { display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); min-height: 3rem; }
+.cc-fail::before { content: ""; width: .375rem; height: .375rem; border-radius: 50%; background: var(--color-bad); }
+.cc-notes { margin: 0; padding-left: 1.1rem; display: grid; gap: var(--cds-gap-xs); color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); line-height: 1.5; max-width: 80ch; }
+[data-dash-source-state=refreshing] { opacity: .5; transition: opacity var(--cds-dur-slow); }
+@media (max-width: 34rem) {
+  .cc-hide-narrow { display: none; }
+  .cc-frow, .cc-fdrop { grid-template-columns: 6.5rem minmax(0, 1fr) auto; }
+  .cc-brow { grid-template-columns: minmax(0, 1fr) auto; }
+  .cc-brow .cc-track { grid-column: 1 / -1; grid-row: 2; }
+  .cc-donut { grid-template-columns: 1fr; justify-items: center; }
+  .cc-donut svg { max-width: 9rem; }
+  .cc-dlegend { width: 100%; }
+}
+</style>
+
+<div class="cc" id="top">
+  <header class="cc-head">
+    <h1>Campaign Command Center</h1>
+    <p class="cc-takeaway" id="takeaway">
+      B2B campaign: <b data-source="funnel" data-field="value" data-where="campaign=rp&amp;step=connected" data-fmt="int" class="dash-skeleton">—</b> of <b data-source="funnel" data-field="value" data-where="campaign=rp&amp;step=total" data-fmt="int" class="dash-skeleton">—</b> prospects connected, <b data-source="attention" data-field="value" data-where="item=partner_proposals" data-fmt="int" class="dash-skeleton">—</b> agreements waiting for signature.
+      Founder Network: <b data-source="funnel" data-field="value" data-where="campaign=fn&amp;step=opps" data-fmt="int" class="dash-skeleton">—</b> client opportunities created, <b data-source="attention" data-field="value" data-where="item=fn_p1_no_step" data-fmt="int" class="dash-skeleton">—</b> priority-1 contacts with no next step.
+      ICP: <b data-source="funnel" data-field="value" data-where="campaign=icp&amp;step=connected" data-fmt="int" class="dash-skeleton">—</b> executives connected, <b data-source="funnel" data-field="value" data-where="campaign=icp&amp;step=meetings" data-fmt="int" class="dash-skeleton">—</b> meetings logged against a target of 300.
+    </p>
+    <p class="cc-meta"><span id="cc-refreshed">Loading today’s data from Zoho CRM…</span> Refreshed daily at 8:00 AM IST. Dates are Central time. Targets come from the 2026 campaign tracking sheets; the pace line assumes the campaigns run Aug 17 to Dec 18, 2026.</p>
+  </header>
+
+  <nav class="cc-tabs" role="tablist" aria-label="Campaigns">
+    <button type="button" class="cc-tab" role="tab" id="tab-overview" data-tab="overview" aria-controls="overview">Overview</button>
+    <button type="button" class="cc-tab" role="tab" id="tab-rp" data-tab="rp" aria-controls="rp"><i class="cc-dot" data-hue="rp"></i>B2B Campaign</button>
+    <button type="button" class="cc-tab" role="tab" id="tab-ref" data-tab="ref" aria-controls="ref"><i class="cc-dot" data-hue="rp"></i>Referrals</button>
+    <button type="button" class="cc-tab" role="tab" id="tab-icp" data-tab="icp" aria-controls="icp"><i class="cc-dot" data-hue="icp"></i>ICP Prospecting</button>
+    <button type="button" class="cc-tab" role="tab" id="tab-fn" data-tab="fn" aria-controls="fn"><i class="cc-dot" data-hue="fn"></i>Founder Network</button>
+    <button type="button" class="cc-tab" role="tab" id="tab-pipeline" data-tab="pipeline" aria-controls="pipeline">Pipeline</button>
+  </nav>
+
+  <section class="cc-page" id="overview" role="tabpanel" aria-labelledby="tab-overview">
+    <div class="cc-grid-3">
+      <article class="cc-card" id="ov-rp">
+        <div class="cc-card-head"><h2><i class="cc-dot" data-hue="rp"></i>B2B Campaign</h2><p>Referral partners: B2B firms that serve our buyers and refer clients to us.</p></div>
+        <dl class="cc-bigs"><div class="cc-big"><dt>Prospects</dt><dd><span class="cc-bignum dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=rp&amp;step=total" data-fmt="int">—</span></dd></div><div class="cc-big"><dt>Connected</dt><dd><span class="cc-bignum dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=rp&amp;step=connected" data-fmt="int">—</span></dd></div><div class="cc-big"><dt>Partners signed</dt><dd><span class="cc-bignum dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=rp&amp;step=signed" data-fmt="int">—</span></dd></div></dl>
+        <div class="cc-goal"><div class="cc-goal-top"><span>Agreements sent or signed</span><span><span class="cc-val dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=rp&amp;step=agreements" data-fmt="int">—</span> of <span data-source="funnel" data-field="target" data-where="campaign=rp&amp;step=agreements" data-fmt="int">—</span> · <span class="cc-pct" data-source="funnel" data-field="progress" data-where="campaign=rp&amp;step=agreements" data-fmt="pct">—</span></span></div><div class="cc-track" data-source="funnel"><i class="cc-fill" data-campaign="rp" data-step="agreements"></i><b class="cc-pace" aria-hidden="true"></b></div></div>
+        <div class="cc-camp-foot"><button type="button" class="cc-go" data-go="rp">Open B2B Campaign</button></div>
+      </article>
+      <article class="cc-card" id="ov-icp">
+        <div class="cc-card-head"><h2><i class="cc-dot" data-hue="icp"></i>ICP Prospecting</h2><p>Executives at target accounts, reached through Mack's LinkedIn sequence.</p></div>
+        <dl class="cc-bigs"><div class="cc-big"><dt>Executives</dt><dd><span class="cc-bignum dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=icp&amp;step=total" data-fmt="int">—</span></dd></div><div class="cc-big"><dt>Connected</dt><dd><span class="cc-bignum dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=icp&amp;step=connected" data-fmt="int">—</span></dd></div><div class="cc-big"><dt>Meetings logged</dt><dd><span class="cc-bignum dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=icp&amp;step=meetings" data-fmt="int">—</span></dd></div></dl>
+        <div class="cc-goal"><div class="cc-goal-top"><span>Connections vs target</span><span><span class="cc-val dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=icp&amp;step=connected" data-fmt="int">—</span> of <span data-source="funnel" data-field="target" data-where="campaign=icp&amp;step=connected" data-fmt="int">—</span> · <span class="cc-pct" data-source="funnel" data-field="progress" data-where="campaign=icp&amp;step=connected" data-fmt="pct">—</span></span></div><div class="cc-track" data-source="funnel"><i class="cc-fill" data-campaign="icp" data-step="connected"></i><b class="cc-pace" aria-hidden="true"></b></div></div>
+        <div class="cc-camp-foot"><button type="button" class="cc-go" data-go="icp">Open ICP Prospecting</button></div>
+      </article>
+      <article class="cc-card" id="ov-fn">
+        <div class="cc-card-head"><h2><i class="cc-dot" data-hue="fn"></i>Founder Network</h2><p>Founders and operators we already know, turned into meetings and work.</p></div>
+        <dl class="cc-bigs"><div class="cc-big"><dt>Contacts</dt><dd><span class="cc-bignum dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=fn&amp;step=total" data-fmt="int">—</span></dd></div><div class="cc-big"><dt>Meetings logged</dt><dd><span class="cc-bignum dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=fn&amp;step=meetings" data-fmt="int">—</span></dd></div><div class="cc-big"><dt>Opportunities</dt><dd><span class="cc-bignum dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=fn&amp;step=opps" data-fmt="int">—</span></dd></div></dl>
+        <div class="cc-goal"><div class="cc-goal-top"><span>Meetings vs target</span><span><span class="cc-val dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=fn&amp;step=meetings" data-fmt="int">—</span> of <span data-source="funnel" data-field="target" data-where="campaign=fn&amp;step=meetings" data-fmt="int">—</span> · <span class="cc-pct" data-source="funnel" data-field="progress" data-where="campaign=fn&amp;step=meetings" data-fmt="pct">—</span></span></div><div class="cc-track" data-source="funnel"><i class="cc-fill" data-campaign="fn" data-step="meetings"></i><b class="cc-pace" aria-hidden="true"></b></div></div>
+        <div class="cc-camp-foot"><button type="button" class="cc-go" data-go="fn">Open Founder Network</button></div>
+      </article>
+    </div>
+
+    <div class="cc-grid">
+      <article class="cc-card" id="ov-targets">
+        <div class="cc-card-head"><h2>Targets at a glance</h2><p>Every 2026 target as a share of its goal. The dark tick is the target; the grey tick is where we should be today. Select a row for the records behind it.</p></div>
+        <div class="cc-legend"><span><i class="cc-sw-line" style="background: var(--color-fg)"></i>Target</span><span><i class="cc-sw-line" style="background: var(--color-fg-muted)"></i>Pace for today</span></div>
+        <div class="cc-bullets dash-skeleton" id="bullets-all" data-source="funnel" data-campaign="all"></div>
+        <p class="cc-insight" id="ins-targets"></p>
+      </article>
+      <article class="cc-card" id="ov-meetings">
+        <div class="cc-card-head"><h2>Meetings per week</h2><p>Every meeting in Zoho since the campaigns started, by who it was with. Faded columns are booked ahead. Select a week to list its meetings.</p></div>
+        <div class="cc-legend" id="leg-meetings"></div>
+        <div class="cc-svgchart dash-skeleton" id="chart-meetings" data-source="meetings_weekly"></div>
+        <p class="cc-insight" id="ins-meetings"></p>
+      </article>
+    </div>
+
+    <div class="cc-grid">
+      <article class="cc-card" id="attention">
+        <div class="cc-card-head"><h2>Needs attention</h2><p>Open items across the three campaigns.</p></div>
+        <ul class="cc-attn"><li class="cc-attn-item"><span class="cc-attn-num dash-skeleton" data-source="attention" data-field="value" data-where="item=fn_p1_no_step" data-fmt="int">—</span><span class="cc-attn-label">Priority 1 Founder Network contacts with no open task</span><button type="button" class="cc-go" data-go="fn">Open</button></li>
+<li class="cc-attn-item"><span class="cc-attn-num dash-skeleton" data-source="attention" data-field="value" data-where="item=partner_proposals" data-fmt="int">—</span><span class="cc-attn-label">Partnership agreements waiting for signature</span><button type="button" class="cc-go" data-go="rp">Open</button></li>
+<li class="cc-attn-item"><span class="cc-attn-num dash-skeleton" data-source="attention" data-field="value" data-where="item=partner_hold" data-fmt="int">—</span><span class="cc-attn-label">Partnership deals on hold</span><button type="button" class="cc-go" data-go="rp">Open</button></li>
+<li class="cc-attn-item"><span class="cc-attn-num dash-skeleton" data-source="attention" data-field="value" data-where="item=ref_unrecorded" data-fmt="int">—</span><span class="cc-attn-label">Referred client deals with no referral partner recorded</span><button type="button" class="cc-go" data-go="ref">Open</button></li>
+<li class="cc-attn-item"><span class="cc-attn-num dash-skeleton" data-source="attention" data-field="value" data-where="item=icp_connected_unmet" data-fmt="int">—</span><span class="cc-attn-label">ICP executives connected but never met</span><button type="button" class="cc-go" data-go="icp">Open</button></li>
+<li class="cc-attn-item"><span class="cc-attn-num dash-skeleton" data-source="attention" data-field="value" data-where="item=rp_no_priority" data-fmt="int">—</span><span class="cc-attn-label">Partner prospects with no Priority set</span><button type="button" class="cc-go" data-go="rp">Open</button></li></ul>
+      </article>
+      <article class="cc-card" id="definitions">
+        <div class="cc-card-head"><h2>How each campaign is counted</h2><p>The rules this page applies to Zoho CRM records.</p></div>
+        <ul class="cc-notes">
+          <li>B2B Campaign: referral partner contacts, meaning contacts whose Relationship Type includes Referral Partner. Partnership deals are deals named as a referral, partner or platform agreement, whoever the contact is.</li>
+          <li>Founder Network: contacts whose Relationship Type includes Founder Network. Their opportunities are client deals with one of these contacts. Next steps are their open Zoho tasks.</li>
+          <li>ICP Prospecting: contacts at an account with a Priority set, with their own Priority 1, 3 or 5 and no relationship tag. Your “2026 ICP: Contact Report (Mack)” uses its own filter, so its total can differ slightly.</li>
+          <li>Referred deals: client deals with a partner in the Referral Partner field, plus deals marked External Referral that have no partner recorded yet.</li>
+          <li>Meetings come from Zoho Meetings linked to a contact. A meeting with no contact attached can't be credited to any campaign.</li>
+          <li>The ICP sheet's “Contacted” step has no field in Zoho yet, so it isn't shown.</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <section class="cc-page" id="rp" role="tabpanel" aria-labelledby="tab-rp" hidden>
+    <p class="cc-intro">Are partner prospects turning into signed referral agreements, and are those partners sending us work?</p>
+    <div class="cc-grid">
+      <article class="cc-card" id="rp-funnel">
+        <div class="cc-card-head"><h3>Funnel</h3><p>Prospects at each stage, from one left edge. The red step is where the most are lost. Select a step for details.</p></div>
+        <div class="cc-funnelviz dash-skeleton" data-source="funnel funnel_drops" data-campaign="rp"></div>
+        <p class="cc-insight" data-insight="funnel" data-campaign="rp"></p>
+      </article>
+      <article class="cc-card" id="rp-targets">
+        <div class="cc-card-head"><h3>Outcomes vs target</h3><p>Dark tick is the target, grey tick is today's pace. Select a row for details.</p></div>
+        <div class="cc-bullets dash-skeleton" data-source="funnel" data-campaign="rp"></div>
+        <p class="cc-insight" data-insight="targets" data-campaign="rp"></p>
+      </article>
+    </div>
+    <div class="cc-grid">
+      <article class="cc-card" id="rp-stages">
+        <div class="cc-card-head"><h3>Partnership deals by stage</h3><p>Proposals means the agreement has been sent. Darker is further along. Select a column to see its deals.</p></div>
+        <div class="cc-svgchart dash-skeleton" id="chart-rp-stages" data-source="stage_mix"></div>
+        <div class="cc-drill" id="drill-rp-stages" hidden></div>
+        <p class="cc-insight" id="ins-rp-stages"></p>
+      </article>
+      <article class="cc-card" id="rp-priority">
+        <div class="cc-card-head"><h3>Prospects by Priority</h3><p>Priority as set on each contact. Darker is a higher priority. Select a slice for details.</p></div>
+        <div class="cc-donut dash-skeleton" data-source="priority_mix" data-campaign="rp"></div>
+        <p class="cc-insight" data-insight="priority" data-campaign="rp"></p>
+      </article>
+    </div>
+    <article class="cc-card" id="rp-deals-card">
+      <div class="cc-card-head"><h3>Partnership deals in motion</h3><p>Open and on-hold agreements with the next action for their stage.</p></div>
+      <p class="cc-state" hidden></p>
+      <div class="cc-scroll">
+        <table class="cc-tbl" id="rp-deals" data-source="deals_tagged" data-row-key="id">
+          <thead><tr><th data-field="deal">Deal</th><th data-field="contact" class="cc-hide-narrow">Contact</th><th data-field="stage">Stage</th><th data-field="next_action">Next action</th><th data-field="updated" class="cc-hide-narrow">Updated</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="cc-empty" hidden>No partnership deals are open.</p>
+    </article>
+  </section>
+
+  <section class="cc-page" id="ref" role="tabpanel" aria-labelledby="tab-ref" hidden>
+    <p class="cc-intro">Which partner sent us which client, where each referred deal stands, and whether that partner's agreement is signed.</p>
+    <article class="cc-card" id="ref-flow-card">
+      <div class="cc-card-head"><h3>Who referred whom</h3><p>Each line runs from a referral partner to a client deal they sent us, colored by where the deal stands.</p></div>
+      <div class="cc-legend" id="leg-ref-flow"></div>
+      <div class="cc-svgchart dash-skeleton" id="chart-ref-flow" data-source="referrals"></div>
+      <p class="cc-insight" id="ins-ref"></p>
+    </article>
+    <div class="cc-grid">
+      <article class="cc-card" id="ref-partners-card">
+        <div class="cc-card-head"><h3>Referred deals by partner</h3><p>Deals each partner sent us, by stage, with the status of their referral agreement.</p></div>
+        <div class="cc-legend" id="leg-ref-partners"></div>
+        <div class="cc-refbars dash-skeleton" data-source="referral_partners"></div>
+      </article>
+      <article class="cc-card" id="ref-howto">
+        <div class="cc-card-head"><h3>How to record a referral</h3><p>This tab reads the Referral Partner field on each deal in Zoho.</p></div>
+        <ol class="cc-notes">
+          <li>Open the client's deal in Zoho, for example Josh Graham's “Import Export Platform”.</li>
+          <li>In the Referral Partner field, add the partner's account, for example NextStep Recruiting for Aaron Alaniz.</li>
+          <li>Set Lead Source to External Referral and save. The deal appears here the next time the page opens.</li>
+          <li>A referral only earns commission once the partner's agreement is signed, so close their agreement deal too.</li>
+        </ol>
+      </article>
+    </div>
+    <article class="cc-card" id="ref-table-card">
+      <div class="cc-card-head"><h3>Referred deals</h3><p>Every client deal credited to a partner, plus deals marked External Referral that have no partner recorded yet.</p></div>
+      <div class="cc-legend cc-rowkey"><span class="cc-l-bad">Partner not recorded</span><span class="cc-l-warn">Partner's agreement not signed</span></div>
+      <p class="cc-state" hidden></p>
+      <div class="cc-scroll">
+        <table class="cc-tbl" id="ref-table" data-source="referrals" data-row-key="link_id">
+          <thead><tr><th data-field="partner">Referred by</th><th data-field="partner_contact" class="cc-hide-narrow">Partner contact</th><th data-field="agreement">Agreement</th><th data-field="deal">Client deal</th><th data-field="client" class="cc-hide-narrow">Client</th><th data-field="stage">Stage</th><th data-field="amount" class="cc-num">Amount</th><th data-field="referred_on" class="cc-hide-narrow">Referred</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="cc-empty" hidden>No referred deals yet.</p>
+    </article>
+  </section>
+
+  <section class="cc-page" id="icp" role="tabpanel" aria-labelledby="tab-icp" hidden>
+    <p class="cc-intro">Is the LinkedIn sequence turning connections at target accounts into meetings and deals?</p>
+    <div class="cc-grid">
+      <article class="cc-card" id="icp-funnel">
+        <div class="cc-card-head"><h3>Funnel</h3><p>Executives at each stage, from one left edge. The red step is where the most are lost. Select a step for details.</p></div>
+        <div class="cc-funnelviz dash-skeleton" data-source="funnel funnel_drops" data-campaign="icp"></div>
+        <p class="cc-insight" data-insight="funnel" data-campaign="icp"></p>
+      </article>
+      <article class="cc-card" id="icp-targets">
+        <div class="cc-card-head"><h3>Progress vs target</h3><p>Dark tick is the target, grey tick is today's pace. Select a row for details.</p></div>
+        <div class="cc-bullets dash-skeleton" data-source="funnel" data-campaign="icp"></div>
+        <p class="cc-insight" data-insight="targets" data-campaign="icp"></p>
+      </article>
+    </div>
+    <div class="cc-grid">
+      <article class="cc-card" id="icp-priority">
+        <div class="cc-card-head"><h3>Executives by Priority</h3><p>Priority as set on each contact. Darker is a higher priority. Select a slice for details.</p></div>
+        <div class="cc-donut dash-skeleton" data-source="priority_mix" data-campaign="icp"></div>
+        <p class="cc-insight" data-insight="priority" data-campaign="icp"></p>
+      </article>
+      <article class="cc-card" id="icp-stages">
+        <div class="cc-card-head"><h3>ICP deals by stage</h3><p>Client deals at a prioritized account whose contact is in no other campaign. Select a column to see its deals.</p></div>
+        <div class="cc-svgchart dash-skeleton" id="chart-icp-stages" data-source="stage_campaign"></div>
+        <div class="cc-drill" id="drill-icp-stages" hidden></div>
+        <p class="cc-insight" id="ins-icp-stages"></p>
+      </article>
+    </div>
+    <article class="cc-card" id="icp-deals-card">
+      <div class="cc-card-head"><h3>ICP deals</h3><p>Every client deal credited to ICP Prospecting.</p></div>
+      <p class="cc-state" hidden></p>
+      <div class="cc-scroll">
+        <table class="cc-tbl" id="icp-deals" data-source="deals_tagged" data-row-key="id">
+          <thead><tr><th data-field="deal">Deal</th><th data-field="account" class="cc-hide-narrow">Account</th><th data-field="stage">Stage</th><th data-field="amount" class="cc-num">Amount</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="cc-empty" hidden>No ICP deals yet.</p>
+    </article>
+  </section>
+
+  <section class="cc-page" id="fn" role="tabpanel" aria-labelledby="tab-fn" hidden>
+    <p class="cc-intro">Who in the Founder Network needs a next step, and which conversations have turned into work?</p>
+    <div class="cc-grid">
+      <article class="cc-card" id="fn-coverage">
+        <div class="cc-card-head"><h3>Next-step coverage</h3><p>Priority contacts with at least one open Zoho task, against those with none. Select a segment to list the people.</p></div>
+        <div class="cc-legend" id="leg-coverage"></div>
+        <div class="cc-cov dash-skeleton" data-source="fn_coverage"></div>
+        <p class="cc-insight" id="ins-coverage"></p>
+      </article>
+      <article class="cc-card" id="fn-funnel">
+        <div class="cc-card-head"><h3>Funnel</h3><p>Contacts at each stage, from one left edge. The red step is where the most are lost. Select a step for details.</p></div>
+        <div class="cc-funnelviz dash-skeleton" data-source="funnel funnel_drops" data-campaign="fn"></div>
+        <p class="cc-insight" data-insight="funnel" data-campaign="fn"></p>
+      </article>
+    </div>
+    <article class="cc-card" id="fn-next-card">
+      <div class="cc-card-head"><h3>Next steps for priority contacts</h3><p>Priority 1 and 3 contacts with their earliest open Zoho task.</p></div>
+      <div class="cc-tools">
+        <button type="button" class="cc-chip" id="fn-only-p1" aria-pressed="false">Priority 1 only</button>
+        <button type="button" class="cc-chip" id="fn-only-missing" aria-pressed="false">No next step only</button>
+        <div class="cc-legend cc-rowkey"><span class="cc-l-bad">No open task</span><span class="cc-l-warn">Task overdue</span></div>
+      </div>
+      <p class="cc-state" hidden></p>
+      <div class="cc-scroll">
+        <table class="cc-tbl" id="fn-next" data-source="fn_next" data-row-key="contact_id">
+          <thead><tr><th data-field="contact">Contact</th><th data-field="account" class="cc-hide-narrow">Company</th><th data-field="priority">Priority</th><th data-field="owner" class="cc-hide-narrow">Owner</th><th data-field="meetings" class="cc-num">Meetings</th><th data-field="next_step">Next step</th><th data-field="due">Due</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="cc-empty" hidden>No contacts match these filters.</p>
+    </article>
+    <div class="cc-grid">
+      <article class="cc-card" id="fn-targets">
+        <div class="cc-card-head"><h3>Progress vs target</h3><p>Dark tick is the target, grey tick is today's pace. Select a row for details.</p></div>
+        <div class="cc-bullets dash-skeleton" data-source="funnel" data-campaign="fn"></div>
+        <p class="cc-insight" data-insight="targets" data-campaign="fn"></p>
+      </article>
+      <article class="cc-card" id="fn-stages">
+        <div class="cc-card-head"><h3>Opportunities by stage</h3><p>Client deals with a Founder Network contact. Darker is further along. Select a column to see its deals.</p></div>
+        <div class="cc-svgchart dash-skeleton" id="chart-fn-stages" data-source="stage_campaign"></div>
+        <div class="cc-drill" id="drill-fn-stages" hidden></div>
+        <p class="cc-insight" id="ins-fn-stages"></p>
+      </article>
+      <article class="cc-card" id="fn-priority">
+        <div class="cc-card-head"><h3>Contacts by Priority</h3><p>Priority as set on each contact. Darker is a higher priority. Select a slice for details.</p></div>
+        <div class="cc-donut dash-skeleton" data-source="priority_mix" data-campaign="fn"></div>
+        <p class="cc-insight" data-insight="priority" data-campaign="fn"></p>
+      </article>
+    </div>
+    <article class="cc-card" id="fn-opps-card">
+      <div class="cc-card-head"><h3>Founder Network opportunities</h3><p>Client deals with a Founder Network contact.</p></div>
+      <p class="cc-state" hidden></p>
+      <div class="cc-scroll">
+        <table class="cc-tbl" id="fn-opps" data-source="deals_tagged" data-row-key="id">
+          <thead><tr><th data-field="deal">Deal</th><th data-field="contact" class="cc-hide-narrow">Contact</th><th data-field="stage">Stage</th><th data-field="amount" class="cc-num">Amount</th><th data-field="updated" class="cc-hide-narrow">Updated</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="cc-empty" hidden>No Founder Network opportunities yet.</p>
+    </article>
+  </section>
+
+  <section class="cc-page" id="pipeline" role="tabpanel" aria-labelledby="tab-pipeline" hidden>
+    <div class="cc-tools" style="justify-content: space-between">
+      <p class="cc-intro">Every deal in Zoho, by stage, by campaign and by when it was created. Stages match your deals board.</p>
+      <a class="cc-go" href="https://crm.zoho.com/crm/org899412015/tab/Potentials/custom-view/6988700000001932032/kanban?layout_id=6988700000000091023&amp;kvId=6988700000000581518" target="_blank" rel="noopener">Open the deals board in Zoho ↗</a>
+    </div>
+    <div class="cc-grid">
+      <article class="cc-card" id="pipe-stage">
+        <div class="cc-card-head"><h3>Deals by stage and campaign</h3><p>Partnership agreements and client deals together, colored by the campaign of their contact. Select a column to see its deals.</p></div>
+        <div class="cc-legend" id="leg-pipe-stage"></div>
+        <div class="cc-svgchart dash-skeleton" id="chart-pipe-stage" data-source="stage_campaign"></div>
+        <div class="cc-drill" id="drill-pipe-stage" hidden></div>
+        <p class="cc-insight" id="ins-pipe-stage"></p>
+      </article>
+      <article class="cc-card" id="pipe-monthly">
+        <div class="cc-card-head"><h3>New deals per month</h3><p>Deals by the month they were created in Zoho. Select a month to list its deals.</p></div>
+        <div class="cc-legend" id="leg-pipe-monthly"></div>
+        <div class="cc-svgchart dash-skeleton" id="chart-pipe-monthly" data-source="deals_monthly"></div>
+        <p class="cc-insight" id="ins-pipe-monthly"></p>
+      </article>
+    </div>
+    <article class="cc-card" id="all-deals-card">
+      <div class="cc-card-head"><h3>All deals</h3><p>Search by deal, company, contact or campaign. Select a column to sort.</p></div>
+      <div class="cc-tools"><input class="cc-search" id="deal-search" type="search" placeholder="Search deals" aria-label="Search deals"></div>
+      <p class="cc-state" hidden></p>
+      <div class="cc-scroll">
+        <table class="cc-tbl" id="all-deals" data-source="deals_tagged" data-row-key="id">
+          <thead><tr>
+            <th data-field="deal" aria-sort="none"><button type="button" class="cc-sort">Deal</button></th>
+            <th data-field="campaign" aria-sort="none"><button type="button" class="cc-sort">Campaign</button></th>
+            <th data-field="kind" aria-sort="none" class="cc-hide-narrow"><button type="button" class="cc-sort">Type</button></th>
+            <th data-field="stage" aria-sort="none"><button type="button" class="cc-sort">Stage</button></th>
+            <th data-field="amount" aria-sort="none" class="cc-num"><button type="button" class="cc-sort">Amount</button></th>
+            <th data-field="updated" aria-sort="descending" class="cc-hide-narrow"><button type="button" class="cc-sort">Updated</button></th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="cc-empty" hidden>No deals match this search.</p>
+    </article>
+  </section>
+</div>
+
+<script>
+dash.loader('rp_contacts', {
+  description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text, counts and amounts become numbers.',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? (answer.trim() ? JSON.parse(answer) : {}) : (answer || {});
+    if (a.status === 'error' || (a.code && !a.data)) throw new Error(a.message || a.code || 'Zoho CRM refused the query');
+    const body = a.data && !Array.isArray(a.data) ? a.data : a;
+    const list = Array.isArray(body.data) ? body.data : [];
+    const rename = { 'COUNT(id)': 'count', 'SUM(Amount)': 'amount_sum' };
+    const numeric = ['count', 'amount_sum', 'Amount', 'Total_Meetings_Created'];
+    const rows = list.map((r) => {
+      const o = {};
+      for (const [k, v] of Object.entries(r)) {
+        const key = rename[k] || k;
+        if (Array.isArray(v)) o[key] = v.join(', ');
+        else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
+        else o[key] = v;
+      }
+      for (const n of numeric) if (o[n] != null && o[n] !== '') o[n] = Number(o[n]);
+      return o;
+    });
+    return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
+  },
+});
+dash.loader('fn_contacts', {
+  description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text, counts and amounts become numbers.',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? (answer.trim() ? JSON.parse(answer) : {}) : (answer || {});
+    if (a.status === 'error' || (a.code && !a.data)) throw new Error(a.message || a.code || 'Zoho CRM refused the query');
+    const body = a.data && !Array.isArray(a.data) ? a.data : a;
+    const list = Array.isArray(body.data) ? body.data : [];
+    const rename = { 'COUNT(id)': 'count', 'SUM(Amount)': 'amount_sum' };
+    const numeric = ['count', 'amount_sum', 'Amount', 'Total_Meetings_Created'];
+    const rows = list.map((r) => {
+      const o = {};
+      for (const [k, v] of Object.entries(r)) {
+        const key = rename[k] || k;
+        if (Array.isArray(v)) o[key] = v.join(', ');
+        else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
+        else o[key] = v;
+      }
+      for (const n of numeric) if (o[n] != null && o[n] !== '') o[n] = Number(o[n]);
+      return o;
+    });
+    return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
+  },
+});
+dash.loader('icp_contacts', {
+  description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text, counts and amounts become numbers.',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? (answer.trim() ? JSON.parse(answer) : {}) : (answer || {});
+    if (a.status === 'error' || (a.code && !a.data)) throw new Error(a.message || a.code || 'Zoho CRM refused the query');
+    const body = a.data && !Array.isArray(a.data) ? a.data : a;
+    const list = Array.isArray(body.data) ? body.data : [];
+    const rename = { 'COUNT(id)': 'count', 'SUM(Amount)': 'amount_sum' };
+    const numeric = ['count', 'amount_sum', 'Amount', 'Total_Meetings_Created'];
+    const rows = list.map((r) => {
+      const o = {};
+      for (const [k, v] of Object.entries(r)) {
+        const key = rename[k] || k;
+        if (Array.isArray(v)) o[key] = v.join(', ');
+        else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
+        else o[key] = v;
+      }
+      for (const n of numeric) if (o[n] != null && o[n] !== '') o[n] = Number(o[n]);
+      return o;
+    });
+    return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
+  },
+});
+dash.loader('icp_accounts', {
+  description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text, counts and amounts become numbers.',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? (answer.trim() ? JSON.parse(answer) : {}) : (answer || {});
+    if (a.status === 'error' || (a.code && !a.data)) throw new Error(a.message || a.code || 'Zoho CRM refused the query');
+    const body = a.data && !Array.isArray(a.data) ? a.data : a;
+    const list = Array.isArray(body.data) ? body.data : [];
+    const rename = { 'COUNT(id)': 'count', 'SUM(Amount)': 'amount_sum' };
+    const numeric = ['count', 'amount_sum', 'Amount', 'Total_Meetings_Created'];
+    const rows = list.map((r) => {
+      const o = {};
+      for (const [k, v] of Object.entries(r)) {
+        const key = rename[k] || k;
+        if (Array.isArray(v)) o[key] = v.join(', ');
+        else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
+        else o[key] = v;
+      }
+      for (const n of numeric) if (o[n] != null && o[n] !== '') o[n] = Number(o[n]);
+      return o;
+    });
+    return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
+  },
+});
+dash.loader('deals', {
+  description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text, counts and amounts become numbers.',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? (answer.trim() ? JSON.parse(answer) : {}) : (answer || {});
+    if (a.status === 'error' || (a.code && !a.data)) throw new Error(a.message || a.code || 'Zoho CRM refused the query');
+    const body = a.data && !Array.isArray(a.data) ? a.data : a;
+    const list = Array.isArray(body.data) ? body.data : [];
+    const rename = { 'COUNT(id)': 'count', 'SUM(Amount)': 'amount_sum' };
+    const numeric = ['count', 'amount_sum', 'Amount', 'Total_Meetings_Created'];
+    const rows = list.map((r) => {
+      const o = {};
+      for (const [k, v] of Object.entries(r)) {
+        const key = rename[k] || k;
+        if (Array.isArray(v)) o[key] = v.join(', ');
+        else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
+        else o[key] = v;
+      }
+      for (const n of numeric) if (o[n] != null && o[n] !== '') o[n] = Number(o[n]);
+      return o;
+    });
+    return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
+  },
+});
+dash.loader('open_tasks', {
+  description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text, counts and amounts become numbers.',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? (answer.trim() ? JSON.parse(answer) : {}) : (answer || {});
+    if (a.status === 'error' || (a.code && !a.data)) throw new Error(a.message || a.code || 'Zoho CRM refused the query');
+    const body = a.data && !Array.isArray(a.data) ? a.data : a;
+    const list = Array.isArray(body.data) ? body.data : [];
+    const rename = { 'COUNT(id)': 'count', 'SUM(Amount)': 'amount_sum' };
+    const numeric = ['count', 'amount_sum', 'Amount', 'Total_Meetings_Created'];
+    const rows = list.map((r) => {
+      const o = {};
+      for (const [k, v] of Object.entries(r)) {
+        const key = rename[k] || k;
+        if (Array.isArray(v)) o[key] = v.join(', ');
+        else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
+        else o[key] = v;
+      }
+      for (const n of numeric) if (o[n] != null && o[n] !== '') o[n] = Number(o[n]);
+      return o;
+    });
+    return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
+  },
+});
+dash.loader('fn_people', {
+  description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text, counts and amounts become numbers.',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? (answer.trim() ? JSON.parse(answer) : {}) : (answer || {});
+    if (a.status === 'error' || (a.code && !a.data)) throw new Error(a.message || a.code || 'Zoho CRM refused the query');
+    const body = a.data && !Array.isArray(a.data) ? a.data : a;
+    const list = Array.isArray(body.data) ? body.data : [];
+    const rename = { 'COUNT(id)': 'count', 'SUM(Amount)': 'amount_sum' };
+    const numeric = ['count', 'amount_sum', 'Amount', 'Total_Meetings_Created'];
+    const rows = list.map((r) => {
+      const o = {};
+      for (const [k, v] of Object.entries(r)) {
+        const key = rename[k] || k;
+        if (Array.isArray(v)) o[key] = v.join(', ');
+        else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
+        else o[key] = v;
+      }
+      for (const n of numeric) if (o[n] != null && o[n] !== '') o[n] = Number(o[n]);
+      return o;
+    });
+    return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
+  },
+});
+dash.loader('met_contacts', {
+  description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text, counts and amounts become numbers.',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? (answer.trim() ? JSON.parse(answer) : {}) : (answer || {});
+    if (a.status === 'error' || (a.code && !a.data)) throw new Error(a.message || a.code || 'Zoho CRM refused the query');
+    const body = a.data && !Array.isArray(a.data) ? a.data : a;
+    const list = Array.isArray(body.data) ? body.data : [];
+    const rename = { 'COUNT(id)': 'count', 'SUM(Amount)': 'amount_sum' };
+    const numeric = ['count', 'amount_sum', 'Amount', 'Total_Meetings_Created'];
+    const rows = list.map((r) => {
+      const o = {};
+      for (const [k, v] of Object.entries(r)) {
+        const key = rename[k] || k;
+        if (Array.isArray(v)) o[key] = v.join(', ');
+        else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
+        else o[key] = v;
+      }
+      for (const n of numeric) if (o[n] != null && o[n] !== '') o[n] = Number(o[n]);
+      return o;
+    });
+    return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
+  },
+});
+dash.loader('referral_links', {
+  description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text, counts and amounts become numbers.',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? (answer.trim() ? JSON.parse(answer) : {}) : (answer || {});
+    if (a.status === 'error' || (a.code && !a.data)) throw new Error(a.message || a.code || 'Zoho CRM refused the query');
+    const body = a.data && !Array.isArray(a.data) ? a.data : a;
+    const list = Array.isArray(body.data) ? body.data : [];
+    const rename = { 'COUNT(id)': 'count', 'SUM(Amount)': 'amount_sum' };
+    const numeric = ['count', 'amount_sum', 'Amount', 'Total_Meetings_Created'];
+    const rows = list.map((r) => {
+      const o = {};
+      for (const [k, v] of Object.entries(r)) {
+        const key = rename[k] || k;
+        if (Array.isArray(v)) o[key] = v.join(', ');
+        else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
+        else o[key] = v;
+      }
+      for (const n of numeric) if (o[n] != null && o[n] !== '') o[n] = Number(o[n]);
+      return o;
+    });
+    return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
+  },
+});
+dash.loader('meetings', {
+  description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text, counts and amounts become numbers.',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? (answer.trim() ? JSON.parse(answer) : {}) : (answer || {});
+    if (a.status === 'error' || (a.code && !a.data)) throw new Error(a.message || a.code || 'Zoho CRM refused the query');
+    const body = a.data && !Array.isArray(a.data) ? a.data : a;
+    const list = Array.isArray(body.data) ? body.data : [];
+    const rename = { 'COUNT(id)': 'count', 'SUM(Amount)': 'amount_sum' };
+    const numeric = ['count', 'amount_sum', 'Amount', 'Total_Meetings_Created'];
+    const rows = list.map((r) => {
+      const o = {};
+      for (const [k, v] of Object.entries(r)) {
+        const key = rename[k] || k;
+        if (Array.isArray(v)) o[key] = v.join(', ');
+        else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
+        else o[key] = v;
+      }
+      for (const n of numeric) if (o[n] != null && o[n] !== '') o[n] = Number(o[n]);
+      return o;
+    });
+    return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
+  },
+});
+
+dash.calc('deals_tagged', {
+  title: 'Deals by campaign',
+  description: 'Each deal marked as a partnership agreement or client work, and given the campaign of its contact.',
+  inputs: ['deals'],
+  fn: (deals) => {
+    const partnerName = /partner|referr?al|refferal|platfo?r?m provider|platrform/i;
+    const nextFor = { Identify: 'Book the first meeting', Discovery: 'Send the agreement and company overview', Proposals: 'Follow up for signature', Hold: 'Revive it or close it', Closed: 'Ask for the first referral' };
+    return deals.map((d) => {
+      const rel = d['Contact_Name.Relationship_Type'] || '';
+      const kind = partnerName.test(d.Deal_Name || '') ? 'Partnership' : 'Client';
+      const campaign = rel.includes('Founder Network') ? 'Founder Network'
+        : rel.includes('Referral Partner') ? 'B2B Campaign'
+        : d['Account_Name.Priority'] ? 'ICP Prospecting' : 'Unattributed';
+      return {
+        id: d.id, deal: d.Deal_Name, kind, campaign, stage: d.Stage,
+        account: d.Account_Name, contact: d.Contact_Name, amount: d.Amount ?? 0,
+        referred: d.Lead_Source === 'External Referral',
+        next_action: kind === 'Partnership' ? (nextFor[d.Stage] || '') : '',
+        created: d.Created_Time, updated: d.Modified_Time,
+      };
+    });
+  },
+});
+
+dash.calc('referrals', {
+  title: 'Referred deals',
+  description: 'Each client deal a referral partner sent us, from the Referral Partner field on the deal, plus deals with lead source External Referral that have no partner linked yet. The partner contact and agreement come from that partner account’s partnership deal.',
+  inputs: ['referral_links', 'deals_tagged'],
+  fn: (referral_links, deals_tagged) => {
+    const byId = new Map(deals_tagged.map((d) => [d.id, d]));
+    const agreementOf = (account) => {
+      const list = deals_tagged.filter((d) => d.kind === 'Partnership' && account && d.account === account);
+      return list.find((d) => d.stage === 'Closed') || list[0] || null;
+    };
+    const out = [];
+    const linked = new Set();
+    for (const l of referral_links) {
+      const d = byId.get(l.Referred_Deals_id);
+      if (!d) continue;
+      linked.add(d.id);
+      const ag = agreementOf(l.Referral_Partner);
+      out.push({
+        link_id: d.id + '|' + (l.Referral_Partner_id || ''), deal_id: d.id, deal: d.deal, client: d.account, client_contact: d.contact,
+        stage: d.stage, amount: d.amount, referred_on: l.Created_Time || d.created,
+        partner: l.Referral_Partner, partner_contact: ag ? ag.contact : null, agreement: ag ? ag.stage : 'No agreement in Zoho',
+        signed: Boolean(ag && ag.stage === 'Closed'), recorded: true,
+      });
+    }
+    for (const d of deals_tagged) {
+      if (d.kind !== 'Client' || !d.referred || linked.has(d.id)) continue;
+      out.push({
+        link_id: d.id + '|', deal_id: d.id, deal: d.deal, client: d.account, client_contact: d.contact,
+        stage: d.stage, amount: d.amount, referred_on: d.created,
+        partner: 'Partner not recorded', partner_contact: null, agreement: null, signed: false, recorded: false,
+      });
+    }
+    return out;
+  },
+});
+
+dash.calc('referral_partners', {
+  title: 'Referred deals by partner',
+  description: 'For each partner with a recorded referral: deals sent, how many are open, on hold, won or lost, the amount won, and their agreement’s stage.',
+  inputs: ['referrals'],
+  fn: (referrals) => {
+    const open = ['Identify', 'Discovery', 'Proposals'];
+    const lost = ['Closed Lost', 'Closed Lost to Competition'];
+    const by = new Map();
+    for (const r of referrals) {
+      const cur = by.get(r.partner) || { partner: r.partner, partner_contact: r.partner_contact, agreement: r.agreement, recorded: r.recorded, deals: 0, open: 0, hold: 0, won: 0, lost: 0, won_amount: 0 };
+      cur.deals += 1;
+      if (open.includes(r.stage)) cur.open += 1;
+      else if (r.stage === 'Hold') cur.hold += 1;
+      else if (r.stage === 'Closed') { cur.won += 1; cur.won_amount += r.amount || 0; }
+      else if (lost.includes(r.stage)) cur.lost += 1;
+      by.set(r.partner, cur);
+    }
+    return [...by.values()].sort((a, b) => Number(b.recorded) - Number(a.recorded) || b.deals - a.deals);
+  },
+});
+
+dash.calc('referral_summary', {
+  title: 'Referral totals',
+  description: 'Referred deals with a partner recorded, partners who have referred, referred deals whose partner agreement isn’t signed, and External Referral deals with no partner recorded.',
+  inputs: ['referrals'],
+  fn: (referrals) => {
+    const linked = referrals.filter((r) => r.recorded);
+    return [
+      { measure: 'linked_deals', value: new Set(linked.map((r) => r.deal_id)).size },
+      { measure: 'partners', value: new Set(linked.map((r) => r.partner)).size },
+      { measure: 'unsigned', value: linked.filter((r) => !r.signed).length },
+      { measure: 'unrecorded', value: referrals.filter((r) => !r.recorded).length },
+    ];
+  },
+});
+
+dash.calc('funnel', {
+  title: 'Campaign funnels',
+  description: 'Each campaign’s steps counted from its contacts and deals, beside the 2026 targets from the campaign tracking sheets. Referred deals are those in Referred deals, counted once each.',
+  inputs: ['rp_contacts', 'fn_contacts', 'icp_contacts', 'icp_accounts', 'deals_tagged', 'referrals'],
+  fn: (rp_contacts, fn_contacts, icp_contacts, icp_accounts, deals_tagged, referrals) => {
+    const count = (rows, keep) => rows.filter(keep).reduce((t, r) => t + (r.count || 0), 0);
+    const met = (r) => r.Total_Meetings_Created || 0;
+    const reach = (rows) => ({
+      total: count(rows, () => true),
+      invited: count(rows, (r) => r.LI_Connect === 'Requested' || r.LI_Connect === 'Connected'),
+      connected: count(rows, (r) => r.LI_Connect === 'Connected'),
+      met1: count(rows, (r) => met(r) >= 1),
+      met5: count(rows, (r) => met(r) >= 5),
+      meetings: rows.reduce((t, r) => t + (r.count || 0) * met(r), 0),
+    });
+    const rp = reach(rp_contacts);
+    const fn = reach(fn_contacts);
+    const icp = reach(icp_contacts);
+    const partner = deals_tagged.filter((d) => d.kind === 'Partnership');
+    const client = (c) => deals_tagged.filter((d) => d.kind === 'Client' && d.campaign === c);
+    const referred = [...new Map(referrals.map((r) => [r.deal_id, r])).values()];
+    const won = (list) => list.filter((d) => d.stage === 'Closed');
+    const row = (campaign, step, value, target) => ({ campaign, step, value, target, progress: target ? value / target : null });
+    return [
+      row('rp', 'total', rp.total, null),
+      row('rp', 'invited', rp.invited, null),
+      row('rp', 'connected', rp.connected, null),
+      row('rp', 'met1', rp.met1, 100),
+      row('rp', 'met5', rp.met5, 50),
+      row('rp', 'partner_deals', partner.length, 50),
+      row('rp', 'agreements', partner.filter((d) => d.stage === 'Proposals' || d.stage === 'Closed').length, 50),
+      row('rp', 'signed', won(partner).length, null),
+      row('rp', 'referred', referred.length, 20),
+      row('rp', 'referred_won', won(referred).length, 3),
+      row('rp', 'referred_value', won(referred).reduce((t, d) => t + (d.amount || 0), 0), 200000),
+      row('icp', 'accounts', icp_accounts.reduce((t, r) => t + (r.count || 0), 0), 500),
+      row('icp', 'total', icp.total, 2000),
+      row('icp', 'invited', icp.invited, 2184),
+      row('icp', 'connected', icp.connected, 1000),
+      row('icp', 'met1', icp.met1, null),
+      row('icp', 'meetings', icp.meetings, 300),
+      row('icp', 'met5', icp.met5, 150),
+      row('icp', 'deals', client('ICP Prospecting').length, 18),
+      row('icp', 'won', won(client('ICP Prospecting')).length, 6),
+      row('fn', 'total', fn.total, 450),
+      row('fn', 'connected', fn.connected, null),
+      row('fn', 'met1', fn.met1, null),
+      row('fn', 'met5', fn.met5, null),
+      row('fn', 'meetings', fn.meetings, 150),
+      row('fn', 'opps', client('Founder Network').length, 15),
+      row('fn', 'won', won(client('Founder Network')).length, 3),
+    ];
+  },
+});
+
+dash.calc('funnel_drops', {
+  title: 'Funnel step conversion',
+  description: 'For each campaign, the share of people at one funnel step who reach the next.',
+  inputs: ['funnel'],
+  fn: (funnel) => {
+    const order = { rp: ['total', 'invited', 'connected', 'met1', 'met5'], icp: ['total', 'invited', 'connected', 'met1', 'met5'], fn: ['total', 'connected', 'met1', 'met5'] };
+    const out = [];
+    for (const [campaign, steps] of Object.entries(order)) {
+      for (let i = 1; i < steps.length; i += 1) {
+        const a = funnel.find((r) => r.campaign === campaign && r.step === steps[i - 1]);
+        const b = funnel.find((r) => r.campaign === campaign && r.step === steps[i]);
+        if (!a || !b) continue;
+        out.push({ campaign, from: a.step, to: b.step, from_value: a.value, to_value: b.value, kept: a.value ? b.value / a.value : null, lost: a.value - b.value });
+      }
+    }
+    return out;
+  },
+});
+
+dash.calc('priority_mix', {
+  title: 'Contacts by Priority',
+  description: 'Contacts in each campaign summed by their Priority (1, 3, 5, 9, 11 or not set), with each Priority’s share.',
+  inputs: ['rp_contacts', 'fn_contacts', 'icp_contacts'],
+  fn: (rp_contacts, fn_contacts, icp_contacts) => {
+    const out = [];
+    for (const [campaign, rows] of [['rp', rp_contacts], ['fn', fn_contacts], ['icp', icp_contacts]]) {
+      const by = new Map();
+      for (const r of rows) {
+        const p = r.Priority || 'Not set';
+        by.set(p, (by.get(p) || 0) + (r.count || 0));
+      }
+      const total = [...by.values()].reduce((t, n) => t + n, 0);
+      for (const p of ['1', '3', '5', '9', '11', 'Not set']) if (by.get(p)) out.push({ campaign, priority: p, contacts: by.get(p), share: total ? by.get(p) / total : 0 });
+    }
+    return out;
+  },
+});
+
+dash.calc('stage_mix', {
+  title: 'Deals by stage',
+  description: 'Partnership and client deals counted by stage, with the amount entered on them.',
+  inputs: ['deals_tagged'],
+  fn: (deals_tagged) => {
+    const by = new Map();
+    for (const d of deals_tagged) {
+      const k = d.kind + '|' + d.stage;
+      const cur = by.get(k) || { kind: d.kind, stage: d.stage, deals: 0, amount: 0 };
+      cur.deals += 1;
+      cur.amount += d.amount || 0;
+      by.set(k, cur);
+    }
+    return [...by.values()];
+  },
+});
+
+dash.calc('stage_campaign', {
+  title: 'Deals by stage and campaign',
+  description: 'Deals counted by type, campaign and stage, with the amount entered on them.',
+  inputs: ['deals_tagged'],
+  fn: (deals_tagged) => {
+    const by = new Map();
+    for (const d of deals_tagged) {
+      const k = d.kind + '|' + d.campaign + '|' + d.stage;
+      const cur = by.get(k) || { kind: d.kind, campaign: d.campaign, stage: d.stage, deals: 0, amount: 0 };
+      cur.deals += 1;
+      cur.amount += d.amount || 0;
+      by.set(k, cur);
+    }
+    return [...by.values()];
+  },
+});
+
+dash.calc('pipeline_totals', {
+  title: 'Pipeline totals',
+  description: 'All deals counted as open (Identify, Discovery, Proposals), on hold, won or lost, with the amount won.',
+  inputs: ['deals_tagged'],
+  fn: (deals_tagged) => {
+    const open = ['Identify', 'Discovery', 'Proposals'];
+    const lost = ['Closed Lost', 'Closed Lost to Competition'];
+    const won = deals_tagged.filter((d) => d.stage === 'Closed');
+    return [
+      { measure: 'open', value: deals_tagged.filter((d) => open.includes(d.stage)).length },
+      { measure: 'hold', value: deals_tagged.filter((d) => d.stage === 'Hold').length },
+      { measure: 'won', value: won.length },
+      { measure: 'lost', value: deals_tagged.filter((d) => lost.includes(d.stage)).length },
+      { measure: 'won_amount', value: won.reduce((t, d) => t + (d.amount || 0), 0) },
+    ];
+  },
+});
+
+dash.calc('deals_monthly', {
+  title: 'New deals per month',
+  description: 'Deals counted by the month they were created and whether they are partnership or client deals.',
+  inputs: ['deals_tagged'],
+  fn: (deals_tagged) => {
+    const by = new Map();
+    for (const d of deals_tagged) {
+      if (!d.created) continue;
+      const month = String(d.created).slice(0, 7);
+      const k = month + '|' + d.kind;
+      const cur = by.get(k) || { month, kind: d.kind, deals: 0 };
+      cur.deals += 1;
+      by.set(k, cur);
+    }
+    return [...by.values()].sort((a, b) => a.month.localeCompare(b.month));
+  },
+});
+
+dash.calc('meetings_tagged', {
+  title: 'Meetings by campaign',
+  description: 'Each meeting with its week (Monday start, Central time) and the campaign of the contact it was with.',
+  inputs: ['meetings'],
+  fn: (meetings) => {
+    const weekOf = (s) => {
+      const d = new Date(String(s).slice(0, 10) + 'T00:00:00Z');
+      d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+      return d.toISOString().slice(0, 10);
+    };
+    const groupOf = (m) => {
+      const rel = m['Who_Id.Relationship_Type'] || '';
+      if (rel.includes('Founder Network')) return 'Founder Network';
+      if (rel.includes('Referral Partner')) return 'B2B Campaign';
+      return m.Who_Id ? 'Contact not in a campaign' : 'No contact linked';
+    };
+    return meetings.filter((m) => m.Start_DateTime).map((m) => ({
+      id: m.id, when: m.Start_DateTime, week: weekOf(m.Start_DateTime), title: m.Event_Title || 'Untitled meeting',
+      contact: m.Who_Id || 'No contact linked', group: groupOf(m),
+    }));
+  },
+});
+
+dash.calc('contact_breakdown', {
+  title: 'Contacts by Priority and LinkedIn status',
+  description: 'Contacts in each campaign counted by their Priority and LinkedIn status.',
+  inputs: ['rp_contacts', 'fn_contacts', 'icp_contacts'],
+  fn: (rp_contacts, fn_contacts, icp_contacts) => {
+    const by = new Map();
+    for (const [campaign, rows] of [['rp', rp_contacts], ['fn', fn_contacts], ['icp', icp_contacts]]) {
+      for (const r of rows) {
+        const priority = r.Priority || 'Not set';
+        const linkedin = r.LI_Connect || 'Not sent';
+        const key = campaign + '|' + priority + '|' + linkedin;
+        const cur = by.get(key) || { key, campaign, priority, linkedin, contacts: 0 };
+        cur.contacts += r.count || 0;
+        by.set(key, cur);
+      }
+    }
+    return [...by.values()];
+  },
+});
+
+dash.calc('meetings_weekly', {
+  title: 'Meetings per week',
+  description: 'Meetings counted by week (Monday start, Central time) and by the campaign of the contact they were with.',
+  inputs: ['meetings_tagged'],
+  fn: (meetings_tagged) => {
+    const by = new Map();
+    for (const m of meetings_tagged) {
+      const week = m.week;
+      const group = m.group;
+      const k = week + '|' + group;
+      const cur = by.get(k) || { week, group, meetings: 0 };
+      cur.meetings += 1;
+      by.set(k, cur);
+    }
+    return [...by.values()].sort((a, b) => a.week.localeCompare(b.week));
+  },
+});
+
+dash.calc('meeting_totals', {
+  title: 'Meetings since Aug 17',
+  description: 'All meetings since Aug 17, those with a Referral Partner or Founder Network contact, and each group’s total.',
+  inputs: ['meetings_weekly'],
+  fn: (meetings_weekly) => {
+    const by = new Map();
+    for (const r of meetings_weekly) by.set(r.group, (by.get(r.group) || 0) + r.meetings);
+    const all = [...by.values()].reduce((t, n) => t + n, 0);
+    const campaign = (by.get('Founder Network') || 0) + (by.get('B2B Campaign') || 0);
+    return [{ group: 'All', meetings: all }, { group: 'Campaign contacts', meetings: campaign }, ...[...by.entries()].map(([group, meetings]) => ({ group, meetings }))];
+  },
+});
+
+dash.calc('fn_next', {
+  title: 'Founder Network next steps',
+  description: 'Each Priority 1 or 3 Founder Network contact with their earliest open task and how many tasks are open.',
+  inputs: ['fn_people', 'open_tasks'],
+  fn: (fn_people, open_tasks) => {
+    const byContact = new Map();
+    for (const t of open_tasks) {
+      if (!t.Who_Id_id) continue;
+      const list = byContact.get(t.Who_Id_id) || [];
+      list.push(t);
+      byContact.set(t.Who_Id_id, list);
+    }
+    return fn_people.map((p) => {
+      const tasks = (byContact.get(p.id) || []).slice().sort((a, b) => String(a.Due_Date || '9999-12-31').localeCompare(String(b.Due_Date || '9999-12-31')));
+      const next = tasks[0];
+      return {
+        contact_id: p.id, contact: p.Full_Name, account: p.Account_Name, priority: p.Priority,
+        owner: p.Assigned || 'Unassigned', meetings: p.Total_Meetings_Created || 0,
+        next_step: next ? next.Subject : 'No next step set', due: next ? next.Due_Date : null,
+        open_tasks: tasks.length,
+      };
+    });
+  },
+});
+
+dash.calc('fn_coverage', {
+  title: 'Next-step coverage',
+  description: 'Priority 1 and 3 Founder Network contacts with and without an open task.',
+  inputs: ['fn_next'],
+  fn: (fn_next) => {
+    const out = [];
+    for (const priority of ['1', '3']) {
+      const mine = fn_next.filter((p) => p.priority === priority);
+      const withTask = mine.filter((p) => p.open_tasks > 0).length;
+      out.push({ priority, state: 'All', contacts: mine.length, share: 1 });
+      out.push({ priority, state: 'Has a next step', contacts: withTask, share: mine.length ? withTask / mine.length : 0 });
+      out.push({ priority, state: 'No next step', contacts: mine.length - withTask, share: mine.length ? (mine.length - withTask) / mine.length : 0 });
+    }
+    return out;
+  },
+});
+
+dash.calc('attention', {
+  title: 'Needs attention',
+  description: 'Counts of open items: priority contacts without a task, agreements awaiting signature or on hold, connected executives never met, prospects with no Priority.',
+  inputs: ['fn_next', 'deals_tagged', 'rp_contacts', 'icp_contacts', 'referrals'],
+  fn: (fn_next, deals_tagged, rp_contacts, icp_contacts, referrals) => {
+    const partner = deals_tagged.filter((d) => d.kind === 'Partnership');
+    const sum = (rows, keep) => rows.filter(keep).reduce((t, r) => t + (r.count || 0), 0);
+    return [
+      { item: 'fn_p1_no_step', value: fn_next.filter((p) => p.priority === '1' && p.open_tasks === 0).length },
+      { item: 'ref_unrecorded', value: referrals.filter((r) => !r.recorded).length },
+      { item: 'partner_proposals', value: partner.filter((d) => d.stage === 'Proposals').length },
+      { item: 'partner_hold', value: partner.filter((d) => d.stage === 'Hold').length },
+      { item: 'icp_connected_unmet', value: sum(icp_contacts, (r) => r.LI_Connect === 'Connected' && !r.Total_Meetings_Created) },
+      { item: 'rp_no_priority', value: sum(rp_contacts, (r) => !r.Priority) },
+    ];
+  },
+});
+</script>
+
+<script>
+(() => {
+  const root = document.querySelector('.cc');
+  const META = {"rp": {"name": "B2B Campaign", "reach": [["total", "Partner prospects in CRM"], ["invited", "LinkedIn invite sent"], ["connected", "Connected on LinkedIn"], ["met1", "Met at least once"], ["met5", "More than 4 meetings"]], "outcome": [["met1", "Met at least once"], ["met5", "More than 4 meetings"], ["partner_deals", "Partnership deals created"], ["agreements", "Agreement sent or signed"], ["signed", "Partners signed"], ["referred", "Client deals referred to us"], ["referred_won", "Referred deals won"], ["referred_value", "Referred contract value won"]]}, "icp": {"name": "ICP Prospecting", "reach": [["total", "Executives at target accounts"], ["invited", "LinkedIn invite sent"], ["connected", "Connected on LinkedIn"], ["met1", "Met at least once"], ["met5", "More than 4 meetings"]], "outcome": [["accounts", "Target accounts"], ["total", "Executives at those accounts"], ["connected", "Connected on LinkedIn"], ["meetings", "Meetings logged"], ["met5", "More than 4 meetings"], ["deals", "Client deals created"], ["won", "Deals won"]]}, "fn": {"name": "Founder Network", "reach": [["total", "Founder Network contacts"], ["connected", "Connected on LinkedIn"], ["met1", "Met at least once"], ["met5", "More than 4 meetings"]], "outcome": [["total", "Founder Network contacts"], ["meetings", "Meetings logged"], ["opps", "Client opportunities created"], ["won", "Opportunities won"]]}};
+  const CAMPAIGN_KEY = { 'B2B Campaign': 'rp', 'ICP Prospecting': 'icp', 'Founder Network': 'fn' };
+  const HUE = { rp: dash.colors[0], icp: dash.colors[1], fn: dash.colors[2] };
+  const hueOf = (key) => HUE[key] || 'var(--cds-chart-muted)';
+  const CAMPAIGN_ORDER = ['B2B Campaign', 'ICP Prospecting', 'Founder Network', 'Unattributed'];
+  const CAMPAIGN_COLOR = { 'B2B Campaign': HUE.rp, 'ICP Prospecting': HUE.icp, 'Founder Network': HUE.fn, 'Unattributed': 'var(--cds-chart-muted)' };
+  const MEETING_GROUPS = ['B2B Campaign', 'Founder Network', 'Contact not in a campaign', 'No contact linked'];
+  const STAGES = ['Identify', 'Discovery', 'Proposals', 'Hold', 'Closed', 'Closed Lost', 'Closed Lost to Competition'];
+  const STAGE_SHORT = { 'Closed Lost to Competition': 'Lost to rival', 'Closed Lost': 'Lost', Closed: 'Won' };
+  const LOST = ['Closed Lost', 'Closed Lost to Competition'];
+  const PRIORITY = { '1': 'Active pursuit', '3': 'Priority outreach', '5': 'Backlog', '9': 'Inactive', '11': 'Do not contact', 'Not set': 'Not set' };
+  const START = Date.UTC(2026, 7, 17);
+  const END = Date.UTC(2026, 11, 18);
+  const todayCT = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+  const pace = Math.max(0, Math.min(1, (Date.parse(todayCT + 'T00:00:00Z') - START) / (END - START)));
+
+  const intF = d3.format(',');
+  const pctF = d3.format('.0%');
+  const moneyF = d3.format('$,.0f');
+  const dayF = d3.utcFormat('%b %-d');
+  const monthF = d3.utcFormat('%b %Y');
+  const parseDay = (s) => new Date(String(s).slice(0, 10) + 'T00:00:00Z');
+  const day = (s) => { if (!s) return '—'; const d = parseDay(s); return Number.isNaN(d.getTime()) ? '—' : dayF(d); };
+  const fmt = (v, kind) => {
+    if (v == null || v === '') return '—';
+    if (kind === 'pct') return pctF(v);
+    if (kind === 'money') return moneyF(v);
+    if (kind === 'int') return intF(v);
+    if (kind === 'date') return day(v);
+    if (kind === 'datetime') {
+      const s = String(v);
+      const hh = Number(s.slice(11, 13));
+      const mm = s.slice(14, 16);
+      return day(s) + (Number.isNaN(hh) ? '' : ', ' + (((hh + 11) % 12) + 1) + ':' + mm + (hh < 12 ? ' AM' : ' PM'));
+    }
+    return String(v);
+  };
+  const stepFmt = (step) => (step === 'referred_value' ? 'money' : 'int');
+  const stepLabel = (campaign, step) => {
+    const m = META[campaign];
+    const hit = m && [...m.reach, ...m.outcome].find(([k]) => k === step);
+    return hit ? hit[1] : step;
+  };
+  const stageRank = (s) => { const i = STAGES.indexOf(s); return i < 0 ? 99 : i; };
+  const status = (id) => dash.data(id).status;
+  const rowsOf = (id) => { const r = dash.data(id); return r.status === 'ok' ? (r.data || []) : null; };
+  const whereStr = (obj) => Object.entries(obj).map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');
+  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+  const markEl = (tag, source, field, where, value, kind) => {
+    const n = el(tag);
+    n.dataset.source = source;
+    n.dataset.field = field;
+    n.setAttribute('data-where', whereStr(where));
+    n.textContent = fmt(value, kind);
+    return n;
+  };
+  const failNode = () => el('p', 'cc-fail', 'Failed to load');
+  const said = (node, parts) => { node.replaceChildren(...parts.map((p) => (typeof p === 'string' ? document.createTextNode(p) : p))); };
+  const b = (source, field, where, value, kind) => { const n = markEl('b', source, field, where, value, kind); return n; };
+
+  const resolveCache = new Map();
+  const resolve = (c) => {
+    const probe = el('span');
+    probe.style.color = c;
+    probe.style.display = 'none';
+    root.append(probe);
+    const v = getComputedStyle(probe).color;
+    probe.remove();
+    return v;
+  };
+  const ramp = (hue, t) => d3.interpolateRgb(resolve('var(--color-panel)'), resolve(hue))(t);
+  const priorityColor = (campaign, p) => {
+    if (p === '1') return ramp(hueOf(campaign), 1);
+    if (p === '3') return ramp(hueOf(campaign), 0.7);
+    if (p === '5') return ramp(hueOf(campaign), 0.45);
+    if (p === '9') return 'var(--cds-chart-muted)';
+    if (p === '11') return 'var(--cds-chart-status-critical)';
+    return resolve('var(--color-border-line)');
+  };
+  const stageColor = (hue, stage) => {
+    if (LOST.includes(stage)) return 'var(--cds-chart-muted)';
+    const t = { Identify: 0.4, Discovery: 0.55, Proposals: 0.75, Hold: 0.3, Closed: 1 }[stage] ?? 0.6;
+    return ramp(hue, t);
+  };
+
+  root.querySelectorAll('[data-hue]').forEach((n) => { n.style.background = hueOf(n.dataset.hue); });
+
+  /* Tooltip */
+  const showTip = (card, x, y, head, rows) => {
+    let tip = card.querySelector(':scope > .cc-tip');
+    if (!tip) { tip = el('div', 'cc-tip'); tip.setAttribute('role', 'status'); card.append(tip); }
+    tip.replaceChildren(el('div', 'cc-tip-h', head), ...rows.map(([color, name, value]) => {
+      const r = el('div', 'cc-tip-r');
+      const sw = el('i', 'cc-sw');
+      sw.style.background = color || 'transparent';
+      r.append(sw, el('span', null, name), el('b', null, value));
+      return r;
+    }));
+    tip.hidden = false;
+    const cr = card.getBoundingClientRect();
+    const tw = tip.offsetWidth;
+    const th = tip.offsetHeight;
+    let left = x - cr.left + 12;
+    if (left + tw > cr.width - 8) left = Math.max(8, x - cr.left - tw - 12);
+    let top = y - cr.top - th - 10;
+    if (top < 8) top = y - cr.top + 14;
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+  };
+  const hideTip = (card) => { const tip = card.querySelector(':scope > .cc-tip'); if (tip) tip.hidden = true; };
+
+  /* Tabs */
+  const tabs = [...root.querySelectorAll('.cc-tab')];
+  const pages = [...root.querySelectorAll('.cc-page')];
+  const show = (id, link) => {
+    if (!pages.some((p) => p.id === id)) id = 'overview';
+    tabs.forEach((t) => { const on = t.dataset.tab === id; t.setAttribute('aria-selected', String(on)); t.tabIndex = on ? 0 : -1; });
+    pages.forEach((p) => { p.hidden = p.id !== id; });
+    if (link) dash.setLink(id);
+    drawSized();
+  };
+  tabs.forEach((t, i) => {
+    t.addEventListener('click', () => show(t.dataset.tab, true));
+    t.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+      next.focus();
+      show(next.dataset.tab, true);
+    });
+  });
+  root.addEventListener('click', (e) => {
+    const go = e.target.closest('[data-go]');
+    if (!go) return;
+    show(go.dataset.go, true);
+    root.scrollIntoView({ block: 'start' });
+  });
+
+  /* Static single values */
+  const fillMarks = () => {
+    root.querySelectorAll('[data-field][data-where]').forEach((n) => {
+      if (n.closest('table, .cc-funnelviz, .cc-bullets, .cc-donut, .cc-cov, .cc-insight, .cc-svgchart')) return;
+      const r = dash.data(n.dataset.source);
+      if (r.status === 'loading') return;
+      n.classList.remove('dash-skeleton');
+      if (r.status !== 'ok') { n.textContent = '—'; return; }
+      const conds = [...new URLSearchParams(n.getAttribute('data-where'))];
+      const row = (r.data || []).find((x) => conds.every(([k, v]) => String(x[k]) === v));
+      n.textContent = fmt(row ? row[n.dataset.field] : null, n.dataset.fmt);
+      if (n.classList.contains('cc-pct') && row && row.progress != null) {
+        n.classList.toggle('cc-low', row.progress < pace);
+        n.classList.toggle('cc-ok', row.progress >= pace);
+      }
+    });
+    const funnel = rowsOf('funnel');
+    root.querySelectorAll('.cc-goal').forEach((g) => {
+      const f0 = g.querySelector('.cc-fill');
+      const on = picked['ov-' + f0.dataset.campaign] === f0.dataset.step;
+      g.classList.toggle('cc-picked', on);
+      g.setAttribute('aria-pressed', String(on));
+    });
+    root.querySelectorAll('.cc-goal .cc-fill').forEach((f) => {
+      const row = funnel && funnel.find((r) => r.campaign === f.dataset.campaign && r.step === f.dataset.step);
+      f.style.background = hueOf(f.dataset.campaign);
+      f.style.width = row && row.target ? (Math.min(1, row.value / row.target) * 100).toFixed(1) + '%' : '0%';
+      const p = f.parentElement.querySelector('.cc-pace');
+      p.style.left = 'calc(' + (pace * 100).toFixed(2) + '% - 1px)';
+    });
+  };
+
+  /* Funnel chart */
+  const drawFunnels = () => {
+    const st = [status('funnel'), status('funnel_drops')];
+    const funnel = rowsOf('funnel');
+    const drops = rowsOf('funnel_drops');
+    root.querySelectorAll('.cc-funnelviz').forEach((box) => {
+      if (st.includes('loading') && !funnel) return;
+      box.classList.remove('dash-skeleton');
+      if (!funnel || !drops) { box.replaceChildren(failNode()); return; }
+      const c = box.dataset.campaign;
+      const steps = META[c].reach.map(([k]) => k);
+      const rows = steps.map((s) => funnel.find((r) => r.campaign === c && r.step === s)).filter(Boolean);
+      const max = d3.max(rows, (r) => r.value) || 1;
+      const mine = drops.filter((d) => d.campaign === c);
+      const worst = d3.greatest(mine.filter((d) => d.kept != null), (d) => -d.kept);
+      const out = [];
+      rows.forEach((r, i) => {
+        if (i > 0) {
+          const d = mine.find((x) => x.to === r.step);
+          if (d) {
+            const line = el('div', 'cc-fdrop' + (worst && d === worst ? ' cc-worst' : ''));
+            const keep = markEl('b', 'funnel_drops', 'kept', { campaign: c, from: d.from }, d.kept, 'pct');
+            const txt = el('span');
+            txt.append(keep, document.createTextNode(' carried forward'));
+            line.append(el('span'), txt);
+            out.push(line);
+          }
+        }
+        const row = el('div', 'cc-frow');
+        const bar = el('div', 'cc-fbar');
+        const fill = el('i');
+        fill.style.width = (r.value / max * 100).toFixed(2) + '%';
+        fill.style.background = ramp(hueOf(c), 1 - i * (0.5 / Math.max(1, rows.length - 1)));
+        bar.append(fill);
+        const val = el('span', 'cc-fval');
+        val.append(markEl('span', 'funnel', 'value', { campaign: c, step: r.step }, r.value, 'int'));
+        if (r.target != null) {
+          const t = el('small');
+          t.append(document.createTextNode(' of '), markEl('span', 'funnel', 'target', { campaign: c, step: r.step }, r.target, 'int'));
+          val.append(t);
+        }
+        row.append(el('span', 'cc-flabel', stepLabel(c, r.step)), bar, val);
+        clickable(row, 'funnel-' + c, r.step, 'Show details for ' + stepLabel(c, r.step));
+        out.push(row);
+      });
+      box.replaceChildren(...out);
+      const ins = root.querySelector('.cc-insight[data-insight="funnel"][data-campaign="' + c + '"]');
+      if (ins && worst) {
+        said(ins, ['The biggest drop is from ', stepLabel(c, worst.from).toLowerCase(), ' to ', stepLabel(c, worst.to).toLowerCase(), ': ',
+          b('funnel_drops', 'from_value', { campaign: c, from: worst.from }, worst.from_value, 'int'), ' became ',
+          b('funnel_drops', 'to_value', { campaign: c, from: worst.from }, worst.to_value, 'int'), '. That is where the next push should go.']);
+      }
+    });
+  };
+
+  /* Bullet charts */
+  const bulletRow = (r, withHue) => {
+    const row = el('div', 'cc-brow');
+    const label = el('span', null, stepLabel(r.campaign, r.step));
+    const num = el('span', 'cc-bnum');
+    const v = markEl('span', 'funnel', 'value', { campaign: r.campaign, step: r.step }, r.value, stepFmt(r.step));
+    v.className = 'cc-v';
+    num.append(v);
+    if (r.target == null) {
+      num.append(document.createTextNode(' · no target'));
+      row.append(label, el('span'), num);
+      return row;
+    }
+    const pct = markEl('span', 'funnel', 'progress', { campaign: r.campaign, step: r.step }, r.progress, 'pct');
+    pct.className = 'cc-pct ' + (r.progress >= pace ? 'cc-ok' : 'cc-low');
+    num.append(document.createTextNode(' / '), markEl('span', 'funnel', 'target', { campaign: r.campaign, step: r.step }, r.target, stepFmt(r.step)), document.createTextNode(' · '), pct);
+    const scaleMax = Math.max(1.25, Math.min(2, r.progress || 0));
+    const track = el('div', 'cc-track');
+    const fill = el('i', 'cc-fill');
+    fill.style.width = (Math.min(r.progress, scaleMax) / scaleMax * 100).toFixed(2) + '%';
+    fill.style.background = hueOf(withHue);
+    const tgt = el('b', 'cc-target');
+    tgt.style.left = 'calc(' + (1 / scaleMax * 100).toFixed(2) + '% - 1px)';
+    const pc = el('b', 'cc-pace');
+    pc.style.left = 'calc(' + (pace / scaleMax * 100).toFixed(2) + '% - 1px)';
+    track.append(fill, pc, tgt);
+    track.setAttribute('role', 'img');
+    track.setAttribute('aria-label', stepLabel(r.campaign, r.step) + ': ' + fmt(r.value, stepFmt(r.step)) + ' of ' + fmt(r.target, stepFmt(r.step)));
+    row.append(label, track, num);
+    return row;
+  };
+  const drawBullets = () => {
+    const funnel = rowsOf('funnel');
+    root.querySelectorAll('.cc-bullets').forEach((box) => {
+      if (status('funnel') === 'loading') return;
+      box.classList.remove('dash-skeleton');
+      if (!funnel) { box.replaceChildren(failNode()); return; }
+      const c = box.dataset.campaign;
+      const out = [];
+      const campaigns = c === 'all' ? ['rp', 'icp', 'fn'] : [c];
+      const shown = [];
+      for (const k of campaigns) {
+        const steps = c === 'all' ? funnel.filter((r) => r.campaign === k && r.target != null).map((r) => r.step) : META[k].outcome.map(([s]) => s);
+        const rows = steps.map((s) => funnel.find((r) => r.campaign === k && r.step === s)).filter(Boolean);
+        if (c === 'all') {
+          const g = el('div', 'cc-bgroup');
+          const dot = el('i', 'cc-dot');
+          dot.style.background = hueOf(k);
+          g.append(dot, document.createTextNode(META[k].name));
+          out.push(g);
+        }
+        rows.forEach((r) => {
+          const row = bulletRow(r, k);
+          if (c === 'all') clickable(row, 'targets-all', k + '|' + r.step, 'Show details for ' + stepLabel(k, r.step));
+          else clickable(row, 'targets-' + c, r.step, 'Show details for ' + stepLabel(k, r.step));
+          out.push(row);
+          shown.push(r);
+        });
+      }
+      box.replaceChildren(...out);
+      const withTarget = shown.filter((r) => r.target != null);
+      const worst = d3.least(withTarget, (r) => r.progress);
+      const ins = c === 'all' ? root.querySelector('#ins-targets') : root.querySelector('.cc-insight[data-insight="targets"][data-campaign="' + c + '"]');
+      if (ins && worst) {
+        const met = withTarget.filter((r) => r.progress >= 1);
+        const parts = ['Furthest behind: ', (c === 'all' ? META[worst.campaign].name + ' · ' : ''), stepLabel(worst.campaign, worst.step).toLowerCase(), ' at ',
+          b('funnel', 'progress', { campaign: worst.campaign, step: worst.step }, worst.progress, 'pct'), ' of target.'];
+        if (met.length) {
+          const best = d3.greatest(met, (r) => r.progress);
+          parts.push(' Already past target: ', (c === 'all' ? META[best.campaign].name + ' · ' : ''), stepLabel(best.campaign, best.step).toLowerCase(), ' at ',
+            b('funnel', 'progress', { campaign: best.campaign, step: best.step }, best.progress, 'pct'), '.');
+        }
+        said(ins, parts);
+      }
+    });
+  };
+
+  /* Donuts */
+  const drawDonuts = () => {
+    const mix = rowsOf('priority_mix');
+    const funnel = rowsOf('funnel');
+    root.querySelectorAll('.cc-donut').forEach((box) => {
+      if (status('priority_mix') === 'loading') return;
+      box.classList.remove('dash-skeleton');
+      if (!mix) { box.replaceChildren(failNode()); return; }
+      const c = box.dataset.campaign;
+      const mine = mix.filter((r) => r.campaign === c);
+      const size = 140;
+      const svg = d3.create('svg').attr('viewBox', `0 0 ${size} ${size}`).attr('width', '100%').attr('role', 'img').attr('aria-label', 'Contacts by Priority');
+      const g = svg.append('g').attr('transform', `translate(${size / 2},${size / 2})`);
+      const arc = d3.arc().innerRadius(44).outerRadius(66).cornerRadius(3).padAngle(0.02);
+      const pie = d3.pie().sort(null).value((r) => r.contacts);
+      g.selectAll('path').data(pie(mine)).join('path')
+        .attr('d', arc)
+        .attr('fill', (d) => priorityColor(c, d.data.priority))
+        .attr('opacity', (d) => (picked['prio-' + c] && picked['prio-' + c] !== d.data.priority ? 0.35 : 1))
+        .style('cursor', 'pointer')
+        .on('click', (e, d) => { hideTip(box.closest('.cc-card')); pick('prio-' + c, d.data.priority); })
+        .on('mousemove', (e, d) => showTip(box.closest('.cc-card'), e.clientX, e.clientY, PRIORITY[d.data.priority], [[priorityColor(c, d.data.priority), 'Contacts', intF(d.data.contacts)], [null, 'Share', pctF(d.data.share)]]))
+        .on('mouseleave', () => hideTip(box.closest('.cc-card')));
+      const totalRow = funnel && funnel.find((r) => r.campaign === c && r.step === 'total');
+      g.append('text').attr('text-anchor', 'middle').attr('dy', '0.1em').attr('class', 'cc-donut-n')
+        .style('font-size', '18px').style('font-weight', '500').style('fill', 'var(--color-fg)')
+        .text(totalRow ? intF(totalRow.value) : '—');
+      g.append('text').attr('text-anchor', 'middle').attr('dy', '1.6em').style('font-size', '10px').style('fill', 'var(--color-fg-muted)').text('contacts');
+      const holder = el('div');
+      holder.dataset.source = 'funnel';
+      holder.dataset.field = 'value';
+      holder.setAttribute('data-where', whereStr({ campaign: c, step: 'total' }));
+      holder.append(svg.node());
+      const legend = el('ul', 'cc-dlegend');
+      mine.forEach((r) => {
+        const li = el('li');
+        const sw = el('i', 'cc-sw');
+        sw.style.background = priorityColor(c, r.priority);
+        li.append(sw, el('span', null, (r.priority === 'Not set' ? '' : 'P' + r.priority + ' · ') + PRIORITY[r.priority]),
+          Object.assign(markEl('span', 'priority_mix', 'contacts', { campaign: c, priority: r.priority }, r.contacts, 'int'), { className: 'cc-n' }),
+          Object.assign(markEl('span', 'priority_mix', 'share', { campaign: c, priority: r.priority }, r.share, 'pct'), { className: 'cc-s' }));
+        clickable(li, 'prio-' + c, r.priority, 'Show contacts at ' + PRIORITY[r.priority]);
+        legend.append(li);
+      });
+      box.replaceChildren(holder, legend);
+      const ins = root.querySelector('.cc-insight[data-insight="priority"][data-campaign="' + c + '"]');
+      if (ins && mine.length) {
+        const unset = mine.find((r) => r.priority === 'Not set');
+        const top = mine.find((r) => r.priority === '1');
+        const parts = [];
+        if (top) parts.push(b('priority_mix', 'contacts', { campaign: c, priority: '1' }, top.contacts, 'int'), ' contacts are at Priority 1, active pursuit. ');
+        if (unset) parts.push(b('priority_mix', 'share', { campaign: c, priority: 'Not set' }, unset.share, 'pct'), ' have no Priority set, so they can’t be worked in order.');
+        else {
+          const big = d3.greatest(mine, (r) => r.contacts);
+          parts.push('The largest group is ', PRIORITY[big.priority].toLowerCase(), ' at ', b('priority_mix', 'share', { campaign: c, priority: big.priority }, big.share, 'pct'), '.');
+        }
+        said(ins, parts);
+      }
+    });
+  };
+
+  /* Coverage */
+  const drawCoverage = () => {
+    const box = root.querySelector('.cc-cov');
+    const legend = root.querySelector('#leg-coverage');
+    const ok = hueOf('fn');
+    const bad = 'var(--cds-chart-status-critical)';
+    legend.replaceChildren(...[[ok, 'Has a next step'], [bad, 'No next step']].map(([c, n]) => { const s = el('span'); const sw = el('i', 'cc-sw'); sw.style.background = c; s.append(sw, n); return s; }));
+    if (status('fn_coverage') === 'loading') return;
+    box.classList.remove('dash-skeleton');
+    const rows = rowsOf('fn_coverage');
+    if (!rows) { box.replaceChildren(failNode()); return; }
+    box.replaceChildren(...['1', '3'].map((p) => {
+      const all = rows.find((r) => r.priority === p && r.state === 'All');
+      const has = rows.find((r) => r.priority === p && r.state === 'Has a next step');
+      const none = rows.find((r) => r.priority === p && r.state === 'No next step');
+      const wrap = el('div', 'cc-covrow');
+      const top = el('div', 'cc-covtop');
+      const left = el('span');
+      left.append(document.createTextNode('Priority ' + p + ' · ' + PRIORITY[p] + ' · '), markEl('b', 'fn_coverage', 'contacts', { priority: p, state: 'All' }, all ? all.contacts : null, 'int'), document.createTextNode(' contacts'));
+      const right = el('span');
+      right.append(markEl('b', 'fn_coverage', 'contacts', { priority: p, state: 'No next step' }, none ? none.contacts : null, 'int'), document.createTextNode(' with no next step'));
+      top.append(left, right);
+      const bar = el('div', 'cc-covbar');
+      for (const [r, color] of [[has, ok], [none, bad]]) {
+        if (!r || !r.contacts) continue;
+        const seg = el('i');
+        seg.style.flex = String(r.contacts);
+        seg.style.background = color;
+        seg.addEventListener('mousemove', (e) => showTip(box.closest('.cc-card'), e.clientX, e.clientY, 'Priority ' + p, [[color, r.state, intF(r.contacts) + ' · ' + pctF(r.share)]]));
+        seg.addEventListener('mouseleave', () => hideTip(box.closest('.cc-card')));
+        clickable(seg, 'coverage', p + '|' + r.state, 'Show Priority ' + p + ' contacts: ' + r.state);
+        bar.append(seg);
+      }
+      wrap.append(top, bar);
+      return wrap;
+    }));
+    const p1 = rows.find((r) => r.priority === '1' && r.state === 'No next step');
+    const p1all = rows.find((r) => r.priority === '1' && r.state === 'All');
+    if (p1 && p1all) {
+      said(root.querySelector('#ins-coverage'), [b('fn_coverage', 'contacts', { priority: '1', state: 'No next step' }, p1.contacts, 'int'), ' of ', b('fn_coverage', 'contacts', { priority: '1', state: 'All' }, p1all.contacts, 'int'),
+        ' Priority 1 contacts (', b('fn_coverage', 'share', { priority: '1', state: 'No next step' }, p1.share, 'pct'), ') have no open task. Turn on “No next step only” below to get the list.']);
+    }
+  };
+
+  /* Column charts (SVG), single series or stacked */
+  const columns = (box, { xs, series, value, color, xLabel, faded, head, picked, onPick }) => {
+    const width = box.clientWidth;
+    if (!width) return false;
+    const card = box.closest('.cc-card');
+    const height = 220;
+    const totals = xs.map((x) => d3.sum(series, (s) => value(x, s) || 0));
+    const yMax = Math.max(1, d3.max(totals) || 0);
+    const y = d3.scaleLinear([0, yMax], [height - 28, 18]).nice();
+    const ticks = y.ticks(4).filter((t) => Number.isInteger(t));
+    const probe = d3.create('svg');
+    const labelW = Math.max(...ticks.map((t) => String(intF(t)).length)) * 7 + 10;
+    const m = { l: labelW, r: 4 };
+    const x = d3.scaleBand(xs, [m.l, width - m.r]).paddingInner(0.28).paddingOuter(0.12);
+    const svg = d3.create('svg').attr('width', '100%').attr('height', height).attr('viewBox', `0 0 ${width} ${height}`).attr('role', 'img').attr('aria-label', head);
+    const grid = svg.append('g');
+    ticks.forEach((t) => {
+      grid.append('line').attr('x1', m.l).attr('x2', width - m.r).attr('y1', y(t)).attr('y2', y(t)).attr('stroke', 'var(--cds-chart-grid)');
+      grid.append('text').attr('x', m.l - 6).attr('y', y(t)).attr('dy', '0.32em').attr('text-anchor', 'end').text(intF(t));
+    });
+    svg.append('line').attr('class', 'cc-base').attr('x1', m.l).attr('x2', width - m.r).attr('y1', y(0)).attr('y2', y(0));
+    const bw = Math.min(40, x.bandwidth());
+    const every = x.bandwidth() < 34 ? Math.ceil(34 / Math.max(1, x.step())) : 1;
+    xs.forEach((xv, i) => {
+      const cx = x(xv) + (x.bandwidth() - bw) / 2;
+      const dim = (faded && faded(xv)) || (picked && picked !== xv);
+      const g = svg.append('g').attr('class', 'cc-col').attr('opacity', dim ? 0.4 : 1);
+      let acc = 0;
+      series.forEach((s) => {
+        const v = value(xv, s) || 0;
+        if (!v) return;
+        const y0 = y(acc);
+        const y1 = y(acc + v);
+        acc += v;
+        g.append('rect').attr('x', cx).attr('width', bw).attr('y', y1 + 1).attr('height', Math.max(1, y0 - y1 - 2)).attr('rx', 3).attr('fill', color(s, xv));
+      });
+      if (totals[i]) svg.append('text').attr('class', 'cc-lbl').attr('x', cx + bw / 2).attr('y', y(totals[i]) - 5).attr('text-anchor', 'middle').text(intF(totals[i]));
+      if (i % every === 0) svg.append('text').attr('x', x(xv) + x.bandwidth() / 2).attr('y', height - 10).attr('text-anchor', 'middle').text(xLabel(xv));
+      const hit = svg.append('rect').attr('class', 'cc-hit').attr('x', x(xv) - x.step() * x.paddingInner() / 2).attr('width', x.step()).attr('y', 0).attr('height', height - 20)
+        .on('mousemove', (e) => {
+          g.classed('cc-hover', true);
+          const rows = series.map((s) => [color(s, xv), typeof s === 'string' ? s : s.label, value(xv, s) || 0]).filter((r) => r[2]).map(([c, n, v]) => [c, n, intF(v)]);
+          showTip(card, e.clientX, e.clientY, xLabel(xv, true) + (faded && faded(xv) ? ' · booked ahead' : ''), rows.length ? rows : [[null, 'None', '0']]);
+        })
+        .on('mouseleave', () => { g.classed('cc-hover', false); hideTip(card); });
+      if (onPick) {
+        hit.attr('tabindex', 0).attr('role', 'button')
+          .attr('aria-pressed', String(picked === xv))
+          .attr('aria-label', 'Show deals at ' + xLabel(xv, true))
+          .on('click', () => { hideTip(card); onPick(xv); })
+          .on('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPick(xv); } });
+      }
+    });
+    box.replaceChildren(svg.node());
+    return true;
+  };
+  const legendInto = (node, items) => node.replaceChildren(...items.map(([c, n]) => { const s = el('span'); const sw = el('i', 'cc-sw'); sw.style.background = c; s.append(sw, n); return s; }));
+  const chartReady = (box, id) => {
+    const st = status(id);
+    if (st === 'loading') return null;
+    box.classList.remove('dash-skeleton');
+    const rows = rowsOf(id);
+    if (!rows) { box.replaceChildren(failNode()); return null; }
+    return rows;
+  };
+  const visible = (n) => !n.closest('.cc-page').hidden;
+
+  const drawMeetings = () => {
+    const box = root.querySelector('#chart-meetings');
+    const colors = { 'B2B Campaign': HUE.rp, 'Founder Network': HUE.fn, 'Contact not in a campaign': 'var(--cds-chart-muted)', 'No contact linked': resolve('var(--color-border-line)') };
+    legendInto(root.querySelector('#leg-meetings'), MEETING_GROUPS.map((g) => [colors[g], g]));
+    if (!visible(box)) return;
+    const rows = chartReady(box, 'meetings_weekly');
+    if (!rows) return;
+    const first = rows.length ? rows[0].week : null;
+    const last = rows.length ? rows[rows.length - 1].week : null;
+    const xs = [];
+    if (first) for (let d = parseDay(first); d <= parseDay(last); d.setUTCDate(d.getUTCDate() + 7)) xs.push(d.toISOString().slice(0, 10));
+    const thisWeek = (() => { const d = parseDay(todayCT); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return d.toISOString().slice(0, 10); })();
+    columns(box, {
+      xs, series: MEETING_GROUPS, head: 'Meetings per week by campaign',
+      value: (w, g) => (rows.find((r) => r.week === w && r.group === g) || {}).meetings,
+      color: (g) => colors[g],
+      xLabel: (w, long) => (long ? 'Week of ' : '') + day(w),
+      faded: (w) => w > thisWeek,
+      picked: picked.meetings, onPick: (w) => pick('meetings', w),
+    });
+    const tot = rowsOf('meeting_totals');
+    const all = tot && tot.find((r) => r.group === 'All');
+    const camp = tot && tot.find((r) => r.group === 'Campaign contacts');
+    const none = tot && tot.find((r) => r.group === 'No contact linked');
+    if (all && camp) {
+      const parts = ['Only ', b('meeting_totals', 'meetings', { group: 'Campaign contacts' }, camp.meetings, 'int'), ' of ', b('meeting_totals', 'meetings', { group: 'All' }, all.meetings, 'int'), ' meetings since Aug 17 were with a B2B Campaign or Founder Network contact.'];
+      if (none) parts.push(' ', b('meeting_totals', 'meetings', { group: 'No contact linked' }, none.meetings, 'int'), ' have no contact attached, so no campaign gets credit for them.');
+      said(root.querySelector('#ins-meetings'), parts);
+    }
+  };
+
+  const drawStageChart = (id, { source, filter, hue, insight, drill }) => {
+    const box = root.querySelector(id);
+    if (!visible(box)) return;
+    const rows = chartReady(box, source);
+    if (!rows) return;
+    const mine = rows.filter(filter);
+    const xs = STAGES.filter((s) => mine.some((r) => r.stage === s));
+    if (!xs.length) { box.replaceChildren(el('p', 'cc-empty', 'No deals yet.')); }
+    else {
+      columns(box, {
+        xs, series: ['Deals'], head: 'Deals by stage',
+        value: (s) => d3.sum(mine.filter((r) => r.stage === s), (r) => r.deals),
+        color: (_, s) => stageColor(hue, s),
+        xLabel: (s, long) => (long ? s : (STAGE_SHORT[s] || s)),
+        picked: picked[drill], onPick: (s) => pick(drill, s),
+      });
+    }
+    insight(mine);
+  };
+
+  const drawPipeStage = () => {
+    const box = root.querySelector('#chart-pipe-stage');
+    legendInto(root.querySelector('#leg-pipe-stage'), CAMPAIGN_ORDER.map((c) => [CAMPAIGN_COLOR[c], c]));
+    if (!visible(box)) return;
+    const rows = chartReady(box, 'stage_campaign');
+    if (!rows) return;
+    const xs = STAGES.filter((s) => rows.some((r) => r.stage === s));
+    columns(box, {
+      xs, series: CAMPAIGN_ORDER, head: 'Deals by stage and campaign',
+      value: (s, c) => d3.sum(rows.filter((r) => r.stage === s && r.campaign === c), (r) => r.deals),
+      color: (c) => CAMPAIGN_COLOR[c],
+      xLabel: (s, long) => (long ? s : (STAGE_SHORT[s] || s)),
+      picked: picked['pipe-stage'], onPick: (s) => pick('pipe-stage', s),
+    });
+    const t = rowsOf('pipeline_totals');
+    if (t) {
+      const g = (k) => (t.find((r) => r.measure === k) || {}).value;
+      said(root.querySelector('#ins-pipe-stage'), [b('pipeline_totals', 'value', { measure: 'open' }, g('open'), 'int'), ' deals are open and ', b('pipeline_totals', 'value', { measure: 'hold' }, g('hold'), 'int'),
+        ' are on hold. ', b('pipeline_totals', 'value', { measure: 'won' }, g('won'), 'int'), ' have been won, worth ', b('pipeline_totals', 'value', { measure: 'won_amount' }, g('won_amount'), 'money'), ' in entered amounts. Most won deals are partner agreements, which carry no amount.']);
+    }
+  };
+
+  const drawMonthly = () => {
+    const box = root.querySelector('#chart-pipe-monthly');
+    const kinds = ['Partnership', 'Client'];
+    const colors = { Partnership: dash.colors[3], Client: dash.colors[4] };
+    legendInto(root.querySelector('#leg-pipe-monthly'), kinds.map((k) => [colors[k], k === 'Partnership' ? 'Partnership agreements' : 'Client deals']));
+    if (!visible(box)) return;
+    const rows = chartReady(box, 'deals_monthly');
+    if (!rows) return;
+    const months = [...new Set(rows.map((r) => r.month))].sort();
+    const xs = [];
+    if (months.length) for (let d = new Date(months[0] + '-01T00:00:00Z'); d.toISOString().slice(0, 7) <= months[months.length - 1]; d.setUTCMonth(d.getUTCMonth() + 1)) xs.push(d.toISOString().slice(0, 7));
+    columns(box, {
+      xs, series: kinds, head: 'New deals per month',
+      value: (mo, k) => (rows.find((r) => r.month === mo && r.kind === k) || {}).deals,
+      color: (k) => colors[k],
+      xLabel: (mo, long) => (long ? monthF : d3.utcFormat('%b'))(new Date(mo + '-01T00:00:00Z')),
+      picked: picked.monthly, onPick: (mo) => pick('monthly', mo),
+    });
+    const busiest = d3.greatest(xs, (mo) => d3.sum(rows.filter((r) => r.month === mo), (r) => r.deals));
+    if (busiest) {
+      const parts = ['The busiest month was ', monthF(new Date(busiest + '-01T00:00:00Z')), ', with '];
+      kinds.forEach((k, i) => {
+        const r = rows.find((x) => x.month === busiest && x.kind === k);
+        if (i) parts.push(' and ');
+        parts.push(r ? b('deals_monthly', 'deals', { month: busiest, kind: k }, r.deals, 'int') : '0', k === 'Partnership' ? ' partner agreements' : ' client deals');
+      });
+      parts.push(' created.');
+      said(root.querySelector('#ins-pipe-monthly'), parts);
+    }
+  };
+
+  /* Referrals */
+  const PHASES = ['Open', 'On hold', 'Won', 'Lost'];
+  const phaseOf = (stage) => (stage === 'Hold' ? 'On hold' : stage === 'Closed' ? 'Won' : LOST.includes(stage) ? 'Lost' : 'Open');
+  const phaseColor = (p) => (p === 'Lost' ? 'var(--cds-chart-muted)' : ramp(HUE.rp, { Open: 0.65, 'On hold': 0.35, Won: 1 }[p]));
+  const clip = (s, n) => { const t = String(s || '—'); return t.length > n ? t.slice(0, Math.max(1, n - 1)) + '…' : t; };
+
+  const drawRefFlow = () => {
+    const box = root.querySelector('#chart-ref-flow');
+    legendInto(root.querySelector('#leg-ref-flow'), PHASES.map((p) => [phaseColor(p), p]));
+    if (!visible(box)) return;
+    const rows = chartReady(box, 'referrals');
+    if (!rows) return;
+    if (!rows.length) {
+      box.replaceChildren(el('p', 'cc-flow-empty', 'No referred deals yet. Add the partner’s account in the Referral Partner field on a client deal in Zoho and the link appears here.'));
+      return;
+    }
+    const width = box.clientWidth;
+    if (!width) return;
+    const card = box.closest('.cc-card');
+    const unrec = 'Partner not recorded';
+    const partners = [...new Set(rows.map((r) => r.partner))].sort((a, c) => Number(a === unrec) - Number(c === unrec) || String(a).localeCompare(String(c)));
+    const pIndex = new Map(partners.map((p, i) => [p, i]));
+    const deals = [...new Map(rows.map((r) => [r.deal_id, r])).values()]
+      .sort((a, c) => pIndex.get(a.partner) - pIndex.get(c.partner) || String(a.deal).localeCompare(String(c.deal)));
+    const rowH = 40;
+    const height = Math.max(partners.length, deals.length) * rowH + 8;
+    const side = Math.min(250, Math.max(112, width * 0.34));
+    const lx = side;
+    const rx = width - side;
+    const chars = Math.max(8, Math.floor((side - 16) / 6.4));
+    const ly = d3.scalePoint(partners, [4, height - 4]).padding(0.5);
+    const ry = d3.scalePoint(deals.map((d) => d.deal_id), [4, height - 4]).padding(0.5);
+    const svg = d3.create('svg').attr('width', '100%').attr('height', height).attr('viewBox', `0 0 ${width} ${height}`).attr('role', 'img').attr('aria-label', 'Referral partners linked to the client deals they referred');
+    const link = d3.linkHorizontal().x((d) => d[0]).y((d) => d[1]);
+    rows.forEach((r) => {
+      const ph = phaseOf(r.stage);
+      const path = svg.append('path')
+        .attr('d', link({ source: [lx + 6, ly(r.partner)], target: [rx - 6, ry(r.deal_id)] }))
+        .attr('fill', 'none').attr('stroke', phaseColor(ph)).attr('stroke-width', 2.5).attr('stroke-linecap', 'round')
+        .attr('stroke-dasharray', r.recorded ? null : '4 4');
+      const hit = svg.append('path').attr('d', path.attr('d')).attr('fill', 'none').attr('stroke', 'transparent').attr('stroke-width', 16);
+      hit.on('mousemove', (e) => {
+        path.attr('stroke-width', 4);
+        showTip(card, e.clientX, e.clientY, clip(r.partner, 40) + ' → ' + clip(r.deal, 40), [
+          [phaseColor(ph), 'Stage', r.stage],
+          [null, 'Client', r.client || '—'],
+          [null, 'Amount', moneyF(r.amount || 0)],
+          [null, 'Partner agreement', r.agreement || '—'],
+          [null, 'Referred', day(r.referred_on)],
+        ]);
+      }).on('mouseleave', () => { path.attr('stroke-width', picked['ref-flow'] === r.link_id ? 4 : 2.5); hideTip(card); })
+        .style('cursor', 'pointer')
+        .on('click', () => { hideTip(card); pick('ref-flow', r.link_id); });
+      if (picked['ref-flow'] === r.link_id) path.attr('stroke-width', 4);
+    });
+    partners.forEach((p) => {
+      const y = ly(p);
+      const r = rows.find((x) => x.partner === p);
+      svg.append('rect').attr('x', lx - 3).attr('y', y - 11).attr('width', 6).attr('height', 22).attr('rx', 3).attr('fill', p === unrec ? 'var(--cds-chart-muted)' : HUE.rp);
+      svg.append('text').attr('class', 'cc-lbl').attr('x', lx - 12).attr('y', y).attr('dy', r.partner_contact ? '-0.15em' : '0.32em').attr('text-anchor', 'end').text(clip(p, chars));
+      if (r.partner_contact) svg.append('text').attr('x', lx - 12).attr('y', y).attr('dy', '1.05em').attr('text-anchor', 'end').text(clip(r.partner_contact, chars));
+    });
+    deals.forEach((d) => {
+      const y = ry(d.deal_id);
+      svg.append('rect').attr('x', rx - 3).attr('y', y - 11).attr('width', 6).attr('height', 22).attr('rx', 3).attr('fill', phaseColor(phaseOf(d.stage)));
+      svg.append('text').attr('class', 'cc-lbl').attr('x', rx + 12).attr('y', y).attr('dy', '-0.15em').text(clip(d.deal, chars));
+      svg.append('text').attr('x', rx + 12).attr('y', y).attr('dy', '1.05em').text(clip((d.client || '—') + ' · ' + d.stage, chars));
+    });
+    box.replaceChildren(svg.node());
+  };
+
+  const drawRefBars = () => {
+    const box = root.querySelector('.cc-refbars');
+    const keys = [['open', 'Open'], ['hold', 'On hold'], ['won', 'Won'], ['lost', 'Lost']];
+    legendInto(root.querySelector('#leg-ref-partners'), keys.map(([, l]) => [phaseColor(l), l]));
+    if (status('referral_partners') === 'loading') return;
+    box.classList.remove('dash-skeleton');
+    const rows = rowsOf('referral_partners');
+    if (!rows) { box.replaceChildren(failNode()); return; }
+    if (!rows.length) { box.replaceChildren(el('p', 'cc-empty', 'No referred deals yet.')); return; }
+    const max = d3.max(rows, (r) => r.deals) || 1;
+    box.replaceChildren(...rows.map((r) => {
+      const wrap = el('div', 'cc-refrow');
+      const top = el('div', 'cc-reftop');
+      const who = el('span');
+      who.append(el('span', 'cc-who', r.partner));
+      if (r.partner_contact) who.append(el('span', 'cc-sub', ' · ' + r.partner_contact));
+      const right = el('span');
+      right.append(markEl('b', 'referral_partners', 'deals', { partner: r.partner }, r.deals, 'int'), document.createTextNode(r.deals === 1 ? ' deal ' : ' deals '));
+      if (r.recorded) {
+        const pill = el('span', 'cc-pill ' + (r.agreement === 'Closed' ? 'cc-pill-ok' : 'cc-pill-warn'));
+        pill.append(document.createTextNode(r.agreement === 'Closed' ? 'Agreement signed · ' : 'Agreement: '), markEl('span', 'referral_partners', 'agreement', { partner: r.partner }, r.agreement, null));
+        right.append(pill);
+      }
+      top.append(who, right);
+      const outer = el('div');
+      outer.style.width = (r.deals / max * 100).toFixed(1) + '%';
+      outer.style.minWidth = '2rem';
+      const bar = el('div', 'cc-refbar');
+      keys.forEach(([k, label]) => {
+        if (!r[k]) return;
+        const seg = el('i');
+        seg.style.flex = String(r[k]);
+        seg.style.background = phaseColor(label);
+        seg.addEventListener('mousemove', (e) => showTip(box.closest('.cc-card'), e.clientX, e.clientY, r.partner, [[phaseColor(label), label, intF(r[k])]]));
+        seg.addEventListener('mouseleave', () => hideTip(box.closest('.cc-card')));
+        bar.append(seg);
+      });
+      outer.append(bar);
+      wrap.append(top, outer);
+      clickable(wrap, 'ref-partners', r.partner, 'Show deals referred by ' + r.partner);
+      return wrap;
+    }));
+    const s = rowsOf('referral_summary');
+    if (s) {
+      const g = (k) => (s.find((r) => r.measure === k) || {}).value;
+      const parts = [];
+      if (g('linked_deals')) {
+        parts.push(b('referral_summary', 'value', { measure: 'linked_deals' }, g('linked_deals'), 'int'), ' referred deals have their partner recorded, from ',
+          b('referral_summary', 'value', { measure: 'partners' }, g('partners'), 'int'), ' partners. ',
+          b('referral_summary', 'value', { measure: 'unsigned' }, g('unsigned'), 'int'), ' came through a partner whose agreement isn’t signed yet. ');
+      } else {
+        parts.push('No client deal has its referral partner recorded in Zoho yet. ');
+      }
+      if (g('unrecorded')) parts.push(b('referral_summary', 'value', { measure: 'unrecorded' }, g('unrecorded'), 'int'), ' deals are marked External Referral with no partner named: add the partner on each so they get credit.');
+      said(root.querySelector('#ins-ref'), parts);
+    }
+  };
+
+  /* Detail panels: every chart opens the records behind what was clicked */
+  const picked = {};
+  const DEAL_COLS = [['deal', 'Deal'], ['account', 'Account'], ['contact', 'Contact', null, true], ['stage', 'Stage'], ['amount', 'Amount', 'money', false, true], ['updated', 'Updated', 'date', true]];
+  const PEOPLE_COLS = [['contact', 'Contact'], ['account', 'Company', null, true], ['owner', 'Owner', null, true], ['meetings', 'Meetings', 'int', false, true], ['next_step', 'Next step'], ['due', 'Due', 'date']];
+  const MET_COLS = [['Full_Name', 'Contact'], ['Account_Name', 'Company'], ['Priority', 'Priority'], ['Assigned', 'Owner', null, true], ['Total_Meetings_Created', 'Meetings', 'int', false, true]];
+  const REF_COLS = [['partner', 'Referred by'], ['partner_contact', 'Partner contact', null, true], ['agreement', 'Agreement'], ['deal', 'Client deal'], ['client', 'Client', null, true], ['stage', 'Stage'], ['amount', 'Amount', 'money', false, true], ['referred_on', 'Referred', 'date', true]];
+  const byStageThenRecentD = (a, c) => stageRank(a.stage) - stageRank(c.stage) || String(c.updated || '').localeCompare(String(a.updated || ''));
+  const inCampaign = (r, c) => {
+    const rel = r.Relationship_Type || '';
+    if (c === 'rp') return rel.includes('Referral Partner');
+    if (c === 'fn') return rel.includes('Founder Network');
+    return !rel && Boolean(r['Account_Name.Priority']) && ['1', '3', '5'].includes(r.Priority);
+  };
+  const DEAL_STEPS = {
+    'rp|partner_deals': (d) => d.kind === 'Partnership',
+    'rp|agreements': (d) => d.kind === 'Partnership' && (d.stage === 'Proposals' || d.stage === 'Closed'),
+    'rp|signed': (d) => d.kind === 'Partnership' && d.stage === 'Closed',
+    'icp|deals': (d) => d.kind === 'Client' && d.campaign === 'ICP Prospecting',
+    'icp|won': (d) => d.kind === 'Client' && d.campaign === 'ICP Prospecting' && d.stage === 'Closed',
+    'fn|opps': (d) => d.kind === 'Client' && d.campaign === 'Founder Network',
+    'fn|won': (d) => d.kind === 'Client' && d.campaign === 'Founder Network' && d.stage === 'Closed',
+  };
+  const stepSpec = (c, s) => {
+    const title = META[c].name + ' · ' + stepLabel(c, s);
+    const swatch = hueOf(c);
+    const dealKeep = DEAL_STEPS[c + '|' + s];
+    if (dealKeep) return { title, swatch, source: 'deals_tagged', rowKey: 'id', cols: DEAL_COLS, rows: (rowsOf('deals_tagged') || []).filter(dealKeep).sort(byStageThenRecentD) };
+    if (c === 'rp' && s.startsWith('referred')) {
+      const refs = (rowsOf('referrals') || []).filter((r) => s === 'referred' || r.stage === 'Closed');
+      return { title, swatch, source: 'referrals', rowKey: 'link_id', cols: REF_COLS, rows: refs };
+    }
+    if (['met1', 'met5', 'meetings'].includes(s)) {
+      const min = s === 'met5' ? 5 : 1;
+      const rows = (rowsOf('met_contacts') || []).filter((r) => inCampaign(r, c) && (r.Total_Meetings_Created || 0) >= min)
+        .sort((a, b) => (b.Total_Meetings_Created || 0) - (a.Total_Meetings_Created || 0) || String(a.Full_Name).localeCompare(String(b.Full_Name)));
+      return { title, swatch, source: 'met_contacts', rowKey: 'id', cols: MET_COLS, rows, note: 'People with meetings logged in Zoho against their contact record.' };
+    }
+    if (c === 'icp' && s === 'accounts') {
+      return { title, swatch, source: 'icp_accounts', rowKey: 'Priority', cols: [['Priority', 'Account Priority'], ['count', 'Accounts', 'int', false, true]], rows: (rowsOf('icp_accounts') || []).slice().sort((a, b) => Number(a.Priority) - Number(b.Priority)) };
+    }
+    const keep = { invited: (r) => r.linkedin === 'Requested' || r.linkedin === 'Connected', connected: (r) => r.linkedin === 'Connected' }[s] || (() => true);
+    const rows = (rowsOf('contact_breakdown') || []).filter((r) => r.campaign === c && keep(r))
+      .sort((a, b) => String(a.priority).localeCompare(String(b.priority), 'en', { numeric: true }) || b.contacts - a.contacts);
+    return { title, swatch, source: 'contact_breakdown', rowKey: 'key', cols: [['priority', 'Priority'], ['linkedin', 'LinkedIn status'], ['contacts', 'Contacts', 'int', false, true]], rows, note: 'Grouped by Priority and LinkedIn status. Select Open in Zoho on the B2B, ICP or Founder Network list to work through the names.' };
+  };
+  const stageDeals = (keep, hue) => (stage) => ({
+    title: 'Deals at ' + stage, swatch: stageColor(hue, stage), source: 'deals_tagged', rowKey: 'id',
+    cols: DEAL_COLS.filter(([f]) => f !== 'stage'),
+    rows: (rowsOf('deals_tagged') || []).filter((d) => keep(d) && d.stage === stage).sort((a, c) => String(c.updated || '').localeCompare(String(a.updated || ''))),
+  });
+  const peopleSpec = (title, swatch, keep) => ({
+    title, swatch, source: 'fn_next', rowKey: 'contact_id', cols: PEOPLE_COLS,
+    rows: (rowsOf('fn_next') || []).filter(keep).sort((a, b) => a.open_tasks - b.open_tasks || String(a.contact).localeCompare(String(b.contact))),
+  });
+  const prioritySpec = (c) => (p) => {
+    const title = META[c].name + ' · ' + (p === 'Not set' ? 'No Priority set' : 'P' + p + ' · ' + PRIORITY[p]);
+    if (c === 'fn' && (p === '1' || p === '3')) return peopleSpec(title, priorityColor(c, p), (r) => r.priority === p);
+    return {
+      title, swatch: priorityColor(c, p), source: 'contact_breakdown', rowKey: 'key', cols: [['linkedin', 'LinkedIn status'], ['contacts', 'Contacts', 'int', false, true]],
+      rows: (rowsOf('contact_breakdown') || []).filter((r) => r.campaign === c && r.priority === p).sort((a, b) => b.contacts - a.contacts),
+    };
+  };
+  const DRILLS = {
+    'rp-stages': { card: '#rp-stages', build: stageDeals((d) => d.kind === 'Partnership', HUE.rp) },
+    'icp-stages': { card: '#icp-stages', build: stageDeals((d) => d.kind === 'Client' && d.campaign === 'ICP Prospecting', HUE.icp) },
+    'fn-stages': { card: '#fn-stages', build: stageDeals((d) => d.kind === 'Client' && d.campaign === 'Founder Network', HUE.fn) },
+    'pipe-stage': {
+      card: '#pipe-stage',
+      build: (stage) => ({ ...stageDeals(() => true, HUE.rp)(stage), cols: [['deal', 'Deal'], ['account', 'Account'], ['campaign', 'Campaign'], ['kind', 'Type', null, true], ['amount', 'Amount', 'money', false, true], ['updated', 'Updated', 'date', true]] }),
+    },
+    meetings: {
+      card: '#ov-meetings',
+      build: (week) => ({
+        title: 'Meetings in the week of ' + day(week), source: 'meetings_tagged', rowKey: 'id',
+        cols: [['when', 'When (CT)', 'datetime'], ['title', 'Meeting'], ['contact', 'With'], ['group', 'Campaign', null, true]],
+        rows: (rowsOf('meetings_tagged') || []).filter((m) => m.week === week).sort((a, b) => String(a.when).localeCompare(String(b.when))),
+      }),
+    },
+    monthly: {
+      card: '#pipe-monthly',
+      build: (month) => ({
+        title: 'Deals created in ' + monthF(new Date(month + '-01T00:00:00Z')), source: 'deals_tagged', rowKey: 'id',
+        cols: [['deal', 'Deal'], ['account', 'Account'], ['kind', 'Type'], ['campaign', 'Campaign', null, true], ['stage', 'Stage'], ['created', 'Created', 'date', true]],
+        rows: (rowsOf('deals_tagged') || []).filter((d) => String(d.created || '').slice(0, 7) === month).sort((a, b) => String(a.created).localeCompare(String(b.created))),
+      }),
+    },
+    'targets-all': { card: '#ov-targets', build: (v) => { const [c, s] = v.split('|'); return stepSpec(c, s); } },
+    'targets-rp': { card: '#rp-targets', build: (s) => stepSpec('rp', s) },
+    'targets-icp': { card: '#icp-targets', build: (s) => stepSpec('icp', s) },
+    'targets-fn': { card: '#fn-targets', build: (s) => stepSpec('fn', s) },
+    'funnel-rp': { card: '#rp-funnel', build: (s) => stepSpec('rp', s) },
+    'funnel-icp': { card: '#icp-funnel', build: (s) => stepSpec('icp', s) },
+    'funnel-fn': { card: '#fn-funnel', build: (s) => stepSpec('fn', s) },
+    'ov-rp': { card: '#ov-rp', build: (s) => stepSpec('rp', s) },
+    'ov-icp': { card: '#ov-icp', build: (s) => stepSpec('icp', s) },
+    'ov-fn': { card: '#ov-fn', build: (s) => stepSpec('fn', s) },
+    'prio-rp': { card: '#rp-priority', build: prioritySpec('rp') },
+    'prio-icp': { card: '#icp-priority', build: prioritySpec('icp') },
+    'prio-fn': { card: '#fn-priority', build: prioritySpec('fn') },
+    coverage: {
+      card: '#fn-coverage',
+      build: (v) => {
+        const [p, state] = v.split('|');
+        return peopleSpec('Priority ' + p + ' · ' + state, state === 'No next step' ? 'var(--cds-chart-status-critical)' : hueOf('fn'), (r) => r.priority === p && (state === 'No next step' ? r.open_tasks === 0 : r.open_tasks > 0));
+      },
+    },
+    'ref-flow': { card: '#ref-flow-card', build: (id) => ({ title: 'Referral detail', source: 'referrals', rowKey: 'link_id', cols: REF_COLS, rows: (rowsOf('referrals') || []).filter((r) => r.link_id === id) }) },
+    'ref-partners': { card: '#ref-partners-card', build: (partner) => ({ title: 'Deals referred by ' + partner, source: 'referrals', rowKey: 'link_id', cols: REF_COLS.filter(([f]) => !['partner', 'partner_contact', 'agreement'].includes(f)), rows: (rowsOf('referrals') || []).filter((r) => r.partner === partner) }) },
+  };
+  const pick = (key, value) => {
+    picked[key] = picked[key] === value ? null : value;
+    redrawAll();
+    const card = root.querySelector(DRILLS[key].card);
+    const box = card && card.querySelector(':scope > .cc-drill');
+    if (picked[key] != null && box && !box.hidden) box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  };
+  const clickable = (node, key, value, label) => {
+    node.classList.add('cc-clickable');
+    node.classList.toggle('cc-picked', picked[key] === value);
+    node.tabIndex = 0;
+    node.setAttribute('role', 'button');
+    node.setAttribute('aria-pressed', String(picked[key] === value));
+    if (label) node.setAttribute('aria-label', label);
+    node.addEventListener('click', (e) => { e.stopPropagation(); pick(key, value); });
+    node.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(key, value); } });
+    return node;
+  };
+  const drawDrill = (key) => {
+    const cfg = DRILLS[key];
+    const card = root.querySelector(cfg.card);
+    if (!card) return;
+    let box = card.querySelector(':scope > .cc-drill');
+    if (!box) {
+      box = el('div', 'cc-drill');
+      box.hidden = true;
+      card.insertBefore(box, card.querySelector(':scope > .cc-insight'));
+    }
+    const value = picked[key];
+    const spec = value == null ? null : cfg.build(value);
+    if (!spec) { box.hidden = true; box.replaceChildren(); return; }
+    const head = el('div', 'cc-drill-head');
+    const h = el('h4');
+    if (spec.swatch) { const sw = el('i', 'cc-sw'); sw.style.background = spec.swatch; h.append(sw); }
+    h.append(document.createTextNode(spec.title));
+    const close = el('button', 'cc-go', 'Close');
+    close.type = 'button';
+    close.addEventListener('click', () => pick(key, value));
+    head.append(h, close);
+    const parts = [head];
+    if (spec.note) parts.push(el('p', 'cc-empty', spec.note));
+    if (status(spec.source) !== 'ok') parts.push(failNode());
+    else if (!spec.rows.length) parts.push(el('p', 'cc-empty', 'Nothing here yet.'));
+    else {
+      const wrap = el('div', 'cc-scroll');
+      const table = el('table', 'cc-tbl');
+      table.dataset.source = spec.source;
+      table.dataset.rowKey = spec.rowKey;
+      const hr = el('tr');
+      const cls = (num, narrow) => [num ? 'cc-num' : '', narrow ? 'cc-hide-narrow' : ''].filter(Boolean).join(' ') || null;
+      spec.cols.forEach(([f, label, , narrow, num]) => { const th = el('th', cls(num, narrow), label); th.dataset.field = f; hr.append(th); });
+      const thead = el('thead');
+      thead.append(hr);
+      const tbody = el('tbody');
+      spec.rows.forEach((r) => {
+        const tr = el('tr');
+        tr.dataset.key = r[spec.rowKey];
+        spec.cols.forEach(([f, , kind, narrow, num]) => tr.append(el('td', cls(num, narrow), fmt(r[f], kind))));
+        tbody.append(tr);
+      });
+      table.append(thead, tbody);
+      wrap.append(table);
+      parts.push(wrap);
+    }
+    box.replaceChildren(...parts);
+    box.hidden = false;
+  };
+
+  function drawSized() {
+    drawMeetings();
+    drawRefFlow();
+    drawStageChart('#chart-rp-stages', {
+      source: 'stage_mix', filter: (r) => r.kind === 'Partnership', hue: HUE.rp, drill: 'rp-stages',
+      insight: (mine) => {
+        const g = (s) => mine.find((r) => r.stage === s);
+        const prop = g('Proposals');
+        const hold = g('Hold');
+        const won = g('Closed');
+        said(root.querySelector('#ins-rp-stages'), [
+          prop ? b('stage_mix', 'deals', { kind: 'Partnership', stage: 'Proposals' }, prop.deals, 'int') : '0', ' agreements are out for signature and ',
+          hold ? b('stage_mix', 'deals', { kind: 'Partnership', stage: 'Hold' }, hold.deals, 'int') : '0', ' are on hold, against ',
+          won ? b('stage_mix', 'deals', { kind: 'Partnership', stage: 'Closed' }, won.deals, 'int') : '0', ' signed. Closing the ones already sent is the fastest win.']);
+      },
+    });
+    drawStageChart('#chart-icp-stages', {
+      source: 'stage_campaign', filter: (r) => r.kind === 'Client' && r.campaign === 'ICP Prospecting', hue: HUE.icp, drill: 'icp-stages',
+      insight: () => {
+        const f = rowsOf('funnel');
+        const deals = f && f.find((r) => r.campaign === 'icp' && r.step === 'deals');
+        const won = f && f.find((r) => r.campaign === 'icp' && r.step === 'won');
+        if (deals && won) said(root.querySelector('#ins-icp-stages'), [b('funnel', 'value', { campaign: 'icp', step: 'deals' }, deals.value, 'int'), ' ICP deals created against a target of 18, with ', b('funnel', 'value', { campaign: 'icp', step: 'won' }, won.value, 'int'), ' won so far.']);
+      },
+    });
+    drawStageChart('#chart-fn-stages', {
+      source: 'stage_campaign', filter: (r) => r.kind === 'Client' && r.campaign === 'Founder Network', hue: HUE.fn, drill: 'fn-stages',
+      insight: () => {
+        const f = rowsOf('funnel');
+        const opps = f && f.find((r) => r.campaign === 'fn' && r.step === 'opps');
+        const won = f && f.find((r) => r.campaign === 'fn' && r.step === 'won');
+        if (opps && won) said(root.querySelector('#ins-fn-stages'), [b('funnel', 'value', { campaign: 'fn', step: 'opps' }, opps.value, 'int'), ' opportunities created against a target of 15, with ', b('funnel', 'value', { campaign: 'fn', step: 'won' }, won.value, 'int'), ' won so far. Several are on hold: decide which to revive.']);
+      },
+    });
+    drawPipeStage();
+    drawMonthly();
+  }
+
+  /* Tables */
+  const tableState = (table, id) => {
+    const card = table.closest('.cc-card');
+    const state = card.querySelector('.cc-state');
+    const st = status(id);
+    if (st === 'loading') return 'loading';
+    if (st !== 'ok') {
+      table.tBodies[0].replaceChildren();
+      state.replaceChildren(failNode());
+      state.hidden = false;
+      card.querySelector('.cc-empty').hidden = true;
+      return 'failed';
+    }
+    state.hidden = true;
+    return 'ok';
+  };
+  const fillTable = (table, rows, opts = {}) => {
+    const heads = [...table.tHead.rows[0].cells];
+    const key = table.dataset.rowKey;
+    table.tBodies[0].replaceChildren(...rows.map((r) => {
+      const tr = document.createElement('tr');
+      tr.dataset.key = r[key];
+      const cls = opts.rowClass ? opts.rowClass(r) : '';
+      if (cls) tr.className = cls;
+      for (const th of heads) {
+        const f = th.dataset.field;
+        const td = document.createElement('td');
+        td.textContent = fmt(r[f], (opts.fmt || {})[f]);
+        const c = [th.classList.contains('cc-num') ? 'cc-num' : '', th.classList.contains('cc-hide-narrow') ? 'cc-hide-narrow' : ''].filter(Boolean).join(' ');
+        if (c) td.className = c;
+        tr.append(td);
+      }
+      return tr;
+    }));
+    table.closest('.cc-card').querySelector('.cc-empty').hidden = rows.length > 0;
+  };
+  const byStageThenRecent = (a, b2) => stageRank(a.stage) - stageRank(b2.stage) || String(b2.updated || '').localeCompare(String(a.updated || ''));
+  const dealFmt = { updated: 'date', amount: 'money' };
+
+  const filters = { p1: false, missing: false };
+  const chipP1 = root.querySelector('#fn-only-p1');
+  const chipMissing = root.querySelector('#fn-only-missing');
+  chipP1.addEventListener('click', () => { filters.p1 = !filters.p1; chipP1.setAttribute('aria-pressed', String(filters.p1)); drawTables(); });
+  chipMissing.addEventListener('click', () => { filters.missing = !filters.missing; chipMissing.setAttribute('aria-pressed', String(filters.missing)); drawTables(); });
+
+  const sortState = { field: 'updated', dir: -1 };
+  const search = root.querySelector('#deal-search');
+  search.addEventListener('input', () => drawTables());
+  root.querySelectorAll('#all-deals th').forEach((th) => {
+    th.querySelector('.cc-sort').addEventListener('click', () => {
+      const f = th.dataset.field;
+      sortState.dir = sortState.field === f ? -sortState.dir : (f === 'amount' || f === 'updated' ? -1 : 1);
+      sortState.field = f;
+      root.querySelectorAll('#all-deals th').forEach((h) => h.setAttribute('aria-sort', h === th ? (sortState.dir === 1 ? 'ascending' : 'descending') : 'none'));
+      drawTables();
+    });
+  });
+
+  function drawTables() {
+    const deals = rowsOf('deals_tagged') || [];
+    const rpTable = root.querySelector('#rp-deals');
+    if (tableState(rpTable, 'deals_tagged') === 'ok') fillTable(rpTable, deals.filter((d) => d.kind === 'Partnership' && d.stage !== 'Closed' && !LOST.includes(d.stage)).sort(byStageThenRecent), { fmt: dealFmt });
+    const icpTable = root.querySelector('#icp-deals');
+    if (tableState(icpTable, 'deals_tagged') === 'ok') fillTable(icpTable, deals.filter((d) => d.kind === 'Client' && d.campaign === 'ICP Prospecting').sort(byStageThenRecent), { fmt: dealFmt });
+    const fnOpps = root.querySelector('#fn-opps');
+    if (tableState(fnOpps, 'deals_tagged') === 'ok') fillTable(fnOpps, deals.filter((d) => d.kind === 'Client' && d.campaign === 'Founder Network').sort(byStageThenRecent), { fmt: dealFmt });
+    const all = root.querySelector('#all-deals');
+    if (tableState(all, 'deals_tagged') === 'ok') {
+      const q = search.value.trim().toLowerCase();
+      const shown = deals.filter((d) => !q || [d.deal, d.account, d.contact, d.campaign, d.stage, d.kind].some((v) => String(v || '').toLowerCase().includes(q)));
+      const f = sortState.field;
+      shown.sort((a, c) => {
+        let x;
+        if (f === 'amount') x = (a.amount || 0) - (c.amount || 0);
+        else if (f === 'stage') x = stageRank(a.stage) - stageRank(c.stage);
+        else x = String(a[f] || '').localeCompare(String(c[f] || ''));
+        return x * sortState.dir;
+      });
+      fillTable(all, shown, { fmt: dealFmt });
+    }
+    const refTable = root.querySelector('#ref-table');
+    if (tableState(refTable, 'referrals') === 'ok') {
+      const refs = (rowsOf('referrals') || []).slice().sort((a, c) => Number(c.recorded) - Number(a.recorded) || String(c.referred_on || '').localeCompare(String(a.referred_on || '')));
+      fillTable(refTable, refs, { fmt: { amount: 'money', referred_on: 'date' }, rowClass: (r) => (!r.recorded ? 'cc-row-bad' : !r.signed ? 'cc-row-warn' : '') });
+    }
+    const fnTable = root.querySelector('#fn-next');
+    if (tableState(fnTable, 'fn_next') === 'ok') {
+      const people = (rowsOf('fn_next') || [])
+        .filter((p) => (!filters.p1 || p.priority === '1') && (!filters.missing || p.open_tasks === 0))
+        .sort((a, c) => String(a.priority).localeCompare(String(c.priority), 'en', { numeric: true })
+          || (a.open_tasks === 0 ? 0 : 1) - (c.open_tasks === 0 ? 0 : 1)
+          || String(a.due || '9999-12-31').localeCompare(String(c.due || '9999-12-31'))
+          || String(a.contact || '').localeCompare(String(c.contact || '')));
+      fillTable(fnTable, people, {
+        fmt: { due: 'date', meetings: 'int' },
+        rowClass: (p) => (p.open_tasks === 0 ? 'cc-row-bad' : p.due && p.due < todayCT ? 'cc-row-warn' : ''),
+      });
+    }
+  }
+
+  const named = location.hash.slice(1) ? document.getElementById(location.hash.slice(1)) : null;
+  const namedPage = named ? named.closest('.cc-page') : null;
+  show(namedPage ? namedPage.id : 'overview', false);
+  if (named && namedPage && named !== namedPage) requestAnimationFrame(() => named.scrollIntoView({ block: 'start' }));
+
+  root.querySelectorAll('.cc-goal').forEach((g) => {
+    const f = g.querySelector('.cc-fill');
+    clickable(g, 'ov-' + f.dataset.campaign, f.dataset.step, 'Show details');
+  });
+
+  function redrawAll() {
+    fillMarks();
+    drawFunnels();
+    drawBullets();
+    drawDonuts();
+    drawCoverage();
+    drawRefBars();
+    drawSized();
+    Object.keys(DRILLS).forEach(drawDrill);
+    drawTables();
+  }
+  dash.onData(redrawAll);
+})();
+</script>
+
+</main>
+</body>
+</html>
