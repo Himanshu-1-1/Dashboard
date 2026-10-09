@@ -33,7 +33,7 @@ QUERIES = {
     'open_tasks': {"sql": "select Subject, Due_Date, Status, Owner, Who_Id, Who_Id.Relationship_Type from Tasks where Status != 'Completed' order by Due_Date asc", "paged": True},
     'fn_people': {"sql": "select Full_Name, Account_Name, Priority, LI_Connect, Assigned, Total_Meetings_Created from Contacts where (Relationship_Type like '%Founder Network%' and Priority in ('1','3')) order by Priority asc", "paged": True},
     'met_contacts': {"sql": 'select Full_Name, Account_Name, Account_Name.Priority, Relationship_Type, Priority, LI_Connect, Assigned, Total_Meetings_Created from Contacts where Total_Meetings_Created is not null order by Total_Meetings_Created desc', "paged": True},
-    'referral_links': {"sql": 'select Referral_Partner, Referred_Deals, Created_Time from Deals_X_Accounts where id is not null', "paged": True},
+    'referral_links': {"sql": 'select Referred_By_Contact, Referred_By_Account from Deals where (Referred_By_Contact is not null or Referred_By_Account is not null)', "paged": True},
     'meetings': {"sql": "select Event_Title, Start_DateTime, Who_Id, Who_Id.Relationship_Type, Who_Id.Priority from Events where Start_DateTime >= '2026-08-17T00:00:00-05:00' order by Start_DateTime asc", "paged": True}
 }
 

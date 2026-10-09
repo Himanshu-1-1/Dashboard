@@ -74,7 +74,7 @@ python3 -m http.server --directory site 8000
 - **B2B Campaign:** contacts whose Relationship Type includes *Referral Partner*. Partnership deals are deals named as a referral, partner or platform agreement.
 - **Founder Network:** contacts whose Relationship Type includes *Founder Network*. Opportunities are client deals with one of these contacts. Next steps are their open Zoho tasks.
 - **ICP Prospecting:** contacts at an account with a Priority set, with their own Priority 1, 3 or 5 and no relationship tag.
-- **Referrals:** client deals with a partner in the deal's *Referral Partner* field, plus deals marked *External Referral* that have no partner recorded yet.
+- **Referrals:** client deals with *Referred By Contact* or *Referred By Account* filled in (Commission Details section on the deal; a deal counts once even when both are filled), plus deals marked *External Referral* that have no referrer recorded yet.
 - **Meetings:** Zoho Meetings linked to a contact. A meeting with no contact attached can't be credited to a campaign, and because the calendar also holds personal events, it's published without its title.
 - **Targets:** from the 2026 campaign tracking sheets. The pace line assumes the campaigns run Aug 17 to Dec 18, 2026.
 

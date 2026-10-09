@@ -417,7 +417,7 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
           <li>B2B Campaign: referral partner contacts, meaning contacts whose Relationship Type includes Referral Partner. Partnership deals are deals named as a referral, partner or platform agreement, whoever the contact is.</li>
           <li>Founder Network: contacts whose Relationship Type includes Founder Network. Their opportunities are client deals with one of these contacts. Next steps are their open Zoho tasks.</li>
           <li>ICP Prospecting: contacts at an account with a Priority set, with their own Priority 1, 3 or 5 and no relationship tag. Your “2026 ICP: Contact Report (Mack)” uses its own filter, so its total can differ slightly.</li>
-          <li>Referred deals: client deals with a partner in the Referral Partner field, plus deals marked External Referral that have no partner recorded yet.</li>
+          <li>Referred deals: client deals with Referred By Contact or Referred By Account filled in (counted once each), plus deals marked External Referral that have no referrer recorded yet.</li>
           <li>Meetings come from Zoho Meetings linked to a contact. A meeting with no contact attached can't be credited to any campaign.</li>
           <li>The ICP sheet's “Contacted” step has no field in Zoho yet, so it isn't shown.</li>
         </ul>
@@ -480,12 +480,12 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
         <div class="cc-refbars dash-skeleton" data-source="referral_partners"></div>
       </article>
       <article class="cc-card" id="ref-howto">
-        <div class="cc-card-head"><h3>How to record a referral</h3><p>This tab reads the Referral Partner field on each deal in Zoho.</p></div>
+        <div class="cc-card-head"><h3>How to record a referral</h3><p>This tab reads the Commission Details section on each deal in Zoho.</p></div>
         <ol class="cc-notes">
           <li>Open the client's deal in Zoho, for example Josh Graham's “Import Export Platform”.</li>
-          <li>In the Referral Partner field, add the partner's account, for example NextStep Recruiting for Aaron Alaniz.</li>
-          <li>Set Lead Source to External Referral and save. The deal appears here the next time the page opens.</li>
-          <li>A referral only earns commission once the partner's agreement is signed, so close their agreement deal too.</li>
+          <li>In Commission Details, set Referred By Contact to the person who introduced the client and Referred By Account to their company, for example Aaron Alaniz and NextStep Recruiting. One of the two is enough.</li>
+          <li>Add any deal-specific commission terms in Commission Details; leave it blank when the partner's standard agreement applies. Save, and the deal appears here after the next refresh.</li>
+          <li>Attribution doesn't depend on the agreement. The Agreement column shows whether the partner's agreement deal is signed (Closed).</li>
         </ol>
       </article>
     </div>
@@ -905,25 +905,27 @@ dash.calc('deals_tagged', {
 
 dash.calc('referrals', {
   title: 'Referred deals',
-  description: 'Each client deal a referral partner sent us, from the Referral Partner field on the deal, plus deals with lead source External Referral that have no partner linked yet. The partner contact and agreement come from that partner account’s partnership deal.',
+  description: 'Each client deal a referral partner sent us, from the deal’s Referred By Contact and Referred By Account fields (one row per deal, so a deal with both filled counts once), plus deals with lead source External Referral that have no referrer recorded yet. The agreement comes from the partner account’s partnership deal.',
   inputs: ['referral_links', 'deals_tagged'],
   fn: (referral_links, deals_tagged) => {
     const byId = new Map(deals_tagged.map((d) => [d.id, d]));
-    const agreementOf = (account) => {
-      const list = deals_tagged.filter((d) => d.kind === 'Partnership' && account && d.account === account);
+    const agreementOf = (account, contact) => {
+      const list = deals_tagged.filter((d) => d.kind === 'Partnership' && ((account && d.account === account) || (contact && d.contact === contact)));
       return list.find((d) => d.stage === 'Closed') || list[0] || null;
     };
     const out = [];
     const linked = new Set();
     for (const l of referral_links) {
-      const d = byId.get(l.Referred_Deals_id);
-      if (!d) continue;
+      const d = byId.get(l.id);
+      if (!d || linked.has(d.id)) continue;
       linked.add(d.id);
-      const ag = agreementOf(l.Referral_Partner);
+      const ag = agreementOf(l.Referred_By_Account, l.Referred_By_Contact);
       out.push({
-        link_id: d.id + '|' + (l.Referral_Partner_id || ''), deal_id: d.id, deal: d.deal, client: d.account, client_contact: d.contact,
-        stage: d.stage, amount: d.amount, referred_on: l.Created_Time || d.created,
-        partner: l.Referral_Partner, partner_contact: ag ? ag.contact : null, agreement: ag ? ag.stage : 'No agreement in Zoho',
+        link_id: d.id, deal_id: d.id, deal: d.deal, client: d.account, client_contact: d.contact,
+        stage: d.stage, amount: d.amount, referred_on: d.created,
+        partner: l.Referred_By_Account || l.Referred_By_Contact,
+        partner_contact: l.Referred_By_Contact || (ag ? ag.contact : null),
+        agreement: ag ? ag.stage : 'No agreement in Zoho',
         signed: Boolean(ag && ag.stage === 'Closed'), recorded: true,
       });
     }
@@ -962,7 +964,7 @@ dash.calc('referral_partners', {
 
 dash.calc('referral_summary', {
   title: 'Referral totals',
-  description: 'Referred deals with a partner recorded, partners who have referred, referred deals whose partner agreement isn’t signed, and External Referral deals with no partner recorded.',
+  description: 'Referred deals with a referrer recorded, partners who have referred, referred deals whose partner agreement isn’t signed, and External Referral deals with no referrer recorded.',
   inputs: ['referrals'],
   fn: (referrals) => {
     const linked = referrals.filter((r) => r.recorded);
@@ -1866,7 +1868,7 @@ dash.calc('attention', {
     const rows = chartReady(box, 'referrals');
     if (!rows) return;
     if (!rows.length) {
-      box.replaceChildren(el('p', 'cc-flow-empty', 'No referred deals yet. Add the partner’s account in the Referral Partner field on a client deal in Zoho and the link appears here.'));
+      box.replaceChildren(el('p', 'cc-flow-empty', 'No referred deals yet. Fill in Referred By Contact or Referred By Account on a client deal in Zoho and it appears here.'));
       return;
     }
     const width = box.clientWidth;
