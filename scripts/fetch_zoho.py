@@ -104,6 +104,14 @@ def coql(api_domain, token, sql):
     return payload.get("data") or [], bool(info.get("more_records"))
 
 
+def redact_unlinked_meetings(rows):
+    """The site is public and the calendar also holds personal events. A meeting with no
+    contact linked can't be credited to a campaign, so publish it without its title."""
+    for row in rows:
+        if not row.get("Who_Id"):
+            row["Event_Title"] = "Meeting (no contact linked)"
+
+
 def run_query(api_domain, token, sql, paged):
     if not paged:
         rows, _ = coql(api_domain, token, sql)
@@ -138,6 +146,8 @@ def main():
         except RuntimeError as err:
             failures.append(f"{name}: {err}")
             continue
+        if name == "meetings":
+            redact_unlinked_meetings(rows)
         datasets[name] = {"status": "success", "data": {"data": rows, "info": {"count": len(rows), "more_records": cut}}}
         print(f"{name}: {len(rows)} rows{' (cut short)' if cut else ''}")
 

@@ -18,7 +18,8 @@ Static campaign dashboard for True Lean Solutions / TechTranspire, published to 
 - Colors and spacing are CSS custom properties defined once in `:root`, with dark-mode values.
 
 ## Hard constraints
-- Never commit `site/data.js` or any Zoho credentials. Secrets live in GitHub Actions secrets only.
+- Never commit `site/data.js` or any Zoho credentials to `main`. Secrets live in GitHub Actions secrets only. The `data-snapshot` branch (orphan, single commit, force-pushed) is a stopgap used only while the secrets are missing.
+- Meetings with no linked contact are published without titles (`redact_unlinked_meetings`); the calendar includes personal events.
 - The Zoho client is read-only (`ZohoCRM.coql.READ,ZohoCRM.modules.READ`). Don't add write scopes.
 - The site is public; planned next step is passcode encryption of `data.js` in the workflow.
 - Dates display in Central time (CT); the refresh schedule is stated in IST.

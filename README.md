@@ -75,11 +75,12 @@ python3 -m http.server --directory site 8000
 - **Founder Network:** contacts whose Relationship Type includes *Founder Network*. Opportunities are client deals with one of these contacts. Next steps are their open Zoho tasks.
 - **ICP Prospecting:** contacts at an account with a Priority set, with their own Priority 1, 3 or 5 and no relationship tag.
 - **Referrals:** client deals with a partner in the deal's *Referral Partner* field, plus deals marked *External Referral* that have no partner recorded yet.
-- **Meetings:** Zoho Meetings linked to a contact. A meeting with no contact attached can't be credited to a campaign.
+- **Meetings:** Zoho Meetings linked to a contact. A meeting with no contact attached can't be credited to a campaign, and because the calendar also holds personal events, it's published without its title.
 - **Targets:** from the 2026 campaign tracking sheets. The pace line assumes the campaigns run Aug 17 to Dec 18, 2026.
 
 ## Things to know
 
+- Until the three Zoho secrets are added, the job publishes the one-off snapshot stored on the `data-snapshot` branch and shows a warning in the run. Once the secrets are in, it pulls live data and the snapshot branch can be deleted.
 - If any Zoho query fails, the job stops and the site keeps yesterday's data. The failed run shows in the **Actions** tab with Zoho's error.
 - GitHub can start scheduled runs a few minutes late, and it pauses schedules on repos with no activity for 60 days. A push or a manual run turns the schedule back on.
 - To change the refresh time, edit the `cron` line in `.github/workflows/refresh.yml`. It's in UTC: `30 2 * * *` is 8:00 AM IST.

@@ -33,7 +33,17 @@ jobs:
           ZOHO_REFRESH_TOKEN: ${{ secrets.ZOHO_REFRESH_TOKEN }}
           ZOHO_ACCOUNTS_URL: ${{ vars.ZOHO_ACCOUNTS_URL }}
           ZOHO_API_DOMAIN: ${{ vars.ZOHO_API_DOMAIN }}
-        run: python scripts/fetch_zoho.py --out site/data.js
+        run: |
+          if [ -n "$ZOHO_CLIENT_ID" ] && [ -n "$ZOHO_CLIENT_SECRET" ] && [ -n "$ZOHO_REFRESH_TOKEN" ]; then
+            python scripts/fetch_zoho.py --out site/data.js
+          elif git fetch --depth=1 origin data-snapshot 2>/dev/null; then
+            # Until the Zoho secrets are added, publish the one-off snapshot kept on the data-snapshot branch.
+            git show FETCH_HEAD:data.js > site/data.js
+            echo "::warning::Zoho secrets are not set, so the site shows the data-snapshot branch. Add ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET and ZOHO_REFRESH_TOKEN to refresh daily."
+          else
+            echo "::error::Add the ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET and ZOHO_REFRESH_TOKEN secrets (see README)."
+            exit 1
+          fi
 
       - uses: actions/configure-pages@v5
 
