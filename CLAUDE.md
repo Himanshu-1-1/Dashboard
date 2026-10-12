@@ -16,7 +16,7 @@ Static campaign dashboard for True Lean Solutions / TechTranspire, published to 
 ## How the page is built
 - The page code talks to a small `window.dash` data layer at the top of `index.html`: `dash.loader` turns each raw Zoho answer into rows, `dash.calc` derives values from datasets, `dash.data(id)` reads them, and `dash.onData(fn)` redraws.
 - Dataset IDs in `QUERIES` (fetch script) must match the `dash.loader(...)` IDs in the page.
-- Campaign membership: B2B tag `May 2026 - 100 B2B`, ICP tag `2026ICP` (contacts and accounts), Founder Network by Relationship Type, Medical Courier account tag `2026MedicalCourier`. Priority 9/11 excluded everywhere; Founder Network wins over tags. The tag constants live in `fetch_zoho.py` and `CC_RULES` in the page; keep them in step. Deals are sorted by Deal Type (`CC_RULES.dealKind`).
+- Campaign membership: B2B tag `May 2026 - 100 B2B`, ICP tag `2026ICP` (contacts and accounts), Founder Network by Relationship Type, Medical Courier account tag `2026MedicalCourier`. Priority 9/11 excluded everywhere; Founder Network wins over tags. The tag constants live in `fetch_zoho.py` and `CC_RULES` in the page; keep them in step. Deals are sorted by Deal Type (`CC_RULES.dealKind`). Campaign tabs and the Overview's monthly bars count the open pipeline only (Identify, Discovery, Proposals, Hold; `CC_RULES.isOpen`); B2B leaves out lost agreements but keeps signed ones (`CC_RULES.notLost`). The Pipeline tab shows every deal.
 - Every number on the page comes from a dataset or a `dash.calc`; don't hard-code figures in markup. Targets are constants inside the `funnel` calc.
 - Colors and spacing are CSS custom properties defined once in `:root`, with dark-mode values.
 
