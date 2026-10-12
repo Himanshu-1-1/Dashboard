@@ -353,11 +353,6 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
 <div class="cc" id="top">
   <header class="cc-head">
     <h1>Campaign Command Center</h1>
-    <p class="cc-takeaway" id="takeaway">
-      B2B campaign: <b data-source="funnel" data-field="value" data-where="campaign=rp&amp;step=connected" data-fmt="int" class="dash-skeleton">—</b> of <b data-source="funnel" data-field="value" data-where="campaign=rp&amp;step=total" data-fmt="int" class="dash-skeleton">—</b> prospects connected, <b data-source="attention" data-field="value" data-where="item=partner_proposals" data-fmt="int" class="dash-skeleton">—</b> agreements waiting for signature.
-      Founder Network: <b data-source="funnel" data-field="value" data-where="campaign=fn&amp;step=opps" data-fmt="int" class="dash-skeleton">—</b> client opportunities created, <b data-source="attention" data-field="value" data-where="item=fn_p1_no_step" data-fmt="int" class="dash-skeleton">—</b> priority-1 contacts with no next step.
-      ICP: <b data-source="funnel" data-field="value" data-where="campaign=icp&amp;step=connected" data-fmt="int" class="dash-skeleton">—</b> executives connected, <b data-source="funnel" data-field="value" data-where="campaign=icp&amp;step=meetings" data-fmt="int" class="dash-skeleton">—</b> meetings logged against a target of 300.
-    </p>
     <p class="cc-meta"><span id="cc-refreshed">Loading today’s data from Zoho CRM…</span> Refreshed daily at 8:00 AM IST. Dates are Central time. Targets come from the 2026 campaign tracking sheets; the pace line assumes the campaigns run Aug 17 to Dec 18, 2026.</p>
   </header>
 
@@ -434,6 +429,7 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
 
   <section class="cc-page" id="rp" role="tabpanel" aria-labelledby="tab-rp" hidden>
     <p class="cc-intro">Are partner prospects turning into signed referral agreements, and are those partners sending us work?</p>
+    <p class="cc-takeaway" id="takeaway-rp"><b data-source="funnel" data-field="value" data-where="campaign=rp&amp;step=connected" data-fmt="int" class="dash-skeleton">—</b> of <b data-source="funnel" data-field="value" data-where="campaign=rp&amp;step=total" data-fmt="int" class="dash-skeleton">—</b> prospects connected, <b data-source="attention" data-field="value" data-where="item=partner_proposals" data-fmt="int" class="dash-skeleton">—</b> agreements waiting for signature.</p>
     <div class="cc-grid">
       <article class="cc-card" id="rp-funnel">
         <div class="cc-card-head"><h3>Funnel</h3><p>Prospects at each stage, from one left edge. The red step is where the most are lost. Select a step for details.</p></div>
@@ -512,6 +508,7 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
 
   <section class="cc-page" id="icp" role="tabpanel" aria-labelledby="tab-icp" hidden>
     <p class="cc-intro">Is the LinkedIn sequence turning connections at target accounts into meetings and deals?</p>
+    <p class="cc-takeaway" id="takeaway-icp"><b data-source="funnel" data-field="value" data-where="campaign=icp&amp;step=connected" data-fmt="int" class="dash-skeleton">—</b> executives connected, <b data-source="funnel" data-field="value" data-where="campaign=icp&amp;step=meetings" data-fmt="int" class="dash-skeleton">—</b> meetings logged against a target of 300.</p>
     <div class="cc-grid">
       <article class="cc-card" id="icp-funnel">
         <div class="cc-card-head"><h3>Funnel</h3><p>Executives at each stage, from one left edge. The red step is where the most are lost. Select a step for details.</p></div>
@@ -552,6 +549,7 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
 
   <section class="cc-page" id="fn" role="tabpanel" aria-labelledby="tab-fn" hidden>
     <p class="cc-intro">Who in the Founder Network needs a next step, and which conversations have turned into work?</p>
+    <p class="cc-takeaway" id="takeaway-fn"><b data-source="funnel" data-field="value" data-where="campaign=fn&amp;step=opps" data-fmt="int" class="dash-skeleton">—</b> client opportunities created, <b data-source="attention" data-field="value" data-where="item=fn_p1_no_step" data-fmt="int" class="dash-skeleton">—</b> priority-1 contacts with no next step.</p>
     <div class="cc-grid">
       <article class="cc-card" id="fn-coverage">
         <div class="cc-card-head"><h3>Next-step coverage</h3><p>Priority contacts with at least one open Zoho task, against those with none. Select a segment to list the people.</p></div>
