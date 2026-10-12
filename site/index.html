@@ -230,6 +230,7 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
 
 /* Funnel */
 .cc-funnelviz { display: grid; gap: 0; min-height: 12rem; }
+.cc-funnelviz.cc-flowfunnel { display: block; }
 .cc-frow { display: grid; grid-template-columns: minmax(7rem, 11rem) minmax(0, 1fr) auto; align-items: center; gap: var(--cds-gap-sm); padding-block: 4px; }
 .cc-flabel { font-size: var(--cds-font-size-caption); }
 .cc-fbar { height: 22px; position: relative; }
@@ -370,6 +371,23 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
 .cc-river .cc-rhit { fill: transparent; cursor: pointer; }
 .cc-river .cc-rhit:focus-visible { outline: none; stroke: var(--color-fg); stroke-width: 2; }
 .cc-river .cc-rpick { fill: none; stroke: var(--color-fg); stroke-width: 2; pointer-events: none; }
+.cc-hero-body { display: grid; grid-template-columns: repeat(3, minmax(0, 8.5rem)) minmax(0, 1fr); gap: var(--cds-gap-xl); align-items: start; }
+.cc-hero .cc-spark { border-top: 0; padding-top: 0; align-self: stretch; align-content: center; padding-left: var(--cds-gap-lg); border-left: 1px solid var(--color-border-line); }
+.cc-hero .cc-spark-chart, .cc-hero .cc-spark-chart svg { height: 108px; }
+.cc-hero .cc-campstats { align-self: center; padding-left: var(--cds-gap-lg); border-left: 1px solid var(--color-border-line); }
+@media (max-width: 64rem) { .cc-hero-body { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--cds-gap-md); } .cc-hero .cc-spark, .cc-hero .cc-campstats { grid-column: 1 / -1; border-left: 0; padding-left: 0; border-top: 1px solid var(--color-border-line); padding-top: var(--cds-pad-md); } }
+@media (max-width: 34rem) { .cc-hero .cc-ring-pct { font-size: 20px; } .cc-hero .cc-ring-of { font-size: 10px; } .cc-hero .cc-ring-cap { font-size: 11.5px; } }
+.cc-flowfunnel { min-height: 13rem; position: relative; }
+.cc-flowfunnel svg { display: block; width: 100%; overflow: visible; }
+.cc-flowfunnel text { font-family: var(--font-anthropic-sans); }
+.cc-flowfunnel .cc-fl-label { fill: var(--color-fg); font-size: 12.5px; }
+.cc-flowfunnel .cc-fl-val { fill: var(--color-fg); font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.cc-flowfunnel .cc-fl-val tspan { fill: var(--color-fg-muted); font-weight: 400; font-size: 11px; }
+.cc-flowfunnel .cc-fl-keep { fill: var(--color-fg-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.cc-flowfunnel .cc-fl-keep.cc-worst { fill: var(--color-bad); font-weight: 500; }
+.cc-flowfunnel .cc-rhit { fill: transparent; cursor: pointer; }
+.cc-flowfunnel .cc-rhit:focus-visible { outline: none; stroke: var(--color-fg); stroke-width: 2; }
+.cc-flowfunnel .cc-rpick { fill: var(--cds-chart-grid); fill-opacity: 0.6; stroke: var(--color-fg); stroke-width: 1.5; pointer-events: none; }
 @keyframes cc-flow { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 .cc-river .cc-enter { animation: cc-flow 1.2s var(--cds-ease-out) both; }
 @media (prefers-reduced-motion: reduce) { .cc-river .cc-enter { animation: none; } }
@@ -502,10 +520,31 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
   <section class="cc-page" id="rp" role="tabpanel" aria-labelledby="tab-rp" hidden>
     <p class="cc-intro">Are partner prospects turning into signed referral agreements, and are those partners sending us work?</p>
     <p class="cc-takeaway" id="takeaway-rp"><b data-source="funnel" data-field="value" data-where="campaign=rp&amp;step=connected" data-fmt="int" class="dash-skeleton">—</b> of <b data-source="funnel" data-field="value" data-where="campaign=rp&amp;step=total" data-fmt="int" class="dash-skeleton">—</b> prospects connected, <b data-source="attention" data-field="value" data-where="item=partner_proposals" data-fmt="int" class="dash-skeleton">—</b> agreements waiting for signature.</p>
+    <article class="cc-card cc-hero" id="hero-rp">
+      <div class="cc-hero-body">
+          <div class="cc-ringwrap" data-ring="rp" data-step="agreements" data-drill="hero-rp">
+            <div class="cc-ring dash-skeleton" data-source="funnel" data-campaign="rp" data-step="agreements"></div>
+            <span class="cc-ring-cap">Agreements sent or signed</span>
+            <span class="cc-pacenote" data-pace="rp"></span>
+          </div><div class="cc-ringwrap" data-ring="rp" data-step="met1" data-drill="hero-rp">
+            <div class="cc-ring dash-skeleton" data-source="funnel" data-campaign="rp" data-step="met1"></div>
+            <span class="cc-ring-cap">Partners met at least once</span>
+            <span class="cc-pacenote" data-pace="rp"></span>
+          </div><div class="cc-ringwrap" data-ring="rp" data-step="referred" data-drill="hero-rp">
+            <div class="cc-ring dash-skeleton" data-source="funnel" data-campaign="rp" data-step="referred"></div>
+            <span class="cc-ring-cap">Client deals referred to us</span>
+            <span class="cc-pacenote" data-pace="rp"></span>
+          </div>
+          <div class="cc-spark" data-campaign="rp">
+            <div class="cc-spark-top"><span>Partnership deals created per month</span><span class="cc-spark-now"></span></div>
+            <div class="cc-spark-chart dash-skeleton" data-source="campaign_monthly" data-campaign="rp"></div>
+          </div>
+      </div>
+    </article>
     <div class="cc-grid">
       <article class="cc-card" id="rp-funnel">
-        <div class="cc-card-head"><h3>Funnel</h3><p>Prospects at each stage, from one left edge. The red step is where the most are lost. Select a step for details.</p></div>
-        <div class="cc-funnelviz dash-skeleton" data-source="funnel funnel_drops" data-campaign="rp"></div>
+        <div class="cc-card-head"><h3>Funnel</h3><p>Prospects at each stage, narrowing as they move down. The red figure marks the biggest drop. Select a step for details.</p></div>
+        <div class="cc-funnelviz cc-flowfunnel dash-skeleton" data-source="funnel funnel_drops" data-campaign="rp"></div>
         <p class="cc-insight" data-insight="funnel" data-campaign="rp"></p>
       </article>
       <article class="cc-card" id="rp-targets">
@@ -542,6 +581,28 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
 
   <section class="cc-page" id="ref" role="tabpanel" aria-labelledby="tab-ref" hidden>
     <p class="cc-intro">Which partner sent us which client, where each referred deal stands, and whether that partner's agreement is signed.</p>
+    <article class="cc-card cc-hero" id="hero-ref">
+      <div class="cc-hero-body">
+          <div class="cc-ringwrap" data-ring="rp" data-step="referred" data-drill="hero-ref">
+            <div class="cc-ring dash-skeleton" data-source="funnel" data-campaign="rp" data-step="referred"></div>
+            <span class="cc-ring-cap">Client deals referred to us</span>
+            <span class="cc-pacenote" data-pace="rp"></span>
+          </div><div class="cc-ringwrap" data-ring="rp" data-step="referred_won" data-drill="hero-ref">
+            <div class="cc-ring dash-skeleton" data-source="funnel" data-campaign="rp" data-step="referred_won"></div>
+            <span class="cc-ring-cap">Referred deals won</span>
+            <span class="cc-pacenote" data-pace="rp"></span>
+          </div><div class="cc-ringwrap" data-ring="rp" data-step="referred_value" data-drill="hero-ref">
+            <div class="cc-ring dash-skeleton" data-source="funnel" data-campaign="rp" data-step="referred_value"></div>
+            <span class="cc-ring-cap">Referred contract value won</span>
+            <span class="cc-pacenote" data-pace="rp"></span>
+          </div>
+          <dl class="cc-campstats">
+            <div><dt>Partners who referred</dt><dd><span class="dash-skeleton" data-source="referral_summary" data-field="value" data-where="measure=partners" data-fmt="int">—</span></dd></div>
+            <div><dt>Referred through an unsigned partner</dt><dd><span class="dash-skeleton" data-source="referral_summary" data-field="value" data-where="measure=unsigned" data-fmt="int">—</span></dd></div>
+            <div><dt>Referrals with no partner recorded</dt><dd><span class="dash-skeleton" data-source="referral_summary" data-field="value" data-where="measure=unrecorded" data-fmt="int">—</span></dd></div>
+          </dl>
+      </div>
+    </article>
     <article class="cc-card" id="ref-flow-card">
       <div class="cc-card-head"><h3>Who referred whom</h3><p>Each line runs from a referral partner to a client deal they sent us, colored by where the deal stands.</p></div>
       <div class="cc-legend" id="leg-ref-flow"></div>
@@ -581,10 +642,31 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
   <section class="cc-page" id="icp" role="tabpanel" aria-labelledby="tab-icp" hidden>
     <p class="cc-intro">Is the LinkedIn sequence turning connections at target accounts into meetings and deals?</p>
     <p class="cc-takeaway" id="takeaway-icp"><b data-source="funnel" data-field="value" data-where="campaign=icp&amp;step=connected" data-fmt="int" class="dash-skeleton">—</b> executives connected, <b data-source="funnel" data-field="value" data-where="campaign=icp&amp;step=meetings" data-fmt="int" class="dash-skeleton">—</b> meetings logged against a target of 300.</p>
+    <article class="cc-card cc-hero" id="hero-icp">
+      <div class="cc-hero-body">
+          <div class="cc-ringwrap" data-ring="icp" data-step="connected" data-drill="hero-icp">
+            <div class="cc-ring dash-skeleton" data-source="funnel" data-campaign="icp" data-step="connected"></div>
+            <span class="cc-ring-cap">Executives connected</span>
+            <span class="cc-pacenote" data-pace="icp"></span>
+          </div><div class="cc-ringwrap" data-ring="icp" data-step="meetings" data-drill="hero-icp">
+            <div class="cc-ring dash-skeleton" data-source="funnel" data-campaign="icp" data-step="meetings"></div>
+            <span class="cc-ring-cap">Meetings logged</span>
+            <span class="cc-pacenote" data-pace="icp"></span>
+          </div><div class="cc-ringwrap" data-ring="icp" data-step="deals" data-drill="hero-icp">
+            <div class="cc-ring dash-skeleton" data-source="funnel" data-campaign="icp" data-step="deals"></div>
+            <span class="cc-ring-cap">Client deals created</span>
+            <span class="cc-pacenote" data-pace="icp"></span>
+          </div>
+          <div class="cc-spark" data-campaign="icp">
+            <div class="cc-spark-top"><span>ICP client deals created per month</span><span class="cc-spark-now"></span></div>
+            <div class="cc-spark-chart dash-skeleton" data-source="campaign_monthly" data-campaign="icp"></div>
+          </div>
+      </div>
+    </article>
     <div class="cc-grid">
       <article class="cc-card" id="icp-funnel">
-        <div class="cc-card-head"><h3>Funnel</h3><p>Executives at each stage, from one left edge. The red step is where the most are lost. Select a step for details.</p></div>
-        <div class="cc-funnelviz dash-skeleton" data-source="funnel funnel_drops" data-campaign="icp"></div>
+        <div class="cc-card-head"><h3>Funnel</h3><p>Executives at each stage, narrowing as they move down. The red figure marks the biggest drop. Select a step for details.</p></div>
+        <div class="cc-funnelviz cc-flowfunnel dash-skeleton" data-source="funnel funnel_drops" data-campaign="icp"></div>
         <p class="cc-insight" data-insight="funnel" data-campaign="icp"></p>
       </article>
       <article class="cc-card" id="icp-targets">
@@ -622,6 +704,27 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
   <section class="cc-page" id="fn" role="tabpanel" aria-labelledby="tab-fn" hidden>
     <p class="cc-intro">Who in the Founder Network needs a next step, and which conversations have turned into work?</p>
     <p class="cc-takeaway" id="takeaway-fn"><b data-source="funnel" data-field="value" data-where="campaign=fn&amp;step=opps" data-fmt="int" class="dash-skeleton">—</b> client opportunities created, <b data-source="attention" data-field="value" data-where="item=fn_p1_no_step" data-fmt="int" class="dash-skeleton">—</b> priority-1 contacts with no next step.</p>
+    <article class="cc-card cc-hero" id="hero-fn">
+      <div class="cc-hero-body">
+          <div class="cc-ringwrap" data-ring="fn" data-step="meetings" data-drill="hero-fn">
+            <div class="cc-ring dash-skeleton" data-source="funnel" data-campaign="fn" data-step="meetings"></div>
+            <span class="cc-ring-cap">Meetings logged</span>
+            <span class="cc-pacenote" data-pace="fn"></span>
+          </div><div class="cc-ringwrap" data-ring="fn" data-step="opps" data-drill="hero-fn">
+            <div class="cc-ring dash-skeleton" data-source="funnel" data-campaign="fn" data-step="opps"></div>
+            <span class="cc-ring-cap">Opportunities created</span>
+            <span class="cc-pacenote" data-pace="fn"></span>
+          </div><div class="cc-ringwrap" data-ring="fn" data-step="total" data-drill="hero-fn">
+            <div class="cc-ring dash-skeleton" data-source="funnel" data-campaign="fn" data-step="total"></div>
+            <span class="cc-ring-cap">Founder Network contacts</span>
+            <span class="cc-pacenote" data-pace="fn"></span>
+          </div>
+          <div class="cc-spark" data-campaign="fn">
+            <div class="cc-spark-top"><span>Opportunities created per month</span><span class="cc-spark-now"></span></div>
+            <div class="cc-spark-chart dash-skeleton" data-source="campaign_monthly" data-campaign="fn"></div>
+          </div>
+      </div>
+    </article>
     <div class="cc-grid">
       <article class="cc-card" id="fn-coverage">
         <div class="cc-card-head"><h3>Next-step coverage</h3><p>Priority contacts with at least one open Zoho task, against those with none. Select a segment to list the people.</p></div>
@@ -630,8 +733,8 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
         <p class="cc-insight" id="ins-coverage"></p>
       </article>
       <article class="cc-card" id="fn-funnel">
-        <div class="cc-card-head"><h3>Funnel</h3><p>Contacts at each stage, from one left edge. The red step is where the most are lost. Select a step for details.</p></div>
-        <div class="cc-funnelviz dash-skeleton" data-source="funnel funnel_drops" data-campaign="fn"></div>
+        <div class="cc-card-head"><h3>Funnel</h3><p>Contacts at each stage, narrowing as they move down. The red figure marks the biggest drop. Select a step for details.</p></div>
+        <div class="cc-funnelviz cc-flowfunnel dash-skeleton" data-source="funnel funnel_drops" data-campaign="fn"></div>
         <p class="cc-insight" data-insight="funnel" data-campaign="fn"></p>
       </article>
     </div>
@@ -1790,52 +1893,82 @@ dash.calc('attention', {
     });
   };
 
-  /* Funnel chart */
+  /* Funnel chart: a funnel shape whose width at each step is the square root of its count */
+  const flowFunnel = (box, { steps, hue, pickKey, worstIdx, name }) => {
+    const card = box.closest('.cc-card');
+    const W = Math.max(280, box.clientWidth);
+    const rowH = 48;
+    const labelW = Math.min(176, Math.round(W * 0.36));
+    const valW = W < 420 ? 74 : 104;
+    const x0 = labelW + 10;
+    const x1 = W - valW - 6;
+    const cx = (x0 + x1) / 2;
+    const maxBand = x1 - x0;
+    const top = steps[0].value || 1;
+    const wOf = (v) => Math.max(4, Math.sqrt(Math.max(0, v) / top) * maxBand);
+    const H = steps.length * rowH + 4;
+    const ys = steps.map((_, i) => 2 + i * rowH + rowH / 2);
+    const ws = steps.map((s) => wOf(s.value));
+    const svg = d3.create('svg').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', name + ' funnel: ' + steps.map((s) => s.label + ' ' + intF(s.value)).join(', '));
+    const gid = 'cc-ff-' + pickKey;
+    const grad = svg.append('defs').append('linearGradient').attr('id', gid).attr('x1', 0).attr('x2', 0).attr('y1', 0).attr('y2', 1);
+    grad.append('stop').attr('offset', '0%').attr('stop-color', resolve(hue)).attr('stop-opacity', 1);
+    grad.append('stop').attr('offset', '100%').attr('stop-color', resolve(hue)).attr('stop-opacity', 0.5);
+    const yTop = 6;
+    const yBot = H - 6;
+    let d = `M${cx - ws[0] / 2},${yTop} L${cx + ws[0] / 2},${yTop} L${cx + ws[0] / 2},${ys[0]}`;
+    for (let i = 0; i < steps.length - 1; i += 1) { const m2 = (ys[i] + ys[i + 1]) / 2; d += ` C${cx + ws[i] / 2},${m2} ${cx + ws[i + 1] / 2},${m2} ${cx + ws[i + 1] / 2},${ys[i + 1]}`; }
+    d += ` L${cx + ws[ws.length - 1] / 2},${yBot} L${cx - ws[ws.length - 1] / 2},${yBot} L${cx - ws[ws.length - 1] / 2},${ys[ys.length - 1]}`;
+    for (let i = steps.length - 1; i > 0; i -= 1) { const m2 = (ys[i] + ys[i - 1]) / 2; d += ` C${cx - ws[i] / 2},${m2} ${cx - ws[i - 1] / 2},${m2} ${cx - ws[i - 1] / 2},${ys[i - 1]}`; }
+    const picks = svg.append('g');
+    svg.append('path').attr('d', d + 'Z').attr('fill', `url(#${gid})`);
+    const marks = svg.append('g');
+    steps.forEach((s, i) => {
+      if (i > 0) {
+        const yb = 2 + i * rowH;
+        marks.append('line').attr('x1', x0 - 4).attr('x2', x1 + 4).attr('y1', yb).attr('y2', yb).attr('stroke', 'var(--color-panel)').attr('stroke-width', 2);
+        const prev = steps[i - 1].value;
+        if (prev > 0) {
+          const kept = s.value / prev;
+          const txt = pctF(kept) + ' kept';
+          const pw = txt.length * 6 + 14;
+          marks.append('rect').attr('x', cx - pw / 2).attr('y', yb - 9).attr('width', pw).attr('height', 18).attr('rx', 9)
+            .attr('fill', 'var(--color-panel)').attr('stroke', i === worstIdx ? 'var(--color-bad)' : 'var(--color-border-line)');
+          marks.append('text').attr('class', 'cc-fl-keep' + (i === worstIdx ? ' cc-worst' : '')).attr('x', cx).attr('y', yb + 4)
+            .attr('text-anchor', 'middle').text(txt);
+        }
+      }
+      marks.append('text').attr('class', 'cc-fl-label').attr('x', 0).attr('y', ys[i] + 4).text(W < 420 ? clip(s.label, 22) : s.label);
+      const v = marks.append('text').attr('class', 'cc-fl-val').attr('x', W).attr('y', ys[i] + 5).attr('text-anchor', 'end').text(intF(s.value));
+      if (s.target != null) v.append('tspan').text(' of ' + intF(s.target));
+      if (picked[pickKey] === s.key) picks.append('rect').attr('class', 'cc-rpick').attr('x', -6).attr('y', ys[i] - rowH / 2 + 3).attr('width', W + 12).attr('height', rowH - 6).attr('rx', 8);
+      svg.append('rect').attr('class', 'cc-rhit').attr('x', -6).attr('y', ys[i] - rowH / 2 + 2).attr('width', W + 12).attr('height', rowH - 4).attr('rx', 8)
+        .attr('tabindex', 0).attr('role', 'button').attr('aria-label', 'Show details for ' + s.label)
+        .on('mousemove', (e) => showTip(card, e.clientX, e.clientY, name + ' · ' + s.label, [[hue, 'Count', intF(s.value)]].concat(i > 0 && steps[i - 1].value ? [[null, 'Kept from the step above', pctF(s.value / steps[i - 1].value)]] : [])))
+        .on('mouseleave', () => hideTip(card))
+        .on('click', () => pick(pickKey, s.key))
+        .on('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(pickKey, s.key); } });
+    });
+    box.replaceChildren(svg.node());
+  };
   const drawFunnels = () => {
     const st = [status('funnel'), status('funnel_drops')];
     const funnel = rowsOf('funnel');
     const drops = rowsOf('funnel_drops');
     root.querySelectorAll('.cc-funnelviz').forEach((box) => {
       if (st.includes('loading') && !funnel) return;
+      if (!visible(box)) return;
       box.classList.remove('dash-skeleton');
       if (!funnel || !drops) { box.replaceChildren(failNode()); return; }
       const c = box.dataset.campaign;
-      const steps = META[c].reach.map(([k]) => k);
-      const rows = steps.map((s) => funnel.find((r) => r.campaign === c && r.step === s)).filter(Boolean);
-      const max = d3.max(rows, (r) => r.value) || 1;
+      const rows = META[c].reach.map(([k]) => funnel.find((r) => r.campaign === c && r.step === k)).filter(Boolean);
       const mine = drops.filter((d) => d.campaign === c);
       const worst = d3.greatest(mine.filter((d) => d.kept != null), (d) => -d.kept);
-      const out = [];
-      rows.forEach((r, i) => {
-        if (i > 0) {
-          const d = mine.find((x) => x.to === r.step);
-          if (d) {
-            const line = el('div', 'cc-fdrop' + (worst && d === worst ? ' cc-worst' : ''));
-            const keep = markEl('b', 'funnel_drops', 'kept', { campaign: c, from: d.from }, d.kept, 'pct');
-            const txt = el('span');
-            txt.append(keep, document.createTextNode(' carried forward'));
-            line.append(el('span'), txt);
-            out.push(line);
-          }
-        }
-        const row = el('div', 'cc-frow');
-        const bar = el('div', 'cc-fbar');
-        const fill = el('i');
-        fill.style.width = (r.value / max * 100).toFixed(2) + '%';
-        fill.style.background = ramp(hueOf(c), 1 - i * (0.5 / Math.max(1, rows.length - 1)));
-        bar.append(fill);
-        const val = el('span', 'cc-fval');
-        val.append(markEl('span', 'funnel', 'value', { campaign: c, step: r.step }, r.value, 'int'));
-        if (r.target != null) {
-          const t = el('small');
-          t.append(document.createTextNode(' of '), markEl('span', 'funnel', 'target', { campaign: c, step: r.step }, r.target, 'int'));
-          val.append(t);
-        }
-        row.append(el('span', 'cc-flabel', stepLabel(c, r.step)), bar, val);
-        clickable(row, 'funnel-' + c, r.step, 'Show details for ' + stepLabel(c, r.step));
-        out.push(row);
+      flowFunnel(box, {
+        name: META[c].name, hue: hueOf(c), pickKey: 'funnel-' + c,
+        worstIdx: worst ? rows.findIndex((r) => r.step === worst.to) : -1,
+        steps: rows.map((r) => ({ key: r.step, label: stepLabel(c, r.step), value: r.value, target: r.target })),
       });
-      box.replaceChildren(...out);
       const ins = root.querySelector('.cc-insight[data-insight="funnel"][data-campaign="' + c + '"]');
       if (ins && worst) {
         said(ins, ['The biggest drop is from ', stepLabel(c, worst.from).toLowerCase(), ' to ', stepLabel(c, worst.to).toLowerCase(), ': ',
@@ -2483,7 +2616,7 @@ dash.calc('attention', {
       const R = size / 2;
       const thick = 11;
       const svg = d3.create('svg').attr('viewBox', `0 0 ${size} ${size}`).attr('role', 'img')
-        .attr('aria-label', stepLabel(c, step) + ': ' + fmt(r.value, 'int') + ' of ' + fmt(r.target, 'int'));
+        .attr('aria-label', stepLabel(c, step) + ': ' + fmt(r.value, stepFmt(step)) + ' of ' + fmt(r.target, stepFmt(step)));
       const g = svg.append('g').attr('transform', `translate(${R},${R})`);
       const arc = d3.arc().innerRadius(R - thick).outerRadius(R).cornerRadius(thick / 2);
       g.append('path').attr('d', arc({ startAngle: 0, endAngle: 2 * Math.PI })).attr('fill', 'var(--cds-chart-grid)');
@@ -2497,14 +2630,16 @@ dash.calc('attention', {
       const pct = markEl('span', 'funnel', 'progress', { campaign: c, step }, r.progress, 'pct');
       pct.className = 'cc-ring-pct';
       const of = el('span', 'cc-ring-of');
-      of.append(markEl('span', 'funnel', 'value', { campaign: c, step }, r.value, 'int'), document.createTextNode(' of '), markEl('span', 'funnel', 'target', { campaign: c, step }, r.target, 'int'));
+      of.append(markEl('span', 'funnel', 'value', { campaign: c, step }, r.value, stepFmt(step)), document.createTextNode(' of '), markEl('span', 'funnel', 'target', { campaign: c, step }, r.target, stepFmt(step)));
       mid.append(pct, of);
       box.replaceChildren(svg.node(), mid);
       const note = wrap.querySelector('.cc-pacenote');
       const ahead = (r.progress || 0) >= pace;
       note.textContent = ahead ? 'Ahead of today’s pace' : 'Behind today’s pace';
       note.className = 'cc-pacenote ' + (ahead ? 'cc-ok' : 'cc-low');
-      clickable(wrap, 'ov-' + c, step, 'Show details for ' + stepLabel(c, step));
+      const key = wrap.dataset.drill || 'ov-' + c;
+      if (!wrap.dataset.bound) { clickable(wrap, key, step, 'Show details for ' + stepLabel(c, step)); wrap.dataset.bound = '1'; }
+      else { wrap.classList.toggle('cc-picked', picked[key] === step); wrap.setAttribute('aria-pressed', String(picked[key] === step)); }
     });
   };
   const drawSparks = () => {
@@ -2512,12 +2647,12 @@ dash.calc('attention', {
     root.querySelectorAll('.cc-spark').forEach((spark) => {
       const c = spark.dataset.campaign;
       const box = spark.querySelector('.cc-spark-chart');
-      if (status('campaign_monthly') === 'loading') return;
+      if (status('campaign_monthly') === 'loading' || !visible(box)) return;
       box.classList.remove('dash-skeleton');
       if (!rows) { box.replaceChildren(failNode()); return; }
       const mine = rows.filter((r) => r.campaign === c);
       const w = Math.max(120, box.clientWidth || 240);
-      const h = 44;
+      const h = box.clientHeight || 44;
       const x = d3.scaleBand(mine.map((r) => r.month), [0, w]).paddingInner(0.28);
       const max = d3.max(mine, (r) => r.deals) || 1;
       const y = d3.scaleLinear([0, max], [h - 14, 0]);
@@ -2710,6 +2845,10 @@ dash.calc('attention', {
         rows: (rowsOf('deals_tagged') || []).filter((d) => String(d.created || '').slice(0, 7) === month).sort((a, b) => String(a.created).localeCompare(String(b.created))),
       }),
     },
+    'hero-rp': { card: '#hero-rp', build: (s) => stepSpec('rp', s) },
+    'hero-icp': { card: '#hero-icp', build: (s) => stepSpec('icp', s) },
+    'hero-fn': { card: '#hero-fn', build: (s) => stepSpec('fn', s) },
+    'hero-ref': { card: '#hero-ref', build: (s) => stepSpec('rp', s) },
     river: { card: '#ov-river', build: (v) => { const [c, s] = v.split('|'); return stepSpec(c, s); } },
     'targets-all': { card: '#ov-targets', build: (v) => { const [c, s] = v.split('|'); return stepSpec(c, s); } },
     'targets-rp': { card: '#rp-targets', build: (s) => stepSpec('rp', s) },
@@ -2847,6 +2986,7 @@ dash.calc('attention', {
   };
 
   function drawSized() {
+    drawFunnels();
     drawRiver();
     drawSparks();
     drawMeetings();
