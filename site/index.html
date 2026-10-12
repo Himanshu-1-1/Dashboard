@@ -433,7 +433,7 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
           <dl class="cc-campstats"><div><dt>Prospects</dt><dd><span class="dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=rp&amp;step=total" data-fmt="int">—</span></dd></div><div><dt>Connected</dt><dd><span class="dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=rp&amp;step=connected" data-fmt="int">—</span></dd></div><div><dt>Partners signed</dt><dd><span class="dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=rp&amp;step=signed" data-fmt="int">—</span></dd></div></dl>
         </div>
         <div class="cc-spark" data-campaign="rp">
-          <div class="cc-spark-top"><span>Partnership deals created per month</span><span class="cc-spark-now"></span></div>
+          <div class="cc-spark-top"><span>Partnership deals created per month · select a month</span><span class="cc-spark-now"></span></div>
           <div class="cc-spark-chart dash-skeleton" data-source="campaign_monthly" data-campaign="rp"></div>
         </div>
         <div class="cc-camp-foot"><button type="button" class="cc-go" data-go="rp">Open B2B Campaign</button></div>
@@ -449,7 +449,7 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
           <dl class="cc-campstats"><div><dt>Executives</dt><dd><span class="dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=icp&amp;step=total" data-fmt="int">—</span></dd></div><div><dt>Connected</dt><dd><span class="dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=icp&amp;step=connected" data-fmt="int">—</span></dd></div><div><dt>Meetings logged</dt><dd><span class="dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=icp&amp;step=meetings" data-fmt="int">—</span></dd></div></dl>
         </div>
         <div class="cc-spark" data-campaign="icp">
-          <div class="cc-spark-top"><span>ICP client deals created per month</span><span class="cc-spark-now"></span></div>
+          <div class="cc-spark-top"><span>ICP client deals created per month · select a month</span><span class="cc-spark-now"></span></div>
           <div class="cc-spark-chart dash-skeleton" data-source="campaign_monthly" data-campaign="icp"></div>
         </div>
         <div class="cc-camp-foot"><button type="button" class="cc-go" data-go="icp">Open ICP Prospecting</button></div>
@@ -465,7 +465,7 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
           <dl class="cc-campstats"><div><dt>Contacts</dt><dd><span class="dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=fn&amp;step=total" data-fmt="int">—</span></dd></div><div><dt>Meetings logged</dt><dd><span class="dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=fn&amp;step=meetings" data-fmt="int">—</span></dd></div><div><dt>Opportunities</dt><dd><span class="dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=fn&amp;step=opps" data-fmt="int">—</span></dd></div></dl>
         </div>
         <div class="cc-spark" data-campaign="fn">
-          <div class="cc-spark-top"><span>Opportunities created per month</span><span class="cc-spark-now"></span></div>
+          <div class="cc-spark-top"><span>Opportunities created per month · select a month</span><span class="cc-spark-now"></span></div>
           <div class="cc-spark-chart dash-skeleton" data-source="campaign_monthly" data-campaign="fn"></div>
         </div>
         <div class="cc-camp-foot"><button type="button" class="cc-go" data-go="fn">Open Founder Network</button></div>
@@ -536,7 +536,7 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
             <span class="cc-pacenote" data-pace="rp"></span>
           </div>
           <div class="cc-spark" data-campaign="rp">
-            <div class="cc-spark-top"><span>Partnership deals created per month</span><span class="cc-spark-now"></span></div>
+            <div class="cc-spark-top"><span>Partnership deals created per month · select a month</span><span class="cc-spark-now"></span></div>
             <div class="cc-spark-chart dash-skeleton" data-source="campaign_monthly" data-campaign="rp"></div>
           </div>
       </div>
@@ -658,7 +658,7 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
             <span class="cc-pacenote" data-pace="icp"></span>
           </div>
           <div class="cc-spark" data-campaign="icp">
-            <div class="cc-spark-top"><span>ICP client deals created per month</span><span class="cc-spark-now"></span></div>
+            <div class="cc-spark-top"><span>ICP client deals created per month · select a month</span><span class="cc-spark-now"></span></div>
             <div class="cc-spark-chart dash-skeleton" data-source="campaign_monthly" data-campaign="icp"></div>
           </div>
       </div>
@@ -720,7 +720,7 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
             <span class="cc-pacenote" data-pace="fn"></span>
           </div>
           <div class="cc-spark" data-campaign="fn">
-            <div class="cc-spark-top"><span>Opportunities created per month</span><span class="cc-spark-now"></span></div>
+            <div class="cc-spark-top"><span>Opportunities created per month · select a month</span><span class="cc-spark-now"></span></div>
             <div class="cc-spark-chart dash-skeleton" data-source="campaign_monthly" data-campaign="fn"></div>
           </div>
       </div>
@@ -2658,15 +2658,25 @@ dash.calc('attention', {
       const y = d3.scaleLinear([0, max], [h - 14, 0]);
       const svg = d3.create('svg').attr('viewBox', `0 0 ${w} ${h}`).attr('preserveAspectRatio', 'none');
       const card = spark.closest('.cc-card');
+      const key = 'spark-' + card.id;
+      const allLabels = x.bandwidth() >= 24;
       mine.forEach((r, i) => {
         const last = i === mine.length - 1;
+        const on = picked[key] === r.month;
         const bh = Math.max(2, (h - 14) - y(r.deals));
+        const when = monthF(new Date(r.month + '-01T00:00:00Z'));
         svg.append('rect').attr('x', x(r.month)).attr('y', h - 14 - bh).attr('width', x.bandwidth()).attr('height', bh).attr('rx', 2)
-          .attr('fill', r.deals ? (last ? hueOf(c) : ramp(hueOf(c), 0.5)) : 'var(--cds-chart-grid)')
-          .on('mousemove', (e) => showTip(card, e.clientX, e.clientY, monthF(new Date(r.month + '-01T00:00:00Z')), [[hueOf(c), 'Deals created', intF(r.deals)]]))
-          .on('mouseleave', () => hideTip(card));
-        if (i === 0 || last) svg.append('text').attr('x', x(r.month) + (last ? x.bandwidth() : 0)).attr('y', h - 1).attr('text-anchor', last ? 'end' : 'start')
-          .attr('fill', 'var(--color-fg-muted)').attr('font-size', 10).text(d3.utcFormat('%b')(new Date(r.month + '-01T00:00:00Z')));
+          .attr('fill', r.deals ? (last || on ? hueOf(c) : ramp(hueOf(c), 0.5)) : 'var(--cds-chart-grid)')
+          .attr('stroke', on ? 'var(--color-fg)' : null).attr('stroke-width', on ? 1.5 : null);
+        svg.append('rect').attr('class', 'cc-hit').attr('x', x(r.month) - x.step() * x.paddingInner() / 2).attr('y', 0).attr('width', x.step()).attr('height', h)
+          .attr('tabindex', 0).attr('role', 'button').attr('aria-pressed', String(on)).attr('aria-label', 'Show deals created in ' + when + ': ' + intF(r.deals))
+          .on('mousemove', (e) => showTip(card, e.clientX, e.clientY, when, [[hueOf(c), 'Deals created', intF(r.deals)]]))
+          .on('mouseleave', () => hideTip(card))
+          .on('click', () => pick(key, r.month))
+          .on('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(key, r.month); } });
+        if (allLabels || i === 0 || last) svg.append('text').attr('x', x(r.month) + (allLabels ? x.bandwidth() / 2 : last ? x.bandwidth() : 0)).attr('y', h - 1)
+          .attr('text-anchor', allLabels ? 'middle' : last ? 'end' : 'start').attr('pointer-events', 'none')
+          .attr('fill', on ? 'var(--color-fg)' : 'var(--color-fg-muted)').attr('font-size', 10).text(d3.utcFormat('%b')(new Date(r.month + '-01T00:00:00Z')));
       });
       box.replaceChildren(svg.node());
       const now = mine[mine.length - 1];
@@ -2845,6 +2855,19 @@ dash.calc('attention', {
         rows: (rowsOf('deals_tagged') || []).filter((d) => String(d.created || '').slice(0, 7) === month).sort((a, b) => String(a.created).localeCompare(String(b.created))),
       }),
     },
+    ...Object.fromEntries(['ov-rp', 'ov-icp', 'ov-fn', 'hero-rp', 'hero-icp', 'hero-fn'].map((id) => {
+      const c = id.split('-')[1];
+      const keep = { rp: (d) => d.kind === 'Partnership', icp: (d) => d.kind === 'Client' && d.campaign === 'ICP Prospecting', fn: (d) => d.kind === 'Client' && d.campaign === 'Founder Network' }[c];
+      const what = { rp: 'Partnership deals', icp: 'ICP client deals', fn: 'Opportunities' }[c];
+      return ['spark-' + id, {
+        card: '#' + id,
+        build: (month) => ({
+          title: what + ' created in ' + monthF(new Date(month + '-01T00:00:00Z')), swatch: hueOf(c), source: 'deals_tagged', rowKey: 'id',
+          cols: [['deal', 'Deal'], ['account', 'Account'], ['contact', 'Contact', null, true], ['stage', 'Stage'], ['amount', 'Amount', 'money', false, true], ['created', 'Created', 'date', true]],
+          rows: (rowsOf('deals_tagged') || []).filter((d) => keep(d) && String(d.created || '').slice(0, 7) === month).sort((a, b2) => String(a.created).localeCompare(String(b2.created))),
+        }),
+      }];
+    })),
     'hero-rp': { card: '#hero-rp', build: (s) => stepSpec('rp', s) },
     'hero-icp': { card: '#hero-icp', build: (s) => stepSpec('icp', s) },
     'hero-fn': { card: '#hero-fn', build: (s) => stepSpec('fn', s) },
@@ -2919,6 +2942,7 @@ dash.calc('attention', {
   };
   const pick = (key, value) => {
     picked[key] = picked[key] === value ? null : value;
+    if (picked[key] != null) Object.keys(DRILLS).forEach((k) => { if (k !== key && DRILLS[k].card === DRILLS[key].card) picked[k] = null; });
     redrawAll();
     const card = root.querySelector(DRILLS[key].card);
     const box = card && card.querySelector(':scope > .cc-drill');
@@ -2947,7 +2971,11 @@ dash.calc('attention', {
     }
     const value = picked[key];
     const spec = value == null ? null : cfg.build(value);
-    if (!spec) { box.hidden = true; box.replaceChildren(); return; }
+    if (!spec) {
+      if (box.dataset.owner && box.dataset.owner !== key) return;
+      box.hidden = true; box.replaceChildren(); delete box.dataset.owner; return;
+    }
+    box.dataset.owner = key;
     const head = el('div', 'cc-drill-head');
     const h = el('h4');
     if (spec.swatch) { const sw = el('i', 'cc-sw'); sw.style.background = spec.swatch; h.append(sw); }
