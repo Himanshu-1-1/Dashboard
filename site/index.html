@@ -616,12 +616,12 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
     <p class="cc-intro">Box Byte sources prospects and drafts the LinkedIn outreach we send from our own profiles. Are their leads turning into conversations, meetings and deals?</p>
     <div class="cc-grid">
       <article class="cc-card" id="bb-funnel">
-        <div class="cc-card-head"><h3>Lead funnel</h3><p>Contacts tagged BoxByte in Zoho, from one left edge. This moves as the contacts are worked in Zoho. Select a deal step to see its deals.</p></div>
+        <div class="cc-card-head"><h3>Lead funnel</h3><p>Contacts tagged BoxByte in Zoho, from one left edge. This moves as the contacts are worked in Zoho. Select a step for the people or deals behind it.</p></div>
         <div class="cc-bbfunnel dash-skeleton" id="bb-funnelviz" data-source="boxbyte_funnel"></div>
         <p class="cc-insight" id="ins-bb-funnel"></p>
       </article>
       <article class="cc-card" id="bb-profiles">
-        <div class="cc-card-head"><h3>Leads by LinkedIn profile</h3><p>The profile each lead came through, from the batch file, and where that lead stands in Zoho today.</p></div>
+        <div class="cc-card-head"><h3>Leads by LinkedIn profile</h3><p>The profile each lead came through, from the batch file, and where that lead stands in Zoho today. Select a profile to list its leads.</p></div>
         <div class="cc-legend" id="leg-bb-profiles"></div>
         <div class="cc-bbbars dash-skeleton" id="bb-profilebars" data-source="boxbyte_profiles"></div>
         <p class="cc-insight" id="ins-bb-profiles"></p>
@@ -629,7 +629,7 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
     </div>
     <div class="cc-grid">
       <article class="cc-card" id="bb-batch">
-        <div class="cc-card-head"><h3>Outreach batch</h3><p>From the Box Byte batch file of <span class="dash-skeleton" data-source="boxbyte_batch" data-field="value" data-where="measure=batch" data-fmt="date">—</span>. These numbers change only when a new batch file is loaded.</p></div>
+        <div class="cc-card-head"><h3>Outreach batch</h3><p>From the Box Byte batch file of <span class="dash-skeleton" data-source="boxbyte_batch" data-field="value" data-where="measure=batch" data-fmt="date">—</span>. These numbers change only when a new batch file is loaded. Select a sender to list their messages.</p></div>
         <dl class="cc-bigs">
           <div class="cc-big"><dt>Prospects sourced</dt><dd><span class="cc-bignum dash-skeleton" data-source="boxbyte_batch" data-field="value" data-where="measure=sourced" data-fmt="int">—</span></dd></div>
           <div class="cc-big"><dt>Messages drafted</dt><dd><span class="cc-bignum dash-skeleton" data-source="boxbyte_batch" data-field="value" data-where="measure=drafted" data-fmt="int">—</span></dd></div>
@@ -640,8 +640,8 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
         <p class="cc-insight" id="ins-bb-batch"></p>
       </article>
       <article class="cc-card" id="bb-held">
-        <div class="cc-card-head"><h3>Why prospects were held back</h3><p>Prospects in the batch file that got no message, by the reason given.</p></div>
-        <div class="cc-bbbars dash-skeleton" id="bb-heldbars" data-source="boxbyte_held"></div>
+        <div class="cc-card-head"><h3>Why prospects were held back</h3><p>Prospects in the batch file that got no message, by the reason given. Select a bar to see who.</p></div>
+        <div class="cc-bbbars dash-skeleton" id="bb-heldbars" data-source="boxbyte_held_reasons"></div>
       </article>
     </div>
     <article class="cc-card" id="bb-messages-card">
@@ -1098,16 +1098,18 @@ dash.calc('referral_summary', {
 
 dash.calc('boxbyte_people', {
   title: 'Box Byte leads in Zoho',
-  description: 'Each contact tagged BoxByte, with the LinkedIn profile it came through (from the batch file), its LinkedIn status, meetings, and client deals.',
+  description: 'Each contact tagged BoxByte: name, company and title, the LinkedIn profile it came through (from the batch file), its LinkedIn status, meetings, and client deals.',
   inputs: ['boxbyte_contacts', 'boxbyte_leads', 'deals_tagged'],
   fn: (boxbyte_contacts, boxbyte_leads, deals_tagged) => {
     const profileOf = new Map(boxbyte_leads.filter((l) => l.contact_id).map((l) => [String(l.contact_id), l.profile]));
     return boxbyte_contacts.map((c) => {
       const mine = deals_tagged.filter((d) => d.kind === 'Client' && d.contact_id === c.id);
       return {
-        contact_id: c.id, profile: profileOf.get(String(c.id)) || 'Not in the batch file',
+        contact_id: c.id, name: c.Full_Name, company: c.Account_Name, title: c.Title,
+        profile: profileOf.get(String(c.id)) || 'Not in the batch file',
         linkedin: c.LI_Connect || 'Not set', connected: c.LI_Connect === 'Connected',
-        met: (c.Total_Meetings_Created || 0) >= 1, deals: mine.length, won: mine.filter((d) => d.stage === 'Closed').length,
+        meetings: c.Total_Meetings_Created || 0, met: (c.Total_Meetings_Created || 0) >= 1,
+        deals: mine.length, won: mine.filter((d) => d.stage === 'Closed').length,
       };
     });
   },
@@ -1159,7 +1161,7 @@ dash.calc('boxbyte_batch', {
   description: 'Totals from the Box Byte batch file: prospects sourced (messaged plus held back), messages by review status, rewrites, and question-led messages.',
   inputs: ['boxbyte_messages', 'boxbyte_held', 'boxbyte_leads'],
   fn: (boxbyte_messages, boxbyte_held, boxbyte_leads) => {
-    const held = boxbyte_held.reduce((t, r) => t + Number(r.prospects || 0), 0);
+    const held = boxbyte_held.length;
     const n = (keep) => boxbyte_messages.filter(keep).length;
     return [
       { measure: 'batch', value: boxbyte_leads.map((l) => l.batch).filter(Boolean).sort().pop() || null },
@@ -1172,6 +1174,17 @@ dash.calc('boxbyte_batch', {
       { measure: 'rewritten', value: n((m) => m.rewritten === 'Yes') },
       { measure: 'question_led', value: n((m) => m.style === 'question-led') },
     ];
+  },
+});
+
+dash.calc('boxbyte_held_reasons', {
+  title: 'Box Byte held, by reason',
+  description: 'Prospects in the batch file that got no message, counted by the reason given.',
+  inputs: ['boxbyte_held'],
+  fn: (boxbyte_held) => {
+    const by = new Map();
+    for (const h of boxbyte_held) { const k = h.reason || 'No reason given'; by.set(k, (by.get(k) || 0) + 1); }
+    return [...by.entries()].map(([reason, prospects]) => ({ reason, prospects })).sort((a, b) => b.prospects - a.prospects || a.reason.localeCompare(b.reason));
   },
 });
 
@@ -2210,6 +2223,8 @@ dash.calc('attention', {
   const BB_STATUS = [['met', 'Met'], ['connected', 'Connected'], ['no_status', 'No LinkedIn status'], ['not_in_zoho', 'Not tagged in Zoho']];
   const BB_REVIEW = [['ready', 'Ready'], ['check', 'Needs a check'], ['drop', 'Drop']];
   const bbStatusColor = (k) => ({ met: ramp(HUE.bb, 1), connected: ramp(HUE.bb, 0.6), no_status: ramp(HUE.bb, 0.28), not_in_zoho: 'var(--cds-chart-muted)' }[k]);
+  const BB_PEOPLE_COLS = [['name', 'Lead'], ['company', 'Company'], ['title', 'Title', null, true], ['profile', 'Profile', null, true], ['linkedin', 'LinkedIn'], ['meetings', 'Meetings', 'int', false, true], ['deals', 'Deals', 'int', true, true]];
+  const bbPeopleOrder = (a, c) => (c.meetings || 0) - (a.meetings || 0) || Number(c.connected) - Number(a.connected) || String(a.name || '').localeCompare(String(c.name || ''));
   const bbReviewColor = (k) => ({ ready: ramp(HUE.bb, 0.9), check: 'var(--color-warn)', drop: 'var(--cds-chart-muted)' }[k]);
   const splitBar = (card, row, keys, colorOf, name, width) => {
     const outer = el('div');
@@ -2247,7 +2262,7 @@ dash.calc('attention', {
           const v = el('span', 'cc-fval');
           v.append(markEl('span', 'boxbyte_funnel', 'value', { step: s }, val(s), 'int'));
           row.append(el('span', 'cc-flabel', label), bar, v);
-          if (s === 'deals' || s === 'won') clickable(row, 'bb-funnel', s, 'Show deals for ' + label.toLowerCase());
+          clickable(row, 'bb-funnel', s, 'Show details for ' + label.toLowerCase());
           return row;
         }));
         const parts = [b('boxbyte_funnel', 'value', { step: 'tagged' }, val('tagged'), 'int'), ' Box Byte leads are in Zoho; ',
@@ -2275,6 +2290,7 @@ dash.calc('attention', {
           right.append(markEl('b', 'boxbyte_profiles', 'leads', { profile: r.profile }, r.leads, 'int'), document.createTextNode(r.leads === 1 ? ' lead' : ' leads'));
           top.append(el('span', 'cc-who', r.profile), right);
           wrap.append(top, splitBar(card, r, BB_STATUS, bbStatusColor, r.profile, (r.leads / max * 100).toFixed(1) + '%'));
+          clickable(wrap, 'bb-profile', r.profile, 'Show leads from ' + r.profile);
           return wrap;
         }));
         const top = rows.find((r) => r.profile !== 'Not in the batch file');
@@ -2299,6 +2315,7 @@ dash.calc('attention', {
           right.append(markEl('b', 'boxbyte_senders', 'messages', { send_from: r.send_from }, r.messages, 'int'), document.createTextNode(r.messages === 1 ? ' message' : ' messages'));
           top.append(el('span', 'cc-who', r.send_from), right);
           wrap.append(top, splitBar(card, r, BB_REVIEW, bbReviewColor, r.send_from, (r.messages / max * 100).toFixed(1) + '%'));
+          clickable(wrap, 'bb-sender', r.send_from, 'Show messages from ' + r.send_from);
           return wrap;
         }));
       }
@@ -2315,9 +2332,9 @@ dash.calc('attention', {
     }
 
     const hbox = root.querySelector('#bb-heldbars');
-    if (status('boxbyte_held') !== 'loading') {
+    if (status('boxbyte_held_reasons') !== 'loading') {
       hbox.classList.remove('dash-skeleton');
-      const rows = rowsOf('boxbyte_held');
+      const rows = rowsOf('boxbyte_held_reasons');
       const card = hbox.closest('.cc-card');
       if (!rows) hbox.replaceChildren(failNode());
       else if (!rows.length) hbox.replaceChildren(el('p', 'cc-empty', 'Nobody was held back in this batch.'));
@@ -2327,9 +2344,10 @@ dash.calc('attention', {
           const wrap = el('div', 'cc-refrow');
           const top = el('div', 'cc-reftop');
           const right = el('span');
-          right.append(markEl('b', 'boxbyte_held', 'prospects', { reason: r.reason }, r.prospects, 'int'), document.createTextNode(Number(r.prospects) === 1 ? ' prospect' : ' prospects'));
+          right.append(markEl('b', 'boxbyte_held_reasons', 'prospects', { reason: r.reason }, r.prospects, 'int'), document.createTextNode(Number(r.prospects) === 1 ? ' prospect' : ' prospects'));
           top.append(el('span', 'cc-who', r.reason), right);
           wrap.append(top, splitBar(card, { n: Number(r.prospects) }, [['n', 'Prospects']], () => 'var(--cds-chart-muted)', r.reason, (Number(r.prospects) / max * 100).toFixed(1) + '%'));
+          clickable(wrap, 'bb-held', r.reason, 'Show prospects held back: ' + r.reason);
           return wrap;
         }));
       }
@@ -2447,12 +2465,45 @@ dash.calc('attention', {
       card: '#bb-funnel',
       build: (step) => {
         const people = rowsOf('boxbyte_people') || [];
-        const ids = new Set(people.map((p) => p.contact_id));
+        const label = (BB_STEPS.find(([s]) => s === step) || [step, step])[1];
+        if (step === 'deals' || step === 'won') {
+          const ids = new Set(people.map((p) => p.contact_id));
+          return {
+            title: 'Box Byte · ' + label, swatch: hueOf('bb'), source: 'deals_tagged', rowKey: 'id', cols: DEAL_COLS,
+            rows: (rowsOf('deals_tagged') || []).filter((d) => d.kind === 'Client' && ids.has(d.contact_id) && (step !== 'won' || d.stage === 'Closed')).sort(byStageThenRecentD),
+          };
+        }
+        const keep = { connected: (p) => p.connected, met: (p) => p.met }[step] || (() => true);
+        return { title: 'Box Byte · ' + label, swatch: hueOf('bb'), source: 'boxbyte_people', rowKey: 'contact_id', cols: BB_PEOPLE_COLS, rows: people.filter(keep).sort(bbPeopleOrder) };
+      },
+    },
+    'bb-profile': {
+      card: '#bb-profiles',
+      build: (profile) => {
+        const p = (rowsOf('boxbyte_profiles') || []).find((r) => r.profile === profile);
+        const rows = (rowsOf('boxbyte_people') || []).filter((x) => x.profile === profile).sort(bbPeopleOrder);
         return {
-          title: 'Box Byte · ' + (step === 'won' ? 'Deals won' : 'Client deals'), swatch: hueOf('bb'), source: 'deals_tagged', rowKey: 'id', cols: DEAL_COLS,
-          rows: (rowsOf('deals_tagged') || []).filter((d) => d.kind === 'Client' && ids.has(d.contact_id) && (step !== 'won' || d.stage === 'Closed')).sort(byStageThenRecentD),
+          title: 'Leads from ' + profile, swatch: hueOf('bb'), source: 'boxbyte_people', rowKey: 'contact_id', cols: BB_PEOPLE_COLS.filter(([f]) => f !== 'profile'), rows,
+          note: p && p.not_in_zoho ? p.not_in_zoho + ' of this profile’s leads in the batch file aren’t tagged BoxByte in Zoho, so they aren’t listed.' : null,
         };
       },
+    },
+    'bb-sender': {
+      card: '#bb-batch',
+      build: (sender) => ({
+        title: 'Messages from ' + sender, swatch: hueOf('bb'), source: 'boxbyte_messages', rowKey: 'message_no',
+        cols: [['message_no', '#', 'int', false, true], ['title', 'Prospect’s title'], ['location', 'Location', null, true], ['review', 'Review'], ['subject', 'Subject', null, true]],
+        rows: (rowsOf('boxbyte_messages') || []).filter((m) => (m.send_from || 'Not set') === sender).sort((a, c) => Number(a.message_no) - Number(c.message_no)),
+        note: 'The full text of each message is in Drafted messages below.',
+      }),
+    },
+    'bb-held': {
+      card: '#bb-held',
+      build: (reason) => ({
+        title: 'Held back · ' + reason, swatch: 'var(--cds-chart-muted)', source: 'boxbyte_held', rowKey: 'held_no',
+        cols: [['name', 'Prospect'], ['company', 'Company']],
+        rows: (rowsOf('boxbyte_held') || []).filter((h) => (h.reason || 'No reason given') === reason).sort((a, c) => String(a.name).localeCompare(String(c.name))),
+      }),
     },
     'ref-partners': { card: '#ref-partners-card', build: (partner) => ({ title: 'Deals referred by ' + partner, source: 'referrals', rowKey: 'link_id', cols: REF_COLS.filter(([f]) => !['partner', 'partner_contact', 'agreement'].includes(f)), rows: (rowsOf('referrals') || []).filter((r) => r.partner === partner || (r.recorded && r.partner_contact === partner)) }) },
   };

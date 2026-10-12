@@ -35,7 +35,7 @@ QUERIES = {
     'met_contacts': {"sql": 'select Full_Name, Account_Name, Account_Name.Priority, Relationship_Type, Priority, LI_Connect, Assigned, Total_Meetings_Created from Contacts where Total_Meetings_Created is not null order by Total_Meetings_Created desc', "paged": True},
     'referral_links': {"sql": "select Referred_By_Contact, Referred_By_Account from Deals where ((Referred_By_Contact is not null or Referred_By_Account is not null) and (Deal_Type not like '%Referral Partner%' and Deal_Type not like '%Platform Provider%'))", "paged": True},
     'partner_agreements': {"sql": "select Deal_Name, Stage, Contact_Name, Account_Name from Deals where Deal_Type like '%Referral Partner%'", "paged": True},
-    'boxbyte_contacts': {"sql": "select LI_Connect, Total_Meetings_Created, Created_Time from Contacts where Tag like '%BoxByte%'", "paged": True},
+    'boxbyte_contacts': {"sql": "select Full_Name, Account_Name, Title, LI_Connect, Total_Meetings_Created, Created_Time from Contacts where Tag like '%BoxByte%'", "paged": True},
     'meetings': {"sql": "select Event_Title, Start_DateTime, Who_Id, Who_Id.Relationship_Type, Who_Id.Priority from Events where Start_DateTime >= '2026-08-17T00:00:00-05:00' order by Start_DateTime asc", "paged": True}
 }
 
