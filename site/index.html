@@ -77,6 +77,7 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <script src="data.js"></script>
 <script src="boxbyte.js"></script>
+<script src="courier.js"></script>
 <script>
 /* Data layer: reads data.json (written daily by scripts/fetch_zoho.py) and serves it to the page
    through the same interface the dashboard code was written against. */
@@ -154,9 +155,9 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
   };
   const start = () => {
     const json = window.__DASH_DATA__;
-    const extra = window.__BOXBYTE__;
+    const extras = [window.__BOXBYTE__, window.__COURIER__].filter((x) => x && x.datasets);
     if (json && json.datasets) {
-      raw = { ...json, datasets: { ...json.datasets, ...(extra && extra.datasets ? extra.datasets : {}) } };
+      raw = { ...json, datasets: Object.assign({}, json.datasets, ...extras.map((x) => x.datasets)) };
       cache = {};
       runAll();
       stamp('Data from Zoho CRM as of ' + when(json.generated_at) + '.');
@@ -416,6 +417,7 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
     <button type="button" class="cc-tab" role="tab" id="tab-ref" data-tab="ref" aria-controls="ref"><i class="cc-dot" data-hue="rp"></i>Referrals</button>
     <button type="button" class="cc-tab" role="tab" id="tab-icp" data-tab="icp" aria-controls="icp"><i class="cc-dot" data-hue="icp"></i>ICP Prospecting</button>
     <button type="button" class="cc-tab" role="tab" id="tab-fn" data-tab="fn" aria-controls="fn"><i class="cc-dot" data-hue="fn"></i>Founder Network</button>
+    <button type="button" class="cc-tab" role="tab" id="tab-mc" data-tab="mc" aria-controls="mc"><i class="cc-dot" data-hue="mc"></i>Medical Courier</button>
     <button type="button" class="cc-tab" role="tab" id="tab-bb" data-tab="bb" aria-controls="bb"><i class="cc-dot" data-hue="bb"></i>Box Byte</button>
     <button type="button" class="cc-tab" role="tab" id="tab-pipeline" data-tab="pipeline" aria-controls="pipeline">Pipeline</button>
   </nav>
@@ -423,7 +425,7 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
   <section class="cc-page" id="overview" role="tabpanel" aria-labelledby="tab-overview">
     <div class="cc-grid-3">
       <article class="cc-card" id="ov-rp">
-        <div class="cc-card-head"><h2><i class="cc-dot" data-hue="rp"></i>B2B Campaign</h2><p>Referral partners: B2B firms that serve our buyers and refer clients to us.</p></div>
+        <div class="cc-card-head"><h2><i class="cc-dot" data-hue="rp"></i>B2B Campaign</h2><p>Contacts tagged “May 2026 - 100 B2B”: firms that do work like ours and refer clients to us.</p></div>
         <div class="cc-camp-body">
           <div class="cc-ringwrap" data-ring="rp" data-step="agreements">
             <div class="cc-ring dash-skeleton" data-source="funnel" data-campaign="rp" data-step="agreements"></div>
@@ -439,7 +441,7 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
         <div class="cc-camp-foot"><button type="button" class="cc-go" data-go="rp">Open B2B Campaign</button></div>
       </article>
       <article class="cc-card" id="ov-icp">
-        <div class="cc-card-head"><h2><i class="cc-dot" data-hue="icp"></i>ICP Prospecting</h2><p>Executives at target accounts, reached through Mack's LinkedIn sequence.</p></div>
+        <div class="cc-card-head"><h2><i class="cc-dot" data-hue="icp"></i>ICP Prospecting</h2><p>Executives and accounts tagged “2026ICP”: companies that need our services.</p></div>
         <div class="cc-camp-body">
           <div class="cc-ringwrap" data-ring="icp" data-step="connected">
             <div class="cc-ring dash-skeleton" data-source="funnel" data-campaign="icp" data-step="connected"></div>
@@ -470,6 +472,22 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
         </div>
         <div class="cc-camp-foot"><button type="button" class="cc-go" data-go="fn">Open Founder Network</button></div>
       </article>
+      <article class="cc-card" id="ov-mc">
+        <div class="cc-card-head"><h2><i class="cc-dot" data-hue="mc"></i>Medical Courier</h2><p>Small courier operators tagged “2026MedicalCourier”, approached for pilots of the courier platform.</p></div>
+        <div class="cc-camp-body">
+          <div class="cc-ringwrap" data-ring="mc" data-step="deals">
+            <div class="cc-ring dash-skeleton" data-source="funnel" data-campaign="mc" data-step="deals"></div>
+            <span class="cc-ring-cap">Deals vs target</span>
+            <span class="cc-pacenote" data-pace="mc"></span>
+          </div>
+          <dl class="cc-campstats"><div><dt>Accounts</dt><dd><span class="dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=mc&amp;step=accounts" data-fmt="int">—</span></dd></div><div><dt>Emailed</dt><dd><span class="dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=mc&amp;step=emailed" data-fmt="int">—</span></dd></div><div><dt>Deals</dt><dd><span class="dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=mc&amp;step=deals" data-fmt="int">—</span></dd></div></dl>
+        </div>
+        <div class="cc-spark" data-campaign="mc">
+          <div class="cc-spark-top"><span>Courier deals created per month · select a month</span><span class="cc-spark-now"></span></div>
+          <div class="cc-spark-chart dash-skeleton" data-source="campaign_monthly" data-campaign="mc"></div>
+        </div>
+        <div class="cc-camp-foot"><button type="button" class="cc-go" data-go="mc">Open Medical Courier</button></div>
+      </article>
     </div>
 
     <article class="cc-card" id="ov-river">
@@ -495,7 +513,7 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
 
     <div class="cc-grid">
       <article class="cc-card" id="attention">
-        <div class="cc-card-head"><h2>Needs attention</h2><p>Open items across the three campaigns.</p></div>
+        <div class="cc-card-head"><h2>Needs attention</h2><p>Open items across the campaigns.</p></div>
         <ul class="cc-attn"><li class="cc-attn-item"><span class="cc-attn-num dash-skeleton" data-source="attention" data-field="value" data-where="item=fn_p1_no_step" data-fmt="int">—</span><span class="cc-attn-label">Priority 1 Founder Network contacts with no open task</span><button type="button" class="cc-go" data-go="fn">Open</button></li>
 <li class="cc-attn-item"><span class="cc-attn-num dash-skeleton" data-source="attention" data-field="value" data-where="item=partner_proposals" data-fmt="int">—</span><span class="cc-attn-label">Partnership agreements waiting for signature</span><button type="button" class="cc-go" data-go="rp">Open</button></li>
 <li class="cc-attn-item"><span class="cc-attn-num dash-skeleton" data-source="attention" data-field="value" data-where="item=partner_hold" data-fmt="int">—</span><span class="cc-attn-label">Partnership deals on hold</span><button type="button" class="cc-go" data-go="rp">Open</button></li>
@@ -506,12 +524,14 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
       <article class="cc-card" id="definitions">
         <div class="cc-card-head"><h2>How each campaign is counted</h2><p>The rules this page applies to Zoho CRM records.</p></div>
         <ul class="cc-notes">
-          <li>B2B Campaign: referral partner contacts, meaning contacts whose Relationship Type includes Referral Partner. Partnership deals are deals named as a referral, partner or platform agreement, whoever the contact is.</li>
+          <li>Every campaign leaves out Priority 9 (inactive) and 11 (do not contact). Anyone whose Relationship Type includes Founder Network counts only in the Founder Network, even if they carry another campaign's tag.</li>
+          <li>B2B Campaign: contacts tagged “May 2026 - 100 B2B”. Referral partnership deals are every deal whose Deal Type is Reseller/ Referral Partner, whoever the contact is.</li>
+          <li>ICP Prospecting: contacts tagged “2026ICP”; target accounts are accounts tagged “2026ICP”. A client deal is ICP when its contact or account carries the tag.</li>
           <li>Founder Network: contacts whose Relationship Type includes Founder Network. Their opportunities are client deals with one of these contacts. Next steps are their open Zoho tasks.</li>
-          <li>ICP Prospecting: contacts at an account with a Priority set, with their own Priority 1, 3 or 5 and no relationship tag. Your “2026 ICP: Contact Report (Mack)” uses its own filter, so its total can differ slightly.</li>
-          <li>Referred deals: client deals with Referred By Contact or Referred By Account filled in (counted once each), plus deals marked External Referral that have no referrer recorded yet.</li>
-          <li>Meetings come from Zoho Meetings linked to a contact. A meeting with no contact attached can't be credited to any campaign.</li>
-          <li>The ICP sheet's “Contacted” step has no field in Zoho yet, so it isn't shown.</li>
+          <li>Medical Courier: accounts tagged “2026MedicalCourier” and their contacts and deals. Emails, follow-ups and replies come from the Medical Courier prospects sheet, because those emails went to company addresses that have no contact in Zoho.</li>
+          <li>Deals are sorted by Deal Type: Reseller/ Referral Partner is a referral partnership, Platform Provider Agreement is a platform we resell, everything else is client work. Deals with no Deal Type count nowhere until one is set.</li>
+          <li>Referred deals: client deals with Referred By Contact or Referred By Account filled in (counted once each), plus deals marked External Referral that have no referrer recorded yet. They count for the B2B Campaign, never ICP.</li>
+          <li>Meetings come from Zoho Meetings linked to a contact. A meeting with no contact attached can't be credited to any campaign. The ICP sheet's “Contacted” step has no field in Zoho yet, so it isn't shown.</li>
         </ul>
       </article>
     </div>
@@ -555,7 +575,7 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
     </div>
     <div class="cc-grid">
       <article class="cc-card" id="rp-stages">
-        <div class="cc-card-head"><h3>Partnership deals by stage</h3><p>Proposals means the agreement has been sent. Darker is further along. Select a column to see its deals.</p></div>
+        <div class="cc-card-head"><h3>Partnership deals by stage</h3><p>Deals with Deal Type Reseller/ Referral Partner. Proposals means the agreement has been sent. Darker is further along. Select a column to see its deals.</p></div>
         <div class="cc-svgchart dash-skeleton" id="chart-rp-stages" data-source="stage_mix"></div>
         <div class="cc-drill" id="drill-rp-stages" hidden></div>
         <p class="cc-insight" id="ins-rp-stages"></p>
@@ -641,7 +661,7 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
 
   <section class="cc-page" id="icp" role="tabpanel" aria-labelledby="tab-icp" hidden>
     <p class="cc-intro">Is the LinkedIn sequence turning connections at target accounts into meetings and deals?</p>
-    <p class="cc-takeaway" id="takeaway-icp"><b data-source="funnel" data-field="value" data-where="campaign=icp&amp;step=connected" data-fmt="int" class="dash-skeleton">—</b> executives connected, <b data-source="funnel" data-field="value" data-where="campaign=icp&amp;step=meetings" data-fmt="int" class="dash-skeleton">—</b> meetings logged against a target of 300.</p>
+    <p class="cc-takeaway" id="takeaway-icp"><b data-source="funnel" data-field="value" data-where="campaign=icp&amp;step=connected" data-fmt="int" class="dash-skeleton">—</b> executives connected, <b data-source="funnel" data-field="value" data-where="campaign=icp&amp;step=meetings" data-fmt="int" class="dash-skeleton">—</b> meetings logged against a target of <b data-source="funnel" data-field="target" data-where="campaign=icp&amp;step=meetings" data-fmt="int" class="dash-skeleton">—</b>.</p>
     <article class="cc-card cc-hero" id="hero-icp">
       <div class="cc-hero-body">
           <div class="cc-ringwrap" data-ring="icp" data-step="connected" data-drill="hero-icp">
@@ -682,14 +702,14 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
         <p class="cc-insight" data-insight="priority" data-campaign="icp"></p>
       </article>
       <article class="cc-card" id="icp-stages">
-        <div class="cc-card-head"><h3>ICP deals by stage</h3><p>Client deals at a prioritized account whose contact is in no other campaign. Select a column to see its deals.</p></div>
+        <div class="cc-card-head"><h3>ICP deals by stage</h3><p>Client deals whose contact or account is tagged 2026ICP, and whose contact is in no other campaign. Select a column to see its deals.</p></div>
         <div class="cc-svgchart dash-skeleton" id="chart-icp-stages" data-source="stage_campaign"></div>
         <div class="cc-drill" id="drill-icp-stages" hidden></div>
         <p class="cc-insight" id="ins-icp-stages"></p>
       </article>
     </div>
     <article class="cc-card" id="icp-deals-card">
-      <div class="cc-card-head"><h3>ICP deals</h3><p>Every client deal credited to ICP Prospecting.</p></div>
+      <div class="cc-card-head"><h3>ICP deals</h3><p>Every client deal credited to ICP Prospecting. Deals appear here once they are created on a 2026ICP contact or account.</p></div>
       <p class="cc-state" hidden></p>
       <div class="cc-scroll">
         <table class="cc-tbl" id="icp-deals" data-source="deals_tagged" data-row-key="id">
@@ -785,6 +805,69 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
     </article>
   </section>
 
+  <section class="cc-page" id="mc" role="tabpanel" aria-labelledby="tab-mc" hidden>
+    <p class="cc-intro">Are small courier operators answering the outreach, and is that turning into pilots of the courier platform?</p>
+    <p class="cc-takeaway" id="takeaway-mc"><b data-source="funnel" data-field="value" data-where="campaign=mc&amp;step=emailed" data-fmt="int" class="dash-skeleton">—</b> of <b data-source="funnel" data-field="value" data-where="campaign=mc&amp;step=accounts" data-fmt="int" class="dash-skeleton">—</b> courier accounts emailed, <b data-source="funnel" data-field="value" data-where="campaign=mc&amp;step=replied" data-fmt="int" class="dash-skeleton">—</b> replied, <b data-source="funnel" data-field="value" data-where="campaign=mc&amp;step=deals" data-fmt="int" class="dash-skeleton">—</b> deals created against a target of <b data-source="funnel" data-field="target" data-where="campaign=mc&amp;step=deals" data-fmt="int" class="dash-skeleton">—</b>.</p>
+    <article class="cc-card cc-hero" id="hero-mc">
+      <div class="cc-hero-body">
+          <div class="cc-ringwrap" data-ring="mc" data-step="accounts" data-drill="hero-mc">
+            <div class="cc-ring dash-skeleton" data-source="funnel" data-campaign="mc" data-step="accounts"></div>
+            <span class="cc-ring-cap">Target courier accounts</span>
+            <span class="cc-pacenote" data-pace="mc"></span>
+          </div><div class="cc-ringwrap" data-ring="mc" data-step="deals" data-drill="hero-mc">
+            <div class="cc-ring dash-skeleton" data-source="funnel" data-campaign="mc" data-step="deals"></div>
+            <span class="cc-ring-cap">Deals created</span>
+            <span class="cc-pacenote" data-pace="mc"></span>
+          </div><div class="cc-ringwrap" data-ring="mc" data-step="won" data-drill="hero-mc">
+            <div class="cc-ring dash-skeleton" data-source="funnel" data-campaign="mc" data-step="won"></div>
+            <span class="cc-ring-cap">Deals won</span>
+            <span class="cc-pacenote" data-pace="mc"></span>
+          </div>
+          <div class="cc-spark" data-campaign="mc">
+            <div class="cc-spark-top"><span>Courier deals created per month · select a month</span><span class="cc-spark-now"></span></div>
+            <div class="cc-spark-chart dash-skeleton" data-source="campaign_monthly" data-campaign="mc"></div>
+          </div>
+      </div>
+    </article>
+    <div class="cc-grid">
+      <article class="cc-card" id="mc-funnel">
+        <div class="cc-card-head"><h3>Funnel</h3><p>Courier companies at each stage, narrowing as they move down. Emailed and replied come from the prospects sheet; the rest from Zoho. Select a step for details.</p></div>
+        <div class="cc-funnelviz cc-flowfunnel dash-skeleton" data-source="funnel funnel_drops" data-campaign="mc"></div>
+        <p class="cc-insight" data-insight="funnel" data-campaign="mc"></p>
+      </article>
+      <article class="cc-card" id="mc-phases">
+        <div class="cc-card-head"><h3>Outreach by phase</h3><p>Each phase of the Medical Courier prospects sheet, saved <span id="mc-file-date">—</span>. These numbers change only when a new copy of the sheet is loaded. Select a phase to list its companies.</p></div>
+        <div class="cc-legend" id="leg-mc-phases"></div>
+        <div class="cc-bbbars dash-skeleton" id="mc-phasebars" data-source="courier_phases"></div>
+        <p class="cc-insight" id="ins-mc-phases"></p>
+      </article>
+    </div>
+    <div class="cc-grid">
+      <article class="cc-card" id="mc-targets">
+        <div class="cc-card-head"><h3>Progress vs target</h3><p>Dark tick is the target, grey tick is today's pace. The contacts target is one contact per account. Select a row for details.</p></div>
+        <div class="cc-bullets dash-skeleton" data-source="funnel" data-campaign="mc"></div>
+        <p class="cc-insight" data-insight="targets" data-campaign="mc"></p>
+      </article>
+      <article class="cc-card" id="mc-stages">
+        <div class="cc-card-head"><h3>Courier deals by stage</h3><p>Client deals at an account tagged 2026MedicalCourier. Select a column to see its deals.</p></div>
+        <div class="cc-svgchart dash-skeleton" id="chart-mc-stages" data-source="stage_campaign"></div>
+        <div class="cc-drill" id="drill-mc-stages" hidden></div>
+        <p class="cc-insight" id="ins-mc-stages"></p>
+      </article>
+    </div>
+    <article class="cc-card" id="mc-deals-card">
+      <div class="cc-card-head"><h3>Medical Courier deals</h3><p>Every client deal at a courier account.</p></div>
+      <p class="cc-state" hidden></p>
+      <div class="cc-scroll">
+        <table class="cc-tbl" id="mc-deals" data-source="deals_tagged" data-row-key="id">
+          <thead><tr><th data-field="deal">Deal</th><th data-field="account">Account</th><th data-field="contact" class="cc-hide-narrow">Contact</th><th data-field="deal_type" class="cc-hide-narrow">Deal Type</th><th data-field="stage">Stage</th><th data-field="updated" class="cc-hide-narrow">Updated</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="cc-empty" hidden>No courier deals yet.</p>
+    </article>
+  </section>
+
   <section class="cc-page" id="bb" role="tabpanel" aria-labelledby="tab-bb" hidden>
     <p class="cc-intro">Box Byte sources prospects and drafts the LinkedIn outreach we send from our own profiles. Are their leads turning into conversations, meetings and deals?</p>
     <div class="cc-grid">
@@ -839,19 +922,19 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
 
   <section class="cc-page" id="pipeline" role="tabpanel" aria-labelledby="tab-pipeline" hidden>
     <div class="cc-tools" style="justify-content: space-between">
-      <p class="cc-intro">Every deal in Zoho, by stage, by campaign and by when it was created. Stages match your deals board.</p>
+      <p class="cc-intro">Every deal in Zoho, by stage, by campaign, by Deal Type and by when it was created. Stages match your deals board.</p>
       <a class="cc-go" href="https://crm.zoho.com/crm/org899412015/tab/Potentials/custom-view/6988700000001932032/kanban?layout_id=6988700000000091023&amp;kvId=6988700000000581518" target="_blank" rel="noopener">Open the deals board in Zoho ↗</a>
     </div>
     <div class="cc-grid">
       <article class="cc-card" id="pipe-stage">
-        <div class="cc-card-head"><h3>Deals by stage and campaign</h3><p>Partnership agreements and client deals together, colored by the campaign of their contact. Select a column to see its deals.</p></div>
+        <div class="cc-card-head"><h3>Deals by stage and campaign</h3><p>Every deal, whatever its Deal Type, colored by its campaign. Select a column to see its deals.</p></div>
         <div class="cc-legend" id="leg-pipe-stage"></div>
         <div class="cc-svgchart dash-skeleton" id="chart-pipe-stage" data-source="stage_campaign"></div>
         <div class="cc-drill" id="drill-pipe-stage" hidden></div>
         <p class="cc-insight" id="ins-pipe-stage"></p>
       </article>
       <article class="cc-card" id="pipe-monthly">
-        <div class="cc-card-head"><h3>New deals per month</h3><p>Deals by the month they were created in Zoho. Select a month to list its deals.</p></div>
+        <div class="cc-card-head"><h3>New deals per month</h3><p>Deals by the month they were created in Zoho, split by Deal Type. Select a month to list its deals.</p></div>
         <div class="cc-legend" id="leg-pipe-monthly"></div>
         <div class="cc-svgchart dash-skeleton" id="chart-pipe-monthly" data-source="deals_monthly"></div>
         <p class="cc-insight" id="ins-pipe-monthly"></p>
@@ -866,7 +949,7 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
           <thead><tr>
             <th data-field="deal" aria-sort="none"><button type="button" class="cc-sort">Deal</button></th>
             <th data-field="campaign" aria-sort="none"><button type="button" class="cc-sort">Campaign</button></th>
-            <th data-field="kind" aria-sort="none" class="cc-hide-narrow"><button type="button" class="cc-sort">Type</button></th>
+            <th data-field="deal_type" aria-sort="none" class="cc-hide-narrow"><button type="button" class="cc-sort">Deal Type</button></th>
             <th data-field="stage" aria-sort="none"><button type="button" class="cc-sort">Stage</button></th>
             <th data-field="amount" aria-sort="none" class="cc-num"><button type="button" class="cc-sort">Amount</button></th>
             <th data-field="updated" aria-sort="descending" class="cc-hide-narrow"><button type="button" class="cc-sort">Updated</button></th>
@@ -893,7 +976,7 @@ dash.loader('rp_contacts', {
       const o = {};
       for (const [k, v] of Object.entries(r)) {
         const key = rename[k] || k;
-        if (Array.isArray(v)) o[key] = v.join(', ');
+        if (Array.isArray(v)) o[key] = v.map((x) => (x && typeof x === 'object' ? x.name : x)).filter((x) => x != null && x !== '').join(', ');
         else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
         else o[key] = v;
       }
@@ -916,7 +999,7 @@ dash.loader('fn_contacts', {
       const o = {};
       for (const [k, v] of Object.entries(r)) {
         const key = rename[k] || k;
-        if (Array.isArray(v)) o[key] = v.join(', ');
+        if (Array.isArray(v)) o[key] = v.map((x) => (x && typeof x === 'object' ? x.name : x)).filter((x) => x != null && x !== '').join(', ');
         else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
         else o[key] = v;
       }
@@ -939,7 +1022,7 @@ dash.loader('icp_contacts', {
       const o = {};
       for (const [k, v] of Object.entries(r)) {
         const key = rename[k] || k;
-        if (Array.isArray(v)) o[key] = v.join(', ');
+        if (Array.isArray(v)) o[key] = v.map((x) => (x && typeof x === 'object' ? x.name : x)).filter((x) => x != null && x !== '').join(', ');
         else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
         else o[key] = v;
       }
@@ -962,7 +1045,53 @@ dash.loader('icp_accounts', {
       const o = {};
       for (const [k, v] of Object.entries(r)) {
         const key = rename[k] || k;
-        if (Array.isArray(v)) o[key] = v.join(', ');
+        if (Array.isArray(v)) o[key] = v.map((x) => (x && typeof x === 'object' ? x.name : x)).filter((x) => x != null && x !== '').join(', ');
+        else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
+        else o[key] = v;
+      }
+      for (const n of numeric) if (o[n] != null && o[n] !== '') o[n] = Number(o[n]);
+      return o;
+    });
+    return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
+  },
+});
+dash.loader('mc_accounts', {
+  description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text, counts and amounts become numbers.',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? (answer.trim() ? JSON.parse(answer) : {}) : (answer || {});
+    if (a.status === 'error' || (a.code && !a.data)) throw new Error(a.message || a.code || 'Zoho CRM refused the query');
+    const body = a.data && !Array.isArray(a.data) ? a.data : a;
+    const list = Array.isArray(body.data) ? body.data : [];
+    const rename = { 'COUNT(id)': 'count', 'SUM(Amount)': 'amount_sum' };
+    const numeric = ['count', 'amount_sum', 'Amount', 'Total_Meetings_Created'];
+    const rows = list.map((r) => {
+      const o = {};
+      for (const [k, v] of Object.entries(r)) {
+        const key = rename[k] || k;
+        if (Array.isArray(v)) o[key] = v.map((x) => (x && typeof x === 'object' ? x.name : x)).filter((x) => x != null && x !== '').join(', ');
+        else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
+        else o[key] = v;
+      }
+      for (const n of numeric) if (o[n] != null && o[n] !== '') o[n] = Number(o[n]);
+      return o;
+    });
+    return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
+  },
+});
+dash.loader('mc_contacts', {
+  description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text, counts and amounts become numbers.',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? (answer.trim() ? JSON.parse(answer) : {}) : (answer || {});
+    if (a.status === 'error' || (a.code && !a.data)) throw new Error(a.message || a.code || 'Zoho CRM refused the query');
+    const body = a.data && !Array.isArray(a.data) ? a.data : a;
+    const list = Array.isArray(body.data) ? body.data : [];
+    const rename = { 'COUNT(id)': 'count', 'SUM(Amount)': 'amount_sum' };
+    const numeric = ['count', 'amount_sum', 'Amount', 'Total_Meetings_Created'];
+    const rows = list.map((r) => {
+      const o = {};
+      for (const [k, v] of Object.entries(r)) {
+        const key = rename[k] || k;
+        if (Array.isArray(v)) o[key] = v.map((x) => (x && typeof x === 'object' ? x.name : x)).filter((x) => x != null && x !== '').join(', ');
         else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
         else o[key] = v;
       }
@@ -985,7 +1114,7 @@ dash.loader('deals', {
       const o = {};
       for (const [k, v] of Object.entries(r)) {
         const key = rename[k] || k;
-        if (Array.isArray(v)) o[key] = v.join(', ');
+        if (Array.isArray(v)) o[key] = v.map((x) => (x && typeof x === 'object' ? x.name : x)).filter((x) => x != null && x !== '').join(', ');
         else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
         else o[key] = v;
       }
@@ -1008,7 +1137,7 @@ dash.loader('open_tasks', {
       const o = {};
       for (const [k, v] of Object.entries(r)) {
         const key = rename[k] || k;
-        if (Array.isArray(v)) o[key] = v.join(', ');
+        if (Array.isArray(v)) o[key] = v.map((x) => (x && typeof x === 'object' ? x.name : x)).filter((x) => x != null && x !== '').join(', ');
         else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
         else o[key] = v;
       }
@@ -1031,7 +1160,7 @@ dash.loader('fn_people', {
       const o = {};
       for (const [k, v] of Object.entries(r)) {
         const key = rename[k] || k;
-        if (Array.isArray(v)) o[key] = v.join(', ');
+        if (Array.isArray(v)) o[key] = v.map((x) => (x && typeof x === 'object' ? x.name : x)).filter((x) => x != null && x !== '').join(', ');
         else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
         else o[key] = v;
       }
@@ -1054,7 +1183,7 @@ dash.loader('met_contacts', {
       const o = {};
       for (const [k, v] of Object.entries(r)) {
         const key = rename[k] || k;
-        if (Array.isArray(v)) o[key] = v.join(', ');
+        if (Array.isArray(v)) o[key] = v.map((x) => (x && typeof x === 'object' ? x.name : x)).filter((x) => x != null && x !== '').join(', ');
         else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
         else o[key] = v;
       }
@@ -1077,7 +1206,7 @@ dash.loader('referral_links', {
       const o = {};
       for (const [k, v] of Object.entries(r)) {
         const key = rename[k] || k;
-        if (Array.isArray(v)) o[key] = v.join(', ');
+        if (Array.isArray(v)) o[key] = v.map((x) => (x && typeof x === 'object' ? x.name : x)).filter((x) => x != null && x !== '').join(', ');
         else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
         else o[key] = v;
       }
@@ -1100,7 +1229,7 @@ dash.loader('partner_agreements', {
       const o = {};
       for (const [k, v] of Object.entries(r)) {
         const key = rename[k] || k;
-        if (Array.isArray(v)) o[key] = v.join(', ');
+        if (Array.isArray(v)) o[key] = v.map((x) => (x && typeof x === 'object' ? x.name : x)).filter((x) => x != null && x !== '').join(', ');
         else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
         else o[key] = v;
       }
@@ -1123,7 +1252,7 @@ dash.loader('meetings', {
       const o = {};
       for (const [k, v] of Object.entries(r)) {
         const key = rename[k] || k;
-        if (Array.isArray(v)) o[key] = v.join(', ');
+        if (Array.isArray(v)) o[key] = v.map((x) => (x && typeof x === 'object' ? x.name : x)).filter((x) => x != null && x !== '').join(', ');
         else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
         else o[key] = v;
       }
@@ -1146,7 +1275,7 @@ dash.loader('boxbyte_contacts', {
       const o = {};
       for (const [k, v] of Object.entries(r)) {
         const key = rename[k] || k;
-        if (Array.isArray(v)) o[key] = v.join(', ');
+        if (Array.isArray(v)) o[key] = v.map((x) => (x && typeof x === 'object' ? x.name : x)).filter((x) => x != null && x !== '').join(', ');
         else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
         else o[key] = v;
       }
@@ -1157,23 +1286,52 @@ dash.loader('boxbyte_contacts', {
   },
 });
 
+const CC_RULES = {
+  tags: { rp: 'May 2026 - 100 B2B', icp: '2026ICP', mc: '2026MedicalCourier' },
+  excluded: (p) => p === '9' || p === '11',
+  hasTag: (list, tag) => String(list || '').split(', ').includes(tag),
+  isFN: (rel) => String(rel || '').includes('Founder Network'),
+  dealKind: (type) => {
+    const s = String(type || '');
+    if (s.includes('Referral Partner')) return 'Partnership';
+    if (s.includes('Platform Provider')) return 'Platform provider';
+    return s.trim() ? 'Client' : 'No Deal Type';
+  },
+  /* A person's campaign: Priority 9 and 11 are in none; Founder Network wins over every tag. */
+  personCampaign: (r) => {
+    if (CC_RULES.excluded(r.Priority)) return null;
+    if (CC_RULES.isFN(r.Relationship_Type)) return 'fn';
+    if (CC_RULES.hasTag(r['Account_Name.Tag'], CC_RULES.tags.mc)) return 'mc';
+    if (CC_RULES.hasTag(r.Tag, CC_RULES.tags.rp)) return 'rp';
+    if (CC_RULES.hasTag(r.Tag, CC_RULES.tags.icp)) return 'icp';
+    return null;
+  },
+};
+const CC_NAMES = { rp: 'B2B Campaign', icp: 'ICP Prospecting', fn: 'Founder Network', mc: 'Medical Courier' };
+
 dash.calc('deals_tagged', {
   title: 'Deals by campaign',
-  description: 'Each deal marked as a partnership agreement or client work, and given the campaign of its contact.',
-  inputs: ['deals'],
-  fn: (deals) => {
-    const partnerName = /partner|referr?al|refferal|platfo?r?m provider|platrform/i;
+  description: 'Each deal sorted by its Deal Type (referral partnership, platform provider, client work, or no type set) and given one campaign from its contact and account: Founder Network contacts first, then Medical Courier accounts, B2B-tagged contacts, and 2026ICP contacts or accounts. Priority 9 and 11 count in no campaign, and referred client deals go to the B2B Campaign rather than ICP.',
+  inputs: ['deals', 'referral_links'],
+  fn: (deals, referral_links) => {
+    const R = CC_RULES;
+    const linked = new Set(referral_links.map((l) => l.id));
     const nextFor = { Identify: 'Book the first meeting', Discovery: 'Send the agreement and company overview', Proposals: 'Follow up for signature', Hold: 'Revive it or close it', Closed: 'Ask for the first referral' };
     return deals.map((d) => {
-      const rel = d['Contact_Name.Relationship_Type'] || '';
-      const kind = partnerName.test(d.Deal_Name || '') ? 'Partnership' : 'Client';
-      const campaign = rel.includes('Founder Network') ? 'Founder Network'
-        : rel.includes('Referral Partner') ? 'B2B Campaign'
-        : d['Account_Name.Priority'] ? 'ICP Prospecting' : 'Unattributed';
+      const kind = R.dealKind(d.Deal_Type);
+      const referred = linked.has(d.id) || d.Lead_Source === 'External Referral';
+      const contactOut = d.Contact_Name && R.excluded(d['Contact_Name.Priority']);
+      const accountIn = !R.excluded(d['Account_Name.Priority']);
+      let campaign = 'Unattributed';
+      if (contactOut) campaign = 'Unattributed';
+      else if (R.isFN(d['Contact_Name.Relationship_Type'])) campaign = 'Founder Network';
+      else if (accountIn && R.hasTag(d['Account_Name.Tag'], R.tags.mc)) campaign = 'Medical Courier';
+      else if (R.hasTag(d['Contact_Name.Tag'], R.tags.rp)) campaign = 'B2B Campaign';
+      else if (R.hasTag(d['Contact_Name.Tag'], R.tags.icp) || (accountIn && R.hasTag(d['Account_Name.Tag'], R.tags.icp))) campaign = referred ? 'B2B Campaign' : 'ICP Prospecting';
       return {
-        id: d.id, deal: d.Deal_Name, kind, campaign, stage: d.Stage,
+        id: d.id, deal: d.Deal_Name, deal_type: d.Deal_Type || 'Not set', kind, campaign, stage: d.Stage,
         account: d.Account_Name, contact: d.Contact_Name, contact_id: d.Contact_Name_id ?? null, amount: d.Amount ?? 0,
-        referred: d.Lead_Source === 'External Referral',
+        account_id: d.Account_Name_id ?? null, referred: d.Lead_Source === 'External Referral',
         next_action: kind === 'Partnership' ? (nextFor[d.Stage] || '') : '',
         created: d.Created_Time, updated: d.Modified_Time,
       };
@@ -1380,11 +1538,47 @@ dash.calc('boxbyte_senders', {
   },
 });
 
+dash.calc('mc_people', {
+  title: 'Medical Courier contacts',
+  description: 'Contacts at accounts tagged 2026MedicalCourier, leaving out Founder Network contacts and Priority 9 and 11.',
+  inputs: ['mc_contacts'],
+  fn: (mc_contacts) => mc_contacts
+    .filter((c) => !CC_RULES.excluded(c.Priority) && !CC_RULES.isFN(c.Relationship_Type))
+    .map((c) => ({
+      contact_id: c.id, contact: c.Full_Name, account: c.Account_Name, priority: c.Priority || 'Not set',
+      linkedin: c.LI_Connect || 'Not sent', owner: c.Assigned || 'Unassigned', meetings: c.Total_Meetings_Created || 0,
+    })),
+});
+
+dash.calc('courier_phases', {
+  title: 'Courier outreach by phase',
+  description: 'Companies in each phase of the Medical Courier prospects sheet: emailed (then split into replied, followed up with no reply, and emailed once), not emailed, and not marked either way. Replies and follow-ups count only for companies marked emailed.',
+  inputs: ['courier_sends'],
+  fn: (courier_sends) => {
+    const by = new Map();
+    for (const s of courier_sends) {
+      const r = by.get(s.phase) || { phase: s.phase, companies: 0, emailed: 0, followed_up: 0, replied: 0, followed_no_reply: 0, emailed_once: 0, not_emailed: 0, not_marked: 0 };
+      r.companies += 1;
+      if (s.emailed === true) {
+        r.emailed += 1;
+        if (s.replied === true) r.replied += 1;
+        else if (s.followed_up === true) r.followed_no_reply += 1;
+        else r.emailed_once += 1;
+        if (s.followed_up === true) r.followed_up += 1;
+      } else if (s.emailed === false) r.not_emailed += 1;
+      else r.not_marked += 1;
+      by.set(s.phase, r);
+    }
+    const num = (p) => Number(String(p).replace(/\D+/g, '')) || 0;
+    return [...by.values()].sort((a, b) => num(a.phase) - num(b.phase));
+  },
+});
+
 dash.calc('funnel', {
   title: 'Campaign funnels',
-  description: 'Each campaign’s steps counted from its contacts and deals, beside the 2026 targets from the campaign tracking sheets. Referred deals are those in Referred deals, counted once each.',
-  inputs: ['rp_contacts', 'fn_contacts', 'icp_contacts', 'icp_accounts', 'deals_tagged', 'referrals'],
-  fn: (rp_contacts, fn_contacts, icp_contacts, icp_accounts, deals_tagged, referrals) => {
+  description: 'Each campaign’s steps counted from its contacts, accounts and deals, beside the 2026 targets from the campaign tracking sheets. Referred deals are those in Referred deals, counted once each. Medical Courier email steps come from the prospects sheet.',
+  inputs: ['rp_contacts', 'fn_contacts', 'icp_contacts', 'icp_accounts', 'mc_accounts', 'mc_people', 'courier_sends', 'deals_tagged', 'referrals'],
+  fn: (rp_contacts, fn_contacts, icp_contacts, icp_accounts, mc_accounts, mc_people, courier_sends, deals_tagged, referrals) => {
     const count = (rows, keep) => rows.filter(keep).reduce((t, r) => t + (r.count || 0), 0);
     const met = (r) => r.Total_Meetings_Created || 0;
     const reach = (rows) => ({
@@ -1392,7 +1586,7 @@ dash.calc('funnel', {
       invited: count(rows, (r) => r.LI_Connect === 'Requested' || r.LI_Connect === 'Connected'),
       connected: count(rows, (r) => r.LI_Connect === 'Connected'),
       met1: count(rows, (r) => met(r) >= 1),
-      met5: count(rows, (r) => met(r) >= 5),
+      met4: count(rows, (r) => met(r) >= 4),
       meetings: rows.reduce((t, r) => t + (r.count || 0) * met(r), 0),
     });
     const rp = reach(rp_contacts);
@@ -1403,12 +1597,14 @@ dash.calc('funnel', {
     const referred = [...new Map(referrals.map((r) => [r.deal_id, r])).values()];
     const won = (list) => list.filter((d) => d.stage === 'Closed');
     const row = (campaign, step, value, target) => ({ campaign, step, value, target, progress: target ? value / target : null });
+    const mcAccounts = mc_accounts.reduce((t, r) => t + (r.count || 0), 0);
+    const mcDeals = client('Medical Courier');
     return [
-      row('rp', 'total', rp.total, null),
+      row('rp', 'total', rp.total, 100),
       row('rp', 'invited', rp.invited, null),
       row('rp', 'connected', rp.connected, null),
       row('rp', 'met1', rp.met1, 100),
-      row('rp', 'met5', rp.met5, 50),
+      row('rp', 'met4', rp.met4, 50),
       row('rp', 'partner_deals', partner.length, 50),
       row('rp', 'agreements', partner.filter((d) => d.stage === 'Proposals' || d.stage === 'Closed').length, 50),
       row('rp', 'signed', won(partner).length, null),
@@ -1417,20 +1613,31 @@ dash.calc('funnel', {
       row('rp', 'referred_value', won(referred).reduce((t, d) => t + (d.amount || 0), 0), 200000),
       row('icp', 'accounts', icp_accounts.reduce((t, r) => t + (r.count || 0), 0), 500),
       row('icp', 'total', icp.total, 2000),
-      row('icp', 'invited', icp.invited, 2184),
+      row('icp', 'invited', icp.invited, null),
       row('icp', 'connected', icp.connected, 1000),
       row('icp', 'met1', icp.met1, null),
       row('icp', 'meetings', icp.meetings, 300),
-      row('icp', 'met5', icp.met5, 150),
+      row('icp', 'met4', icp.met4, 150),
       row('icp', 'deals', client('ICP Prospecting').length, 18),
       row('icp', 'won', won(client('ICP Prospecting')).length, 6),
       row('fn', 'total', fn.total, 450),
       row('fn', 'connected', fn.connected, null),
       row('fn', 'met1', fn.met1, null),
-      row('fn', 'met5', fn.met5, null),
+      row('fn', 'met4', fn.met4, null),
       row('fn', 'meetings', fn.meetings, 150),
       row('fn', 'opps', client('Founder Network').length, 15),
       row('fn', 'won', won(client('Founder Network')).length, 3),
+      row('mc', 'accounts', mcAccounts, 100),
+      row('mc', 'contacts', mc_people.length, mcAccounts || null),
+      row('mc', 'connected', mc_people.filter((p) => p.linkedin === 'Connected').length, null),
+      row('mc', 'emailed', courier_sends.filter((s) => s.emailed === true).length, null),
+      row('mc', 'followed_up', courier_sends.filter((s) => s.emailed === true && s.followed_up === true).length, null),
+      row('mc', 'replied', courier_sends.filter((s) => s.emailed === true && s.replied === true).length, null),
+      row('mc', 'met1', mc_people.filter((p) => p.meetings >= 1).length, null),
+      row('mc', 'meetings', mc_people.reduce((t, p) => t + p.meetings, 0), null),
+      row('mc', 'deal_accounts', new Set(mcDeals.map((d) => d.account_id || d.account)).size, null),
+      row('mc', 'deals', mcDeals.length, 10),
+      row('mc', 'won', won(mcDeals).length, 4),
     ];
   },
 });
@@ -1440,7 +1647,7 @@ dash.calc('funnel_drops', {
   description: 'For each campaign, the share of people at one funnel step who reach the next.',
   inputs: ['funnel'],
   fn: (funnel) => {
-    const order = { rp: ['total', 'invited', 'connected', 'met1', 'met5'], icp: ['total', 'invited', 'connected', 'met1', 'met5'], fn: ['total', 'connected', 'met1', 'met5'] };
+    const order = { rp: ['total', 'invited', 'connected', 'met1', 'met4'], icp: ['total', 'invited', 'connected', 'met1', 'met4'], fn: ['total', 'connected', 'met1', 'met4'], mc: ['accounts', 'emailed', 'replied', 'met1', 'deal_accounts'] };
     const out = [];
     for (const [campaign, steps] of Object.entries(order)) {
       for (let i = 1; i < steps.length; i += 1) {
@@ -1475,7 +1682,7 @@ dash.calc('priority_mix', {
 
 dash.calc('stage_mix', {
   title: 'Deals by stage',
-  description: 'Partnership and client deals counted by stage, with the amount entered on them.',
+  description: 'Deals counted by Deal Type group and stage, with the amount entered on them.',
   inputs: ['deals_tagged'],
   fn: (deals_tagged) => {
     const by = new Map();
@@ -1527,7 +1734,7 @@ dash.calc('pipeline_totals', {
 
 dash.calc('deals_monthly', {
   title: 'New deals per month',
-  description: 'Deals counted by the month they were created and whether they are partnership or client deals.',
+  description: 'Deals counted by the month they were created and their Deal Type group: referral partnership, platform provider, client work, or no type set.',
   inputs: ['deals_tagged'],
   fn: (deals_tagged) => {
     const by = new Map();
@@ -1545,13 +1752,14 @@ dash.calc('deals_monthly', {
 
 dash.calc('campaign_river', {
   title: 'Campaign flow',
-  description: 'Each campaign at five stages: reached, connected on LinkedIn, met at least once, deals or agreements, and won or signed. B2B counts agreements sent or signed, and partners signed.',
+  description: 'Each campaign at five stages: reached, connected on LinkedIn, met at least once, deals or agreements, and won or signed. B2B counts agreements sent or signed, and partners signed; Medical Courier starts from its target accounts.',
   inputs: ['funnel'],
   fn: (funnel) => {
     const map = {
       rp: [['reached', 'total'], ['connected', 'connected'], ['met', 'met1'], ['deals', 'agreements'], ['won', 'signed']],
       icp: [['reached', 'total'], ['connected', 'connected'], ['met', 'met1'], ['deals', 'deals'], ['won', 'won']],
       fn: [['reached', 'total'], ['connected', 'connected'], ['met', 'met1'], ['deals', 'opps'], ['won', 'won']],
+      mc: [['reached', 'accounts'], ['connected', 'connected'], ['met', 'met1'], ['deals', 'deals'], ['won', 'won']],
     };
     const out = [];
     for (const [campaign, steps] of Object.entries(map)) {
@@ -1566,7 +1774,7 @@ dash.calc('campaign_river', {
 
 dash.calc('campaign_monthly', {
   title: 'Deals per month by campaign',
-  description: 'Deals created each month since March 2026: partnership deals for the B2B Campaign, client deals for ICP Prospecting and the Founder Network.',
+  description: 'Deals created each month since March 2026: partnership deals for the B2B Campaign, client deals for ICP Prospecting, the Founder Network and Medical Courier.',
   inputs: ['deals_tagged'],
   fn: (deals_tagged) => {
     const now = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }).slice(0, 7);
@@ -1576,6 +1784,7 @@ dash.calc('campaign_monthly', {
       rp: (d) => d.kind === 'Partnership',
       icp: (d) => d.kind === 'Client' && d.campaign === 'ICP Prospecting',
       fn: (d) => d.kind === 'Client' && d.campaign === 'Founder Network',
+      mc: (d) => d.kind === 'Client' && d.campaign === 'Medical Courier',
     };
     const out = [];
     for (const [campaign, fn] of Object.entries(keep)) {
@@ -1588,19 +1797,23 @@ dash.calc('campaign_monthly', {
 
 dash.calc('meetings_tagged', {
   title: 'Meetings by campaign',
-  description: 'Each meeting with its week (Monday start, Central time) and the campaign of the contact it was with.',
-  inputs: ['meetings'],
-  fn: (meetings) => {
+  description: 'Each meeting with its week (Monday start, Central time) and the campaign of the contact it was with, by the same rules as the campaign counts.',
+  inputs: ['meetings', 'mc_people'],
+  fn: (meetings, mc_people) => {
+    const courier = new Set(mc_people.map((p) => p.contact_id));
     const weekOf = (s) => {
       const d = new Date(String(s).slice(0, 10) + 'T00:00:00Z');
       d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
       return d.toISOString().slice(0, 10);
     };
     const groupOf = (m) => {
-      const rel = m['Who_Id.Relationship_Type'] || '';
-      if (rel.includes('Founder Network')) return 'Founder Network';
-      if (rel.includes('Referral Partner')) return 'B2B Campaign';
-      return m.Who_Id ? 'Contact not in a campaign' : 'No contact linked';
+      if (!m.Who_Id) return 'No contact linked';
+      if (CC_RULES.excluded(m['Who_Id.Priority'])) return 'Contact not in a campaign';
+      if (CC_RULES.isFN(m['Who_Id.Relationship_Type'])) return 'Founder Network';
+      if (courier.has(m.Who_Id_id)) return 'Medical Courier';
+      if (CC_RULES.hasTag(m['Who_Id.Tag'], CC_RULES.tags.rp)) return 'B2B Campaign';
+      if (CC_RULES.hasTag(m['Who_Id.Tag'], CC_RULES.tags.icp)) return 'ICP Prospecting';
+      return 'Contact not in a campaign';
     };
     return meetings.filter((m) => m.Start_DateTime).map((m) => ({
       id: m.id, when: m.Start_DateTime, week: weekOf(m.Start_DateTime), title: m.Event_Title || 'Untitled meeting',
@@ -1612,10 +1825,11 @@ dash.calc('meetings_tagged', {
 dash.calc('contact_breakdown', {
   title: 'Contacts by Priority and LinkedIn status',
   description: 'Contacts in each campaign counted by their Priority and LinkedIn status.',
-  inputs: ['rp_contacts', 'fn_contacts', 'icp_contacts'],
-  fn: (rp_contacts, fn_contacts, icp_contacts) => {
+  inputs: ['rp_contacts', 'fn_contacts', 'icp_contacts', 'mc_people'],
+  fn: (rp_contacts, fn_contacts, icp_contacts, mc_people) => {
     const by = new Map();
-    for (const [campaign, rows] of [['rp', rp_contacts], ['fn', fn_contacts], ['icp', icp_contacts]]) {
+    const mc = mc_people.map((p) => ({ Priority: p.priority === 'Not set' ? null : p.priority, LI_Connect: p.linkedin === 'Not sent' ? null : p.linkedin, count: 1 }));
+    for (const [campaign, rows] of [['rp', rp_contacts], ['fn', fn_contacts], ['icp', icp_contacts], ['mc', mc]]) {
       for (const r of rows) {
         const priority = r.Priority || 'Not set';
         const linkedin = r.LI_Connect || 'Not sent';
@@ -1649,13 +1863,13 @@ dash.calc('meetings_weekly', {
 
 dash.calc('meeting_totals', {
   title: 'Meetings since Aug 17',
-  description: 'All meetings since Aug 17, those with a Referral Partner or Founder Network contact, and each group’s total.',
+  description: 'All meetings since Aug 17, those with a contact in any campaign, and each group’s total.',
   inputs: ['meetings_weekly'],
   fn: (meetings_weekly) => {
     const by = new Map();
     for (const r of meetings_weekly) by.set(r.group, (by.get(r.group) || 0) + r.meetings);
     const all = [...by.values()].reduce((t, n) => t + n, 0);
-    const campaign = (by.get('Founder Network') || 0) + (by.get('B2B Campaign') || 0);
+    const campaign = ['B2B Campaign', 'ICP Prospecting', 'Founder Network', 'Medical Courier'].reduce((t, g) => t + (by.get(g) || 0), 0);
     return [{ group: 'All', meetings: all }, { group: 'Campaign contacts', meetings: campaign }, ...[...by.entries()].map(([group, meetings]) => ({ group, meetings }))];
   },
 });
@@ -1724,13 +1938,13 @@ dash.calc('attention', {
 <script>
 (() => {
   const root = document.querySelector('.cc');
-  const META = {"rp": {"name": "B2B Campaign", "reach": [["total", "Partner prospects in CRM"], ["invited", "LinkedIn invite sent"], ["connected", "Connected on LinkedIn"], ["met1", "Met at least once"], ["met5", "More than 4 meetings"]], "outcome": [["met1", "Met at least once"], ["met5", "More than 4 meetings"], ["partner_deals", "Partnership deals created"], ["agreements", "Agreement sent or signed"], ["signed", "Partners signed"], ["referred", "Client deals referred to us"], ["referred_won", "Referred deals won"], ["referred_value", "Referred contract value won"]]}, "icp": {"name": "ICP Prospecting", "reach": [["total", "Executives at target accounts"], ["invited", "LinkedIn invite sent"], ["connected", "Connected on LinkedIn"], ["met1", "Met at least once"], ["met5", "More than 4 meetings"]], "outcome": [["accounts", "Target accounts"], ["total", "Executives at those accounts"], ["connected", "Connected on LinkedIn"], ["meetings", "Meetings logged"], ["met5", "More than 4 meetings"], ["deals", "Client deals created"], ["won", "Deals won"]]}, "fn": {"name": "Founder Network", "reach": [["total", "Founder Network contacts"], ["connected", "Connected on LinkedIn"], ["met1", "Met at least once"], ["met5", "More than 4 meetings"]], "outcome": [["total", "Founder Network contacts"], ["meetings", "Meetings logged"], ["opps", "Client opportunities created"], ["won", "Opportunities won"]]}};
-  const CAMPAIGN_KEY = { 'B2B Campaign': 'rp', 'ICP Prospecting': 'icp', 'Founder Network': 'fn' };
-  const HUE = { rp: dash.colors[0], icp: dash.colors[1], fn: dash.colors[2], bb: dash.colors[3] };
+  const META = {"rp": {"name": "B2B Campaign", "reach": [["total", "Partner prospects in CRM"], ["invited", "LinkedIn invite sent"], ["connected", "Connected on LinkedIn"], ["met1", "Met at least once"], ["met4", "4 or more meetings"]], "outcome": [["total", "Partner prospects in CRM"], ["met1", "Met at least once"], ["met4", "4 or more meetings"], ["partner_deals", "Partnership deals created"], ["agreements", "Agreement sent or signed"], ["signed", "Partners signed"], ["referred", "Client deals referred to us"], ["referred_won", "Referred deals won"], ["referred_value", "Referred contract value won"]]}, "icp": {"name": "ICP Prospecting", "reach": [["total", "Executives tagged 2026ICP"], ["invited", "LinkedIn invite sent"], ["connected", "Connected on LinkedIn"], ["met1", "Met at least once"], ["met4", "4 or more meetings"]], "outcome": [["accounts", "Target accounts"], ["total", "Executives tagged 2026ICP"], ["connected", "Connected on LinkedIn"], ["meetings", "Meetings logged"], ["met4", "4 or more meetings"], ["deals", "Client deals created"], ["won", "Deals won"]]}, "fn": {"name": "Founder Network", "reach": [["total", "Founder Network contacts"], ["connected", "Connected on LinkedIn"], ["met1", "Met at least once"], ["met4", "4 or more meetings"]], "outcome": [["total", "Founder Network contacts"], ["meetings", "Meetings logged"], ["opps", "Client opportunities created"], ["won", "Opportunities won"]]}, "mc": {"name": "Medical Courier", "reach": [["accounts", "Target courier accounts"], ["emailed", "Emailed (prospects sheet)"], ["replied", "Replied (prospects sheet)"], ["met1", "Contacts met at least once"], ["deal_accounts", "Companies with a deal"]], "outcome": [["accounts", "Target courier accounts"], ["contacts", "Contacts added (one per account)"], ["emailed", "Initial emails sent (sheet)"], ["followed_up", "Follow-ups sent (sheet)"], ["meetings", "Meetings logged"], ["deals", "Deals created"], ["won", "Deals won"]]}};
+  const CAMPAIGN_KEY = { 'B2B Campaign': 'rp', 'ICP Prospecting': 'icp', 'Founder Network': 'fn', 'Medical Courier': 'mc' };
+  const HUE = { rp: dash.colors[0], icp: dash.colors[1], fn: dash.colors[2], bb: dash.colors[3], mc: dash.colors[6] };
   const hueOf = (key) => HUE[key] || 'var(--cds-chart-muted)';
-  const CAMPAIGN_ORDER = ['B2B Campaign', 'ICP Prospecting', 'Founder Network', 'Unattributed'];
-  const CAMPAIGN_COLOR = { 'B2B Campaign': HUE.rp, 'ICP Prospecting': HUE.icp, 'Founder Network': HUE.fn, 'Unattributed': 'var(--cds-chart-muted)' };
-  const MEETING_GROUPS = ['B2B Campaign', 'Founder Network', 'Contact not in a campaign', 'No contact linked'];
+  const CAMPAIGN_ORDER = ['B2B Campaign', 'ICP Prospecting', 'Founder Network', 'Medical Courier', 'Unattributed'];
+  const CAMPAIGN_COLOR = { 'B2B Campaign': HUE.rp, 'ICP Prospecting': HUE.icp, 'Founder Network': HUE.fn, 'Medical Courier': HUE.mc, 'Unattributed': 'var(--cds-chart-muted)' };
+  const MEETING_GROUPS = ['B2B Campaign', 'ICP Prospecting', 'Founder Network', 'Medical Courier', 'Contact not in a campaign', 'No contact linked'];
   const STAGES = ['Identify', 'Discovery', 'Proposals', 'Hold', 'Closed', 'Closed Lost', 'Closed Lost to Competition'];
   const STAGE_SHORT = { 'Closed Lost to Competition': 'Lost to rival', 'Closed Lost': 'Lost', Closed: 'Won' };
   const LOST = ['Closed Lost', 'Closed Lost to Competition'];
@@ -1762,6 +1976,7 @@ dash.calc('attention', {
     return String(v);
   };
   const stepFmt = (step) => (step === 'referred_value' ? 'money' : 'int');
+  const lowerFirst = (s) => String(s).charAt(0).toLowerCase() + String(s).slice(1);
   const stepLabel = (campaign, step) => {
     const m = META[campaign];
     const hit = m && [...m.reach, ...m.outcome].find(([k]) => k === step);
@@ -1971,7 +2186,7 @@ dash.calc('attention', {
       });
       const ins = root.querySelector('.cc-insight[data-insight="funnel"][data-campaign="' + c + '"]');
       if (ins && worst) {
-        said(ins, ['The biggest drop is from ', stepLabel(c, worst.from).toLowerCase(), ' to ', stepLabel(c, worst.to).toLowerCase(), ': ',
+        said(ins, ['The biggest drop is from ', lowerFirst(stepLabel(c, worst.from)), ' to ', lowerFirst(stepLabel(c, worst.to)), ': ',
           b('funnel_drops', 'from_value', { campaign: c, from: worst.from }, worst.from_value, 'int'), ' became ',
           b('funnel_drops', 'to_value', { campaign: c, from: worst.from }, worst.to_value, 'int'), '. That is where the next push should go.']);
       }
@@ -2017,7 +2232,7 @@ dash.calc('attention', {
       if (!funnel) { box.replaceChildren(failNode()); return; }
       const c = box.dataset.campaign;
       const out = [];
-      const campaigns = c === 'all' ? ['rp', 'icp', 'fn'] : [c];
+      const campaigns = c === 'all' ? ['rp', 'icp', 'fn', 'mc'] : [c];
       const shown = [];
       for (const k of campaigns) {
         const steps = c === 'all' ? funnel.filter((r) => r.campaign === k && r.target != null).map((r) => r.step) : META[k].outcome.map(([s]) => s);
@@ -2043,11 +2258,11 @@ dash.calc('attention', {
       const ins = c === 'all' ? root.querySelector('#ins-targets') : root.querySelector('.cc-insight[data-insight="targets"][data-campaign="' + c + '"]');
       if (ins && worst) {
         const met = withTarget.filter((r) => r.progress >= 1);
-        const parts = ['Furthest behind: ', (c === 'all' ? META[worst.campaign].name + ' · ' : ''), stepLabel(worst.campaign, worst.step).toLowerCase(), ' at ',
+        const parts = ['Furthest behind: ', (c === 'all' ? META[worst.campaign].name + ' · ' : ''), lowerFirst(stepLabel(worst.campaign, worst.step)), ' at ',
           b('funnel', 'progress', { campaign: worst.campaign, step: worst.step }, worst.progress, 'pct'), ' of target.'];
         if (met.length) {
           const best = d3.greatest(met, (r) => r.progress);
-          parts.push(' Already past target: ', (c === 'all' ? META[best.campaign].name + ' · ' : ''), stepLabel(best.campaign, best.step).toLowerCase(), ' at ',
+          parts.push(' Already past target: ', (c === 'all' ? META[best.campaign].name + ' · ' : ''), lowerFirst(stepLabel(best.campaign, best.step)), ' at ',
             b('funnel', 'progress', { campaign: best.campaign, step: best.step }, best.progress, 'pct'), '.');
         }
         said(ins, parts);
@@ -2229,7 +2444,7 @@ dash.calc('attention', {
 
   const drawMeetings = () => {
     const box = root.querySelector('#chart-meetings');
-    const colors = { 'B2B Campaign': HUE.rp, 'Founder Network': HUE.fn, 'Contact not in a campaign': 'var(--cds-chart-muted)', 'No contact linked': resolve('var(--color-border-line)') };
+    const colors = { 'B2B Campaign': HUE.rp, 'ICP Prospecting': HUE.icp, 'Founder Network': HUE.fn, 'Medical Courier': HUE.mc, 'Contact not in a campaign': 'var(--cds-chart-muted)', 'No contact linked': resolve('var(--color-border-line)') };
     legendInto(root.querySelector('#leg-meetings'), MEETING_GROUPS.map((g) => [colors[g], g]));
     if (!visible(box)) return;
     const rows = chartReady(box, 'meetings_weekly');
@@ -2252,7 +2467,7 @@ dash.calc('attention', {
     const camp = tot && tot.find((r) => r.group === 'Campaign contacts');
     const none = tot && tot.find((r) => r.group === 'No contact linked');
     if (all && camp) {
-      const parts = ['Only ', b('meeting_totals', 'meetings', { group: 'Campaign contacts' }, camp.meetings, 'int'), ' of ', b('meeting_totals', 'meetings', { group: 'All' }, all.meetings, 'int'), ' meetings since Aug 17 were with a B2B Campaign or Founder Network contact.'];
+      const parts = ['Only ', b('meeting_totals', 'meetings', { group: 'Campaign contacts' }, camp.meetings, 'int'), ' of ', b('meeting_totals', 'meetings', { group: 'All' }, all.meetings, 'int'), ' meetings since Aug 17 were with a contact in one of the campaigns.'];
       if (none) parts.push(' ', b('meeting_totals', 'meetings', { group: 'No contact linked' }, none.meetings, 'int'), ' have no contact attached, so no campaign gets credit for them.');
       said(root.querySelector('#ins-meetings'), parts);
     }
@@ -2302,9 +2517,10 @@ dash.calc('attention', {
 
   const drawMonthly = () => {
     const box = root.querySelector('#chart-pipe-monthly');
-    const kinds = ['Partnership', 'Client'];
-    const colors = { Partnership: dash.colors[3], Client: dash.colors[4] };
-    legendInto(root.querySelector('#leg-pipe-monthly'), kinds.map((k) => [colors[k], k === 'Partnership' ? 'Partnership agreements' : 'Client deals']));
+    const kinds = ['Partnership', 'Platform provider', 'Client', 'No Deal Type'];
+    const colors = { Partnership: dash.colors[3], 'Platform provider': dash.colors[7], Client: dash.colors[4], 'No Deal Type': 'var(--cds-chart-muted)' };
+    const kindName = { Partnership: 'Referral partnerships', 'Platform provider': 'Platform providers', Client: 'Client deals', 'No Deal Type': 'No Deal Type set' };
+    legendInto(root.querySelector('#leg-pipe-monthly'), kinds.map((k) => [colors[k], kindName[k]]));
     if (!visible(box)) return;
     const rows = chartReady(box, 'deals_monthly');
     if (!rows) return;
@@ -2321,10 +2537,11 @@ dash.calc('attention', {
     const busiest = d3.greatest(xs, (mo) => d3.sum(rows.filter((r) => r.month === mo), (r) => r.deals));
     if (busiest) {
       const parts = ['The busiest month was ', monthF(new Date(busiest + '-01T00:00:00Z')), ', with '];
-      kinds.forEach((k, i) => {
+      const present = kinds.filter((k) => rows.some((x) => x.month === busiest && x.kind === k));
+      present.forEach((k, i) => {
         const r = rows.find((x) => x.month === busiest && x.kind === k);
-        if (i) parts.push(' and ');
-        parts.push(r ? b('deals_monthly', 'deals', { month: busiest, kind: k }, r.deals, 'int') : '0', k === 'Partnership' ? ' partner agreements' : ' client deals');
+        if (i) parts.push(i === present.length - 1 ? ' and ' : ', ');
+        parts.push(b('deals_monthly', 'deals', { month: busiest, kind: k }, r.deals, 'int'), ' ', kindName[k].toLowerCase());
       });
       parts.push(' created.');
       said(root.querySelector('#ins-pipe-monthly'), parts);
@@ -2600,6 +2817,44 @@ dash.calc('attention', {
     }
   };
 
+  /* Medical Courier: outreach by phase from the prospects sheet */
+  const MC_SEND = [['replied', 'Replied'], ['followed_no_reply', 'Followed up, no reply yet'], ['emailed_once', 'Emailed once'], ['not_emailed', 'Not emailed'], ['not_marked', 'Not marked in the sheet']];
+  const mcSendColor = (k) => ({ replied: ramp(HUE.mc, 1), followed_no_reply: ramp(HUE.mc, 0.7), emailed_once: ramp(HUE.mc, 0.42), not_emailed: 'var(--cds-chart-grid)', not_marked: 'var(--cds-chart-muted)' }[k]);
+  const drawCourier = () => {
+    legendInto(root.querySelector('#leg-mc-phases'), MC_SEND.map(([k, l]) => [mcSendColor(k), l]));
+    const box = root.querySelector('#mc-phasebars');
+    if (!box || status('courier_phases') === 'loading') return;
+    box.classList.remove('dash-skeleton');
+    const rows = rowsOf('courier_phases');
+    const card = box.closest('.cc-card');
+    if (!rows) { box.replaceChildren(failNode()); return; }
+    if (!rows.length) { box.replaceChildren(el('p', 'cc-empty', 'The prospects sheet has not been loaded yet.')); return; }
+    const max = d3.max(rows, (r) => r.companies) || 1;
+    box.replaceChildren(...rows.map((r) => {
+      const wrap = el('div', 'cc-refrow');
+      const top = el('div', 'cc-reftop');
+      const right = el('span');
+      right.append(markEl('b', 'courier_phases', 'emailed', { phase: r.phase }, r.emailed, 'int'), document.createTextNode(' emailed of '),
+        markEl('b', 'courier_phases', 'companies', { phase: r.phase }, r.companies, 'int'));
+      top.append(el('span', 'cc-who', r.phase), right);
+      wrap.append(top, splitBar(card, r, MC_SEND, mcSendColor, r.phase, (r.companies / max * 100).toFixed(1) + '%'));
+      clickable(wrap, 'mc-phase', r.phase, 'Show companies in ' + r.phase);
+      return wrap;
+    }));
+    const sent = d3.sum(rows, (r) => r.emailed);
+    const unmarked = rows.filter((r) => r.not_marked > 0);
+    const parts = ['The prospects sheet records ', b('funnel', 'value', { campaign: 'mc', step: 'emailed' }, sent, 'int'), ' companies emailed, ',
+      b('funnel', 'value', { campaign: 'mc', step: 'followed_up' }, d3.sum(rows, (r) => r.followed_up), 'int'), ' followed up and ',
+      b('funnel', 'value', { campaign: 'mc', step: 'replied' }, d3.sum(rows, (r) => r.replied), 'int'), ' replies.'];
+    if (unmarked.length) parts.push(' ', unmarked.map((r) => r.phase).join(' and '), unmarked.length === 1 ? ' has' : ' have', ' no Email sent column, so ',
+      b('courier_phases', 'not_marked', { phase: unmarked[0].phase }, d3.sum(unmarked, (r) => r.not_marked), 'int'), ' companies there are not counted either way.');
+    said(root.querySelector('#ins-mc-phases'), parts);
+    const file = rowsOf('courier_file');
+    const saved = file && file.find((r) => r.measure === 'saved_on');
+    const stampNode = root.querySelector('#mc-file-date');
+    if (stampNode) stampNode.textContent = saved ? day(saved.value) : '—';
+  };
+
   /* Overview: rings, sparks, river */
   const RIVER_STAGES = [['reached', 'Reached', 'Reached'], ['connected', 'Connected on LinkedIn', 'Connected'], ['met', 'Met at least once', 'Met'], ['deals', 'Deals or agreements', 'Deals'], ['won', 'Won or signed', 'Won']];
   const drawRings = () => {
@@ -2695,7 +2950,7 @@ dash.calc('attention', {
     const card = box.closest('.cc-card');
     const W = Math.max(300, box.clientWidth);
     const wide = W >= 720;
-    const camps = ['rp', 'icp', 'fn'];
+    const camps = ['rp', 'icp', 'fn', 'mc'];
     const maxV = d3.max(rows, (r) => r.value) || 1;
     const bandMax = wide ? 64 : 46;
     const laneH = bandMax + 58;
@@ -2776,12 +3031,12 @@ dash.calc('attention', {
   const MET_COLS = [['Full_Name', 'Contact'], ['Account_Name', 'Company'], ['Priority', 'Priority'], ['Assigned', 'Owner', null, true], ['Total_Meetings_Created', 'Meetings', 'int', false, true]];
   const REF_COLS = [['partner', 'Referred by'], ['partner_contact', 'Partner contact', null, true], ['agreement', 'Agreement'], ['deal', 'Client deal'], ['client', 'Client', null, true], ['stage', 'Stage'], ['amount', 'Amount', 'money', false, true], ['referred_on', 'Referred', 'date', true]];
   const byStageThenRecentD = (a, c) => stageRank(a.stage) - stageRank(c.stage) || String(c.updated || '').localeCompare(String(a.updated || ''));
-  const inCampaign = (r, c) => {
-    const rel = r.Relationship_Type || '';
-    if (c === 'rp') return rel.includes('Referral Partner');
-    if (c === 'fn') return rel.includes('Founder Network');
-    return !rel && Boolean(r['Account_Name.Priority']) && ['1', '3', '5'].includes(r.Priority);
-  };
+  const inCampaign = (r, c) => CC_RULES.personCampaign(r) === c;
+  const MC_PEOPLE_COLS = [['contact', 'Contact'], ['account', 'Company'], ['priority', 'Priority', null, true], ['linkedin', 'LinkedIn'], ['owner', 'Owner', null, true], ['meetings', 'Meetings', 'int', false, true]];
+  const SEND_COLS = [['company', 'Company'], ['phase', 'Phase'], ['emailed', 'Emailed'], ['followed_up', 'Followed up', null, true], ['replied', 'Replied', null, true]];
+  const yesNo = (v) => (v === true ? 'Yes' : v === false ? 'No' : 'Not marked');
+  const sendRows = (keep) => (rowsOf('courier_sends') || []).filter(keep).map((s) => ({ ...s, emailed: yesNo(s.emailed), followed_up: yesNo(s.followed_up), replied: yesNo(s.replied) }))
+    .sort((a, c) => String(a.phase).localeCompare(String(c.phase), 'en', { numeric: true }) || String(a.company).localeCompare(String(c.company)));
   const DEAL_STEPS = {
     'rp|partner_deals': (d) => d.kind === 'Partnership',
     'rp|agreements': (d) => d.kind === 'Partnership' && (d.stage === 'Proposals' || d.stage === 'Closed'),
@@ -2790,6 +3045,9 @@ dash.calc('attention', {
     'icp|won': (d) => d.kind === 'Client' && d.campaign === 'ICP Prospecting' && d.stage === 'Closed',
     'fn|opps': (d) => d.kind === 'Client' && d.campaign === 'Founder Network',
     'fn|won': (d) => d.kind === 'Client' && d.campaign === 'Founder Network' && d.stage === 'Closed',
+    'mc|deals': (d) => d.kind === 'Client' && d.campaign === 'Medical Courier',
+    'mc|deal_accounts': (d) => d.kind === 'Client' && d.campaign === 'Medical Courier',
+    'mc|won': (d) => d.kind === 'Client' && d.campaign === 'Medical Courier' && d.stage === 'Closed',
   };
   const stepSpec = (c, s) => {
     const title = META[c].name + ' · ' + stepLabel(c, s);
@@ -2800,8 +3058,17 @@ dash.calc('attention', {
       const refs = (rowsOf('referrals') || []).filter((r) => s === 'referred' || r.stage === 'Closed');
       return { title, swatch, source: 'referrals', rowKey: 'link_id', cols: REF_COLS, rows: refs };
     }
-    if (['met1', 'met5', 'meetings'].includes(s)) {
-      const min = s === 'met5' ? 5 : 1;
+    if (c === 'mc') {
+      const note = 'From the Medical Courier prospects sheet. Phases 2 and 10 have no Email sent column, so their companies show as Not marked.';
+      if (s === 'emailed') return { title, swatch, source: 'courier_sends', rowKey: 'row_id', cols: SEND_COLS, rows: sendRows((x) => x.emailed === true), note };
+      if (s === 'followed_up') return { title, swatch, source: 'courier_sends', rowKey: 'row_id', cols: SEND_COLS, rows: sendRows((x) => x.followed_up === true), note };
+      if (s === 'replied') return { title, swatch, source: 'courier_sends', rowKey: 'row_id', cols: SEND_COLS, rows: sendRows((x) => x.replied === true), note };
+      if (s === 'accounts') return { title, swatch, source: 'mc_accounts', rowKey: 'Priority', cols: [['Priority', 'Account Priority'], ['count', 'Accounts', 'int', false, true]], rows: (rowsOf('mc_accounts') || []).slice().sort((a, b) => Number(a.Priority) - Number(b.Priority)), note: 'Accounts tagged 2026MedicalCourier in Zoho, by their Priority.' };
+      const keep = { connected: (p) => p.linkedin === 'Connected', met1: (p) => p.meetings >= 1, meetings: (p) => p.meetings >= 1 }[s] || (() => true);
+      return { title, swatch, source: 'mc_people', rowKey: 'contact_id', cols: MC_PEOPLE_COLS, rows: (rowsOf('mc_people') || []).filter(keep).sort((a, b) => b.meetings - a.meetings || String(a.contact).localeCompare(String(b.contact))) };
+    }
+    if (['met1', 'met4', 'meetings'].includes(s)) {
+      const min = s === 'met4' ? 4 : 1;
       const rows = (rowsOf('met_contacts') || []).filter((r) => inCampaign(r, c) && (r.Total_Meetings_Created || 0) >= min)
         .sort((a, b) => (b.Total_Meetings_Created || 0) - (a.Total_Meetings_Created || 0) || String(a.Full_Name).localeCompare(String(b.Full_Name)));
       return { title, swatch, source: 'met_contacts', rowKey: 'id', cols: MET_COLS, rows, note: 'People with meetings logged in Zoho against their contact record.' };
@@ -2835,9 +3102,14 @@ dash.calc('attention', {
     'rp-stages': { card: '#rp-stages', build: stageDeals((d) => d.kind === 'Partnership', HUE.rp) },
     'icp-stages': { card: '#icp-stages', build: stageDeals((d) => d.kind === 'Client' && d.campaign === 'ICP Prospecting', HUE.icp) },
     'fn-stages': { card: '#fn-stages', build: stageDeals((d) => d.kind === 'Client' && d.campaign === 'Founder Network', HUE.fn) },
+    'mc-stages': { card: '#mc-stages', build: stageDeals((d) => d.kind === 'Client' && d.campaign === 'Medical Courier', HUE.mc) },
+    'mc-phase': {
+      card: '#mc-phases',
+      build: (phase) => ({ title: 'Prospects sheet · ' + phase, swatch: HUE.mc, source: 'courier_sends', rowKey: 'row_id', cols: SEND_COLS.filter(([f]) => f !== 'phase'), rows: sendRows((x) => x.phase === phase) }),
+    },
     'pipe-stage': {
       card: '#pipe-stage',
-      build: (stage) => ({ ...stageDeals(() => true, HUE.rp)(stage), cols: [['deal', 'Deal'], ['account', 'Account'], ['campaign', 'Campaign'], ['kind', 'Type', null, true], ['amount', 'Amount', 'money', false, true], ['updated', 'Updated', 'date', true]] }),
+      build: (stage) => ({ ...stageDeals(() => true, HUE.rp)(stage), cols: [['deal', 'Deal'], ['account', 'Account'], ['campaign', 'Campaign'], ['deal_type', 'Deal Type', null, true], ['amount', 'Amount', 'money', false, true], ['updated', 'Updated', 'date', true]] }),
     },
     meetings: {
       card: '#ov-meetings',
@@ -2851,14 +3123,14 @@ dash.calc('attention', {
       card: '#pipe-monthly',
       build: (month) => ({
         title: 'Deals created in ' + monthF(new Date(month + '-01T00:00:00Z')), source: 'deals_tagged', rowKey: 'id',
-        cols: [['deal', 'Deal'], ['account', 'Account'], ['kind', 'Type'], ['campaign', 'Campaign', null, true], ['stage', 'Stage'], ['created', 'Created', 'date', true]],
+        cols: [['deal', 'Deal'], ['account', 'Account'], ['deal_type', 'Deal Type'], ['campaign', 'Campaign', null, true], ['stage', 'Stage'], ['created', 'Created', 'date', true]],
         rows: (rowsOf('deals_tagged') || []).filter((d) => String(d.created || '').slice(0, 7) === month).sort((a, b) => String(a.created).localeCompare(String(b.created))),
       }),
     },
-    ...Object.fromEntries(['ov-rp', 'ov-icp', 'ov-fn', 'hero-rp', 'hero-icp', 'hero-fn'].map((id) => {
+    ...Object.fromEntries(['ov-rp', 'ov-icp', 'ov-fn', 'ov-mc', 'hero-rp', 'hero-icp', 'hero-fn', 'hero-mc'].map((id) => {
       const c = id.split('-')[1];
-      const keep = { rp: (d) => d.kind === 'Partnership', icp: (d) => d.kind === 'Client' && d.campaign === 'ICP Prospecting', fn: (d) => d.kind === 'Client' && d.campaign === 'Founder Network' }[c];
-      const what = { rp: 'Partnership deals', icp: 'ICP client deals', fn: 'Opportunities' }[c];
+      const keep = { rp: (d) => d.kind === 'Partnership', icp: (d) => d.kind === 'Client' && d.campaign === 'ICP Prospecting', fn: (d) => d.kind === 'Client' && d.campaign === 'Founder Network', mc: (d) => d.kind === 'Client' && d.campaign === 'Medical Courier' }[c];
+      const what = { rp: 'Partnership deals', icp: 'ICP client deals', fn: 'Opportunities', mc: 'Medical Courier deals' }[c];
       return ['spark-' + id, {
         card: '#' + id,
         build: (month) => ({
@@ -2871,18 +3143,22 @@ dash.calc('attention', {
     'hero-rp': { card: '#hero-rp', build: (s) => stepSpec('rp', s) },
     'hero-icp': { card: '#hero-icp', build: (s) => stepSpec('icp', s) },
     'hero-fn': { card: '#hero-fn', build: (s) => stepSpec('fn', s) },
+    'hero-mc': { card: '#hero-mc', build: (s) => stepSpec('mc', s) },
     'hero-ref': { card: '#hero-ref', build: (s) => stepSpec('rp', s) },
     river: { card: '#ov-river', build: (v) => { const [c, s] = v.split('|'); return stepSpec(c, s); } },
     'targets-all': { card: '#ov-targets', build: (v) => { const [c, s] = v.split('|'); return stepSpec(c, s); } },
     'targets-rp': { card: '#rp-targets', build: (s) => stepSpec('rp', s) },
     'targets-icp': { card: '#icp-targets', build: (s) => stepSpec('icp', s) },
     'targets-fn': { card: '#fn-targets', build: (s) => stepSpec('fn', s) },
+    'targets-mc': { card: '#mc-targets', build: (s) => stepSpec('mc', s) },
     'funnel-rp': { card: '#rp-funnel', build: (s) => stepSpec('rp', s) },
     'funnel-icp': { card: '#icp-funnel', build: (s) => stepSpec('icp', s) },
     'funnel-fn': { card: '#fn-funnel', build: (s) => stepSpec('fn', s) },
+    'funnel-mc': { card: '#mc-funnel', build: (s) => stepSpec('mc', s) },
     'ov-rp': { card: '#ov-rp', build: (s) => stepSpec('rp', s) },
     'ov-icp': { card: '#ov-icp', build: (s) => stepSpec('icp', s) },
     'ov-fn': { card: '#ov-fn', build: (s) => stepSpec('fn', s) },
+    'ov-mc': { card: '#ov-mc', build: (s) => stepSpec('mc', s) },
     'prio-rp': { card: '#rp-priority', build: prioritySpec('rp') },
     'prio-icp': { card: '#icp-priority', build: prioritySpec('icp') },
     'prio-fn': { card: '#fn-priority', build: prioritySpec('fn') },
@@ -3038,7 +3314,7 @@ dash.calc('attention', {
         const f = rowsOf('funnel');
         const deals = f && f.find((r) => r.campaign === 'icp' && r.step === 'deals');
         const won = f && f.find((r) => r.campaign === 'icp' && r.step === 'won');
-        if (deals && won) said(root.querySelector('#ins-icp-stages'), [b('funnel', 'value', { campaign: 'icp', step: 'deals' }, deals.value, 'int'), ' ICP deals created against a target of 18, with ', b('funnel', 'value', { campaign: 'icp', step: 'won' }, won.value, 'int'), ' won so far.']);
+        if (deals && won) said(root.querySelector('#ins-icp-stages'), [b('funnel', 'value', { campaign: 'icp', step: 'deals' }, deals.value, 'int'), ' ICP deals created against a target of ', intF(deals.target), ', with ', b('funnel', 'value', { campaign: 'icp', step: 'won' }, won.value, 'int'), ' won so far.']);
       },
     });
     drawStageChart('#chart-fn-stages', {
@@ -3047,7 +3323,16 @@ dash.calc('attention', {
         const f = rowsOf('funnel');
         const opps = f && f.find((r) => r.campaign === 'fn' && r.step === 'opps');
         const won = f && f.find((r) => r.campaign === 'fn' && r.step === 'won');
-        if (opps && won) said(root.querySelector('#ins-fn-stages'), [b('funnel', 'value', { campaign: 'fn', step: 'opps' }, opps.value, 'int'), ' opportunities created against a target of 15, with ', b('funnel', 'value', { campaign: 'fn', step: 'won' }, won.value, 'int'), ' won so far. Several are on hold: decide which to revive.']);
+        if (opps && won) said(root.querySelector('#ins-fn-stages'), [b('funnel', 'value', { campaign: 'fn', step: 'opps' }, opps.value, 'int'), ' opportunities created against a target of ', intF(opps.target), ', with ', b('funnel', 'value', { campaign: 'fn', step: 'won' }, won.value, 'int'), ' won so far. Several are on hold: decide which to revive.']);
+      },
+    });
+    drawStageChart('#chart-mc-stages', {
+      source: 'stage_campaign', filter: (r) => r.kind === 'Client' && r.campaign === 'Medical Courier', hue: HUE.mc, drill: 'mc-stages',
+      insight: () => {
+        const f = rowsOf('funnel');
+        const deals = f && f.find((r) => r.campaign === 'mc' && r.step === 'deals');
+        const firms = f && f.find((r) => r.campaign === 'mc' && r.step === 'deal_accounts');
+        if (deals && firms) said(root.querySelector('#ins-mc-stages'), [b('funnel', 'value', { campaign: 'mc', step: 'deals' }, deals.value, 'int'), ' courier deals against a target of ', intF(deals.target), ', spread across ', b('funnel', 'value', { campaign: 'mc', step: 'deal_accounts' }, firms.value, 'int'), firms.value === 1 ? ' company.' : ' companies.']);
       },
     });
     drawPipeStage();
@@ -3128,12 +3413,14 @@ dash.calc('attention', {
     if (tableState(rpTable, 'deals_tagged') === 'ok') fillTable(rpTable, deals.filter((d) => d.kind === 'Partnership' && d.stage !== 'Closed' && !LOST.includes(d.stage)).sort(byStageThenRecent), { fmt: dealFmt });
     const icpTable = root.querySelector('#icp-deals');
     if (tableState(icpTable, 'deals_tagged') === 'ok') fillTable(icpTable, deals.filter((d) => d.kind === 'Client' && d.campaign === 'ICP Prospecting').sort(byStageThenRecent), { fmt: dealFmt });
+    const mcTable = root.querySelector('#mc-deals');
+    if (tableState(mcTable, 'deals_tagged') === 'ok') fillTable(mcTable, deals.filter((d) => d.kind === 'Client' && d.campaign === 'Medical Courier').sort(byStageThenRecent), { fmt: dealFmt });
     const fnOpps = root.querySelector('#fn-opps');
     if (tableState(fnOpps, 'deals_tagged') === 'ok') fillTable(fnOpps, deals.filter((d) => d.kind === 'Client' && d.campaign === 'Founder Network').sort(byStageThenRecent), { fmt: dealFmt });
     const all = root.querySelector('#all-deals');
     if (tableState(all, 'deals_tagged') === 'ok') {
       const q = search.value.trim().toLowerCase();
-      const shown = deals.filter((d) => !q || [d.deal, d.account, d.contact, d.campaign, d.stage, d.kind].some((v) => String(v || '').toLowerCase().includes(q)));
+      const shown = deals.filter((d) => !q || [d.deal, d.account, d.contact, d.campaign, d.stage, d.deal_type].some((v) => String(v || '').toLowerCase().includes(q)));
       const f = sortState.field;
       shown.sort((a, c) => {
         let x;
@@ -3191,6 +3478,7 @@ dash.calc('attention', {
     drawCoverage();
     drawRefBars();
     drawBoxByte();
+    drawCourier();
     drawSized();
     Object.keys(DRILLS).forEach(drawDrill);
     drawTables();

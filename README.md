@@ -68,7 +68,7 @@ python3 -m http.server --directory site 8000
 # open http://localhost:8000
 ```
 
-`site/data.js` and `site/boxbyte.js` are git-ignored. Never commit them. Because the data loads as a script, you can also just double-click `site/index.html` after running the fetch.
+`site/data.js`, `site/boxbyte.js` and `site/courier.js` are git-ignored. Never commit them. Because the data loads as a script, you can also just double-click `site/index.html` after running the fetch.
 
 ## How the numbers are counted
 
@@ -76,6 +76,8 @@ python3 -m http.server --directory site 8000
 - **Founder Network:** contacts whose Relationship Type includes *Founder Network*. Opportunities are client deals with one of these contacts. Next steps are their open Zoho tasks.
 - **ICP Prospecting:** contacts at an account with a Priority set, with their own Priority 1, 3 or 5 and no relationship tag.
 - **Referrals:** client deals with *Referred By Contact* or *Referred By Account* filled in (Commission Details section on the deal; a deal counts once even when both are filled), plus deals marked *External Referral* that have no referrer recorded yet.
+- **Campaign membership:** B2B is contacts tagged *May 2026 - 100 B2B*; ICP is contacts and accounts tagged *2026ICP*; Founder Network is Relationship Type = Founder Network; Medical Courier is accounts tagged *2026MedicalCourier* and their contacts and deals. Priority 9 and 11 are left out of every campaign, and Founder Network wins over any tag. Deals are sorted by Deal Type: Reseller/ Referral Partner, Platform Provider Agreement, or client work.
+- **Medical Courier email outreach:** the initial emails went to company addresses with no contact in Zoho, so emailed, followed up and replied come from the Medical Courier prospects sheet, stored as `courier.js` on the `courier-snapshot` branch.
 - **Box Byte:** live counts come from contacts tagged *BoxByte* in Zoho. The LinkedIn profile each lead came through, the drafted messages and the held prospects come from Box Byte's latest batch file, stored as `boxbyte.js` on the `boxbyte-snapshot` branch.
 - **Meetings:** Zoho Meetings linked to a contact. A meeting with no contact attached can't be credited to a campaign, and because the calendar also holds personal events, it's published without its title.
 - **Targets:** from the 2026 campaign tracking sheets. The pace line assumes the campaigns run Aug 17 to Dec 18, 2026.
@@ -83,6 +85,7 @@ python3 -m http.server --directory site 8000
 ## Things to know
 
 - Until the three Zoho secrets are added, the job publishes the one-off snapshot stored on the `data-snapshot` branch and shows a warning in the run. Once the secrets are in, it pulls live data and the snapshot branch can be deleted.
+- **New copy of the courier prospects sheet:** rebuild `courier.js` from the workbook (phase sheets with Company and Email sent columns) and force-push it as the single commit on the `courier-snapshot` branch, then run the workflow. Only company names and the emailed / followed up / replied flags are published.
 - **New Box Byte batch file:** rebuild `boxbyte.js` from the workbook (sheets *Leads*, *SEND* and *HELD*) and force-push it as the single commit on the `boxbyte-snapshot` branch, then run the workflow. Message text is published; links, sourcing URLs and review notes are left out.
 - If any Zoho query fails, the job stops and the site keeps yesterday's data. The failed run shows in the **Actions** tab with Zoho's error.
 - GitHub can start scheduled runs a few minutes late, and it pauses schedules on repos with no activity for 60 days. A push or a manual run turns the schedule back on.

@@ -55,6 +55,16 @@ jobs:
             echo "::warning::No boxbyte-snapshot branch, so the Box Byte tab can't show the batch file."
           fi
 
+      - name: Add the Medical Courier prospects sheet
+        run: |
+          # Courier outreach (emailed, followed up, replied per phase) comes from the prospects sheet, kept on
+          # its own branch: only company names and outreach flags, no email addresses, phones or people.
+          if git fetch --depth=1 origin courier-snapshot 2>/dev/null; then
+            git show FETCH_HEAD:courier.js > site/courier.js
+          else
+            echo "::warning::No courier-snapshot branch, so the Medical Courier tab can't show email outreach."
+          fi
+
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3

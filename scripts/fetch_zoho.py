@@ -24,19 +24,29 @@ PAGE_SIZE = 2000
 MAX_ROWS = 100_000
 RETRIES = 4
 
+# Campaign membership. Priority 9 (inactive) and 11 (do not contact) are left out of every campaign,
+# and anyone whose Relationship Type includes Founder Network counts only in the Founder Network.
+B2B_TAG = "May 2026 - 100 B2B"
+ICP_TAG = "2026ICP"
+COURIER_TAG = "2026MedicalCourier"
+ACTIVE = "(Priority is null or Priority not in ('9','11'))"
+NOT_FN = "(Relationship_Type is null or Relationship_Type not like '%Founder Network%')"
+
 QUERIES = {
-    'rp_contacts': {"sql": "select COUNT(id), LI_Connect, Priority, Total_Meetings_Created from Contacts where Relationship_Type like '%Referral Partner%' group by LI_Connect, Priority, Total_Meetings_Created", "paged": False},
-    'fn_contacts': {"sql": "select COUNT(id), LI_Connect, Priority, Total_Meetings_Created from Contacts where Relationship_Type like '%Founder Network%' group by LI_Connect, Priority, Total_Meetings_Created", "paged": False},
-    'icp_contacts': {"sql": "select COUNT(id), LI_Connect, Priority, Total_Meetings_Created from Contacts where ((Account_Name.Priority is not null and Priority in ('1','3','5')) and Relationship_Type is null) group by LI_Connect, Priority, Total_Meetings_Created", "paged": False},
-    'icp_accounts': {"sql": 'select COUNT(id), Priority from Accounts where Priority is not null group by Priority', "paged": False},
-    'deals': {"sql": 'select Deal_Name, Stage, Amount, Lead_Source, Account_Name, Account_Name.Priority, Contact_Name, Contact_Name.Relationship_Type, Created_Time, Modified_Time from Deals where id is not null order by Modified_Time desc', "paged": True},
+    'rp_contacts': {"sql": f"select COUNT(id), LI_Connect, Priority, Total_Meetings_Created from Contacts where ((Tag like '%{B2B_TAG}%' and {NOT_FN}) and {ACTIVE}) group by LI_Connect, Priority, Total_Meetings_Created", "paged": False},
+    'fn_contacts': {"sql": f"select COUNT(id), LI_Connect, Priority, Total_Meetings_Created from Contacts where (Relationship_Type like '%Founder Network%' and {ACTIVE}) group by LI_Connect, Priority, Total_Meetings_Created", "paged": False},
+    'icp_contacts': {"sql": f"select COUNT(id), LI_Connect, Priority, Total_Meetings_Created from Contacts where ((Tag like '%{ICP_TAG}%' and {NOT_FN}) and {ACTIVE}) group by LI_Connect, Priority, Total_Meetings_Created", "paged": False},
+    'icp_accounts': {"sql": f"select COUNT(id), Priority from Accounts where (Tag like '%{ICP_TAG}%' and {ACTIVE}) group by Priority", "paged": False},
+    'mc_accounts': {"sql": f"select COUNT(id), Priority from Accounts where (Tag like '%{COURIER_TAG}%' and {ACTIVE}) group by Priority", "paged": False},
+    'mc_contacts': {"sql": f"select Full_Name, Account_Name, Priority, LI_Connect, Assigned, Relationship_Type, Total_Meetings_Created from Contacts where Account_Name.Tag like '%{COURIER_TAG}%' order by Full_Name asc", "paged": True},
+    'deals': {"sql": 'select Deal_Name, Deal_Type, Stage, Amount, Lead_Source, Account_Name, Account_Name.Priority, Account_Name.Tag, Contact_Name, Contact_Name.Relationship_Type, Contact_Name.Priority, Contact_Name.Tag, Created_Time, Modified_Time from Deals where id is not null order by Modified_Time desc', "paged": True},
     'open_tasks': {"sql": "select Subject, Due_Date, Status, Owner, Who_Id, Who_Id.Relationship_Type from Tasks where Status != 'Completed' order by Due_Date asc", "paged": True},
     'fn_people': {"sql": "select Full_Name, Account_Name, Priority, LI_Connect, Assigned, Total_Meetings_Created from Contacts where (Relationship_Type like '%Founder Network%' and Priority in ('1','3')) order by Priority asc", "paged": True},
-    'met_contacts': {"sql": 'select Full_Name, Account_Name, Account_Name.Priority, Relationship_Type, Priority, LI_Connect, Assigned, Total_Meetings_Created from Contacts where Total_Meetings_Created is not null order by Total_Meetings_Created desc', "paged": True},
+    'met_contacts': {"sql": 'select Full_Name, Account_Name, Account_Name.Priority, Account_Name.Tag, Relationship_Type, Tag, Priority, LI_Connect, Assigned, Total_Meetings_Created from Contacts where Total_Meetings_Created is not null order by Total_Meetings_Created desc', "paged": True},
     'referral_links': {"sql": "select Referred_By_Contact, Referred_By_Account from Deals where ((Referred_By_Contact is not null or Referred_By_Account is not null) and (Deal_Type not like '%Referral Partner%' and Deal_Type not like '%Platform Provider%'))", "paged": True},
     'partner_agreements': {"sql": "select Deal_Name, Stage, Contact_Name, Account_Name from Deals where Deal_Type like '%Referral Partner%'", "paged": True},
     'boxbyte_contacts': {"sql": "select Full_Name, Account_Name, Title, LI_Connect, Total_Meetings_Created, Created_Time from Contacts where Tag like '%BoxByte%'", "paged": True},
-    'meetings': {"sql": "select Event_Title, Start_DateTime, Who_Id, Who_Id.Relationship_Type, Who_Id.Priority from Events where Start_DateTime >= '2026-08-17T00:00:00-05:00' order by Start_DateTime asc", "paged": True}
+    'meetings': {"sql": "select Event_Title, Start_DateTime, Who_Id, Who_Id.Relationship_Type, Who_Id.Priority, Who_Id.Tag from Events where Start_DateTime >= '2026-08-17T00:00:00-05:00' order by Start_DateTime asc", "paged": True}
 }
 
 

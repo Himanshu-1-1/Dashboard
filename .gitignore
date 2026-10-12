@@ -4,3 +4,4 @@ __pycache__/
 *.pyc
 .env
 site/boxbyte.js
+site/courier.js
