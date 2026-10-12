@@ -338,6 +338,42 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
 .cc-bbbars { display: grid; gap: var(--cds-gap-md); min-height: 6rem; align-content: start; }
 .cc-tbl td.cc-msg { white-space: pre-line; min-width: min(26rem, 70vw); line-height: 1.45; }
 .cc-tbl td.cc-subj { min-width: 10rem; }
+/* Overview: campaign rings, monthly sparks, campaign river */
+.cc-camp-body { display: grid; grid-template-columns: 8.5rem minmax(0, 1fr); gap: var(--cds-gap-lg); align-items: center; }
+.cc-ringwrap { display: grid; justify-items: center; gap: 6px; padding: 6px; margin: -6px; border-radius: var(--cds-radius); }
+.cc-ring { position: relative; width: 100%; max-width: 8.5rem; aspect-ratio: 1; }
+.cc-ring svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.cc-ring-mid { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; }
+.cc-ring-pct { font-family: var(--font-anthropic-serif); font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; }
+.cc-ring-of { font-size: 11px; color: var(--color-fg-muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.cc-ring-cap { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); text-align: center; line-height: 1.35; }
+.cc-pacenote { font-size: var(--cds-font-size-caption); font-weight: var(--cds-font-weight-medium); }
+.cc-pacenote.cc-low { color: var(--color-bad); }
+.cc-pacenote.cc-ok { color: var(--color-ok); }
+.cc-campstats { margin: 0; display: grid; gap: 10px; }
+.cc-campstats > div { display: flex; justify-content: space-between; align-items: baseline; gap: var(--cds-gap-sm); padding-bottom: 8px; border-bottom: 1px solid var(--color-border-line); }
+.cc-campstats > div:last-child { border-bottom: 0; padding-bottom: 0; }
+.cc-campstats dt { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.cc-campstats dd { margin: 0; font-size: 24px; font-weight: var(--cds-font-weight-medium); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.cc-spark { display: grid; gap: 6px; padding-top: var(--cds-pad-sm); border-top: 1px solid var(--color-border-line); }
+.cc-spark-top { display: flex; justify-content: space-between; gap: var(--cds-gap-sm); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.cc-spark-top b { color: var(--color-fg); font-weight: var(--cds-font-weight-medium); }
+.cc-spark-chart { height: 44px; position: relative; }
+.cc-spark-chart svg { display: block; width: 100%; height: 44px; overflow: visible; }
+.cc-river { min-height: 18rem; position: relative; }
+.cc-river svg { display: block; width: 100%; overflow: visible; }
+.cc-river text { font-family: var(--font-anthropic-sans); }
+.cc-river .cc-stage { fill: var(--color-fg-muted); font-size: 12px; }
+.cc-river .cc-lane { fill: var(--color-fg); font-size: 13px; font-weight: 500; }
+.cc-river .cc-rv { fill: var(--color-fg); font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.cc-river .cc-rv tspan { fill: var(--color-fg-muted); font-weight: 400; font-size: 11px; }
+.cc-river .cc-rhit { fill: transparent; cursor: pointer; }
+.cc-river .cc-rhit:focus-visible { outline: none; stroke: var(--color-fg); stroke-width: 2; }
+.cc-river .cc-rpick { fill: none; stroke: var(--color-fg); stroke-width: 2; pointer-events: none; }
+@keyframes cc-flow { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+.cc-river .cc-enter { animation: cc-flow 1.2s var(--cds-ease-out) both; }
+@media (prefers-reduced-motion: reduce) { .cc-river .cc-enter { animation: none; } }
+@media (max-width: 34rem) { .cc-camp-body { grid-template-columns: 7rem minmax(0, 1fr); gap: var(--cds-gap-md); } .cc-ring-pct { font-size: 24px; } }
 [data-dash-source-state=refreshing] { opacity: .5; transition: opacity var(--cds-dur-slow); }
 @media (max-width: 34rem) {
   .cc-hide-narrow { display: none; }
@@ -370,23 +406,59 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
     <div class="cc-grid-3">
       <article class="cc-card" id="ov-rp">
         <div class="cc-card-head"><h2><i class="cc-dot" data-hue="rp"></i>B2B Campaign</h2><p>Referral partners: B2B firms that serve our buyers and refer clients to us.</p></div>
-        <dl class="cc-bigs"><div class="cc-big"><dt>Prospects</dt><dd><span class="cc-bignum dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=rp&amp;step=total" data-fmt="int">—</span></dd></div><div class="cc-big"><dt>Connected</dt><dd><span class="cc-bignum dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=rp&amp;step=connected" data-fmt="int">—</span></dd></div><div class="cc-big"><dt>Partners signed</dt><dd><span class="cc-bignum dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=rp&amp;step=signed" data-fmt="int">—</span></dd></div></dl>
-        <div class="cc-goal"><div class="cc-goal-top"><span>Agreements sent or signed</span><span><span class="cc-val dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=rp&amp;step=agreements" data-fmt="int">—</span> of <span data-source="funnel" data-field="target" data-where="campaign=rp&amp;step=agreements" data-fmt="int">—</span> · <span class="cc-pct" data-source="funnel" data-field="progress" data-where="campaign=rp&amp;step=agreements" data-fmt="pct">—</span></span></div><div class="cc-track" data-source="funnel"><i class="cc-fill" data-campaign="rp" data-step="agreements"></i><b class="cc-pace" aria-hidden="true"></b></div></div>
+        <div class="cc-camp-body">
+          <div class="cc-ringwrap" data-ring="rp" data-step="agreements">
+            <div class="cc-ring dash-skeleton" data-source="funnel" data-campaign="rp" data-step="agreements"></div>
+            <span class="cc-ring-cap">Agreements sent or signed</span>
+            <span class="cc-pacenote" data-pace="rp"></span>
+          </div>
+          <dl class="cc-campstats"><div><dt>Prospects</dt><dd><span class="dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=rp&amp;step=total" data-fmt="int">—</span></dd></div><div><dt>Connected</dt><dd><span class="dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=rp&amp;step=connected" data-fmt="int">—</span></dd></div><div><dt>Partners signed</dt><dd><span class="dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=rp&amp;step=signed" data-fmt="int">—</span></dd></div></dl>
+        </div>
+        <div class="cc-spark" data-campaign="rp">
+          <div class="cc-spark-top"><span>Partnership deals created per month</span><span class="cc-spark-now"></span></div>
+          <div class="cc-spark-chart dash-skeleton" data-source="campaign_monthly" data-campaign="rp"></div>
+        </div>
         <div class="cc-camp-foot"><button type="button" class="cc-go" data-go="rp">Open B2B Campaign</button></div>
       </article>
       <article class="cc-card" id="ov-icp">
         <div class="cc-card-head"><h2><i class="cc-dot" data-hue="icp"></i>ICP Prospecting</h2><p>Executives at target accounts, reached through Mack's LinkedIn sequence.</p></div>
-        <dl class="cc-bigs"><div class="cc-big"><dt>Executives</dt><dd><span class="cc-bignum dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=icp&amp;step=total" data-fmt="int">—</span></dd></div><div class="cc-big"><dt>Connected</dt><dd><span class="cc-bignum dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=icp&amp;step=connected" data-fmt="int">—</span></dd></div><div class="cc-big"><dt>Meetings logged</dt><dd><span class="cc-bignum dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=icp&amp;step=meetings" data-fmt="int">—</span></dd></div></dl>
-        <div class="cc-goal"><div class="cc-goal-top"><span>Connections vs target</span><span><span class="cc-val dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=icp&amp;step=connected" data-fmt="int">—</span> of <span data-source="funnel" data-field="target" data-where="campaign=icp&amp;step=connected" data-fmt="int">—</span> · <span class="cc-pct" data-source="funnel" data-field="progress" data-where="campaign=icp&amp;step=connected" data-fmt="pct">—</span></span></div><div class="cc-track" data-source="funnel"><i class="cc-fill" data-campaign="icp" data-step="connected"></i><b class="cc-pace" aria-hidden="true"></b></div></div>
+        <div class="cc-camp-body">
+          <div class="cc-ringwrap" data-ring="icp" data-step="connected">
+            <div class="cc-ring dash-skeleton" data-source="funnel" data-campaign="icp" data-step="connected"></div>
+            <span class="cc-ring-cap">Connections vs target</span>
+            <span class="cc-pacenote" data-pace="icp"></span>
+          </div>
+          <dl class="cc-campstats"><div><dt>Executives</dt><dd><span class="dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=icp&amp;step=total" data-fmt="int">—</span></dd></div><div><dt>Connected</dt><dd><span class="dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=icp&amp;step=connected" data-fmt="int">—</span></dd></div><div><dt>Meetings logged</dt><dd><span class="dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=icp&amp;step=meetings" data-fmt="int">—</span></dd></div></dl>
+        </div>
+        <div class="cc-spark" data-campaign="icp">
+          <div class="cc-spark-top"><span>ICP client deals created per month</span><span class="cc-spark-now"></span></div>
+          <div class="cc-spark-chart dash-skeleton" data-source="campaign_monthly" data-campaign="icp"></div>
+        </div>
         <div class="cc-camp-foot"><button type="button" class="cc-go" data-go="icp">Open ICP Prospecting</button></div>
       </article>
       <article class="cc-card" id="ov-fn">
         <div class="cc-card-head"><h2><i class="cc-dot" data-hue="fn"></i>Founder Network</h2><p>Founders and operators we already know, turned into meetings and work.</p></div>
-        <dl class="cc-bigs"><div class="cc-big"><dt>Contacts</dt><dd><span class="cc-bignum dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=fn&amp;step=total" data-fmt="int">—</span></dd></div><div class="cc-big"><dt>Meetings logged</dt><dd><span class="cc-bignum dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=fn&amp;step=meetings" data-fmt="int">—</span></dd></div><div class="cc-big"><dt>Opportunities</dt><dd><span class="cc-bignum dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=fn&amp;step=opps" data-fmt="int">—</span></dd></div></dl>
-        <div class="cc-goal"><div class="cc-goal-top"><span>Meetings vs target</span><span><span class="cc-val dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=fn&amp;step=meetings" data-fmt="int">—</span> of <span data-source="funnel" data-field="target" data-where="campaign=fn&amp;step=meetings" data-fmt="int">—</span> · <span class="cc-pct" data-source="funnel" data-field="progress" data-where="campaign=fn&amp;step=meetings" data-fmt="pct">—</span></span></div><div class="cc-track" data-source="funnel"><i class="cc-fill" data-campaign="fn" data-step="meetings"></i><b class="cc-pace" aria-hidden="true"></b></div></div>
+        <div class="cc-camp-body">
+          <div class="cc-ringwrap" data-ring="fn" data-step="meetings">
+            <div class="cc-ring dash-skeleton" data-source="funnel" data-campaign="fn" data-step="meetings"></div>
+            <span class="cc-ring-cap">Meetings vs target</span>
+            <span class="cc-pacenote" data-pace="fn"></span>
+          </div>
+          <dl class="cc-campstats"><div><dt>Contacts</dt><dd><span class="dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=fn&amp;step=total" data-fmt="int">—</span></dd></div><div><dt>Meetings logged</dt><dd><span class="dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=fn&amp;step=meetings" data-fmt="int">—</span></dd></div><div><dt>Opportunities</dt><dd><span class="dash-skeleton" data-source="funnel" data-field="value" data-where="campaign=fn&amp;step=opps" data-fmt="int">—</span></dd></div></dl>
+        </div>
+        <div class="cc-spark" data-campaign="fn">
+          <div class="cc-spark-top"><span>Opportunities created per month</span><span class="cc-spark-now"></span></div>
+          <div class="cc-spark-chart dash-skeleton" data-source="campaign_monthly" data-campaign="fn"></div>
+        </div>
         <div class="cc-camp-foot"><button type="button" class="cc-go" data-go="fn">Open Founder Network</button></div>
       </article>
     </div>
+
+    <article class="cc-card" id="ov-river">
+      <div class="cc-card-head"><h2>How each campaign flows</h2><p>Band width is how many people or deals reach each stage, on a square-root scale so the small stages stay visible. Select a stage for the records behind it.</p></div>
+      <div class="cc-river dash-skeleton" id="river" data-source="campaign_river"></div>
+      <p class="cc-insight" id="ins-river"></p>
+    </article>
 
     <div class="cc-grid">
       <article class="cc-card" id="ov-targets">
@@ -1368,6 +1440,49 @@ dash.calc('deals_monthly', {
   },
 });
 
+dash.calc('campaign_river', {
+  title: 'Campaign flow',
+  description: 'Each campaign at five stages: reached, connected on LinkedIn, met at least once, deals or agreements, and won or signed. B2B counts agreements sent or signed, and partners signed.',
+  inputs: ['funnel'],
+  fn: (funnel) => {
+    const map = {
+      rp: [['reached', 'total'], ['connected', 'connected'], ['met', 'met1'], ['deals', 'agreements'], ['won', 'signed']],
+      icp: [['reached', 'total'], ['connected', 'connected'], ['met', 'met1'], ['deals', 'deals'], ['won', 'won']],
+      fn: [['reached', 'total'], ['connected', 'connected'], ['met', 'met1'], ['deals', 'opps'], ['won', 'won']],
+    };
+    const out = [];
+    for (const [campaign, steps] of Object.entries(map)) {
+      for (const [stage, step] of steps) {
+        const row = funnel.find((r) => r.campaign === campaign && r.step === step);
+        out.push({ campaign, stage, step, value: row ? row.value : 0 });
+      }
+    }
+    return out;
+  },
+});
+
+dash.calc('campaign_monthly', {
+  title: 'Deals per month by campaign',
+  description: 'Deals created each month since March 2026: partnership deals for the B2B Campaign, client deals for ICP Prospecting and the Founder Network.',
+  inputs: ['deals_tagged'],
+  fn: (deals_tagged) => {
+    const now = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }).slice(0, 7);
+    const months = [];
+    for (let y = 2026, m = 3; `${y}-${String(m).padStart(2, '0')}` <= now; m === 12 ? (y += 1, m = 1) : (m += 1)) months.push(`${y}-${String(m).padStart(2, '0')}`);
+    const keep = {
+      rp: (d) => d.kind === 'Partnership',
+      icp: (d) => d.kind === 'Client' && d.campaign === 'ICP Prospecting',
+      fn: (d) => d.kind === 'Client' && d.campaign === 'Founder Network',
+    };
+    const out = [];
+    for (const [campaign, fn] of Object.entries(keep)) {
+      const mine = deals_tagged.filter(fn);
+      for (const month of months) out.push({ campaign, month, deals: mine.filter((d) => String(d.created || '').slice(0, 7) === month).length });
+    }
+    return out;
+  },
+});
+
 dash.calc('meetings_tagged', {
   title: 'Meetings by campaign',
   description: 'Each meeting with its week (Monday start, Central time) and the campaign of the contact it was with.',
@@ -1646,7 +1761,7 @@ dash.calc('attention', {
   /* Static single values */
   const fillMarks = () => {
     root.querySelectorAll('[data-field][data-where]').forEach((n) => {
-      if (n.closest('table, .cc-funnelviz, .cc-bbfunnel, .cc-bbbars, .cc-bullets, .cc-donut, .cc-cov, .cc-insight, .cc-svgchart')) return;
+      if (n.closest('table, .cc-ring, .cc-spark, .cc-river, .cc-funnelviz, .cc-bbfunnel, .cc-bbbars, .cc-bullets, .cc-donut, .cc-cov, .cc-insight, .cc-svgchart')) return;
       const r = dash.data(n.dataset.source);
       if (r.status === 'loading') return;
       n.classList.remove('dash-skeleton');
@@ -2352,6 +2467,163 @@ dash.calc('attention', {
     }
   };
 
+  /* Overview: rings, sparks, river */
+  const RIVER_STAGES = [['reached', 'Reached', 'Reached'], ['connected', 'Connected on LinkedIn', 'Connected'], ['met', 'Met at least once', 'Met'], ['deals', 'Deals or agreements', 'Deals'], ['won', 'Won or signed', 'Won']];
+  const drawRings = () => {
+    const funnel = rowsOf('funnel');
+    root.querySelectorAll('.cc-ringwrap').forEach((wrap) => {
+      const c = wrap.dataset.ring;
+      const step = wrap.dataset.step;
+      const box = wrap.querySelector('.cc-ring');
+      if (status('funnel') === 'loading') return;
+      box.classList.remove('dash-skeleton');
+      const r = funnel && funnel.find((x) => x.campaign === c && x.step === step);
+      if (!r) { box.replaceChildren(failNode()); return; }
+      const size = 120;
+      const R = size / 2;
+      const thick = 11;
+      const svg = d3.create('svg').attr('viewBox', `0 0 ${size} ${size}`).attr('role', 'img')
+        .attr('aria-label', stepLabel(c, step) + ': ' + fmt(r.value, 'int') + ' of ' + fmt(r.target, 'int'));
+      const g = svg.append('g').attr('transform', `translate(${R},${R})`);
+      const arc = d3.arc().innerRadius(R - thick).outerRadius(R).cornerRadius(thick / 2);
+      g.append('path').attr('d', arc({ startAngle: 0, endAngle: 2 * Math.PI })).attr('fill', 'var(--cds-chart-grid)');
+      const p = Math.max(0, r.progress || 0);
+      if (p > 0) g.append('path').attr('d', arc({ startAngle: 0, endAngle: 2 * Math.PI * Math.min(1, Math.max(p, 0.015)) })).attr('fill', hueOf(c));
+      if (p > 1) g.append('path').attr('d', d3.arc().innerRadius(R - thick - 5).outerRadius(R - thick - 2)({ startAngle: 0, endAngle: 2 * Math.PI * Math.min(1, p - 1) })).attr('fill', hueOf(c)).attr('opacity', 0.5);
+      const a = 2 * Math.PI * pace - Math.PI / 2;
+      g.append('line').attr('x1', Math.cos(a) * (R - thick - 3)).attr('y1', Math.sin(a) * (R - thick - 3)).attr('x2', Math.cos(a) * (R + 3)).attr('y2', Math.sin(a) * (R + 3))
+        .attr('stroke', 'var(--color-fg)').attr('stroke-width', 2).attr('stroke-linecap', 'round');
+      const mid = el('div', 'cc-ring-mid');
+      const pct = markEl('span', 'funnel', 'progress', { campaign: c, step }, r.progress, 'pct');
+      pct.className = 'cc-ring-pct';
+      const of = el('span', 'cc-ring-of');
+      of.append(markEl('span', 'funnel', 'value', { campaign: c, step }, r.value, 'int'), document.createTextNode(' of '), markEl('span', 'funnel', 'target', { campaign: c, step }, r.target, 'int'));
+      mid.append(pct, of);
+      box.replaceChildren(svg.node(), mid);
+      const note = wrap.querySelector('.cc-pacenote');
+      const ahead = (r.progress || 0) >= pace;
+      note.textContent = ahead ? 'Ahead of today’s pace' : 'Behind today’s pace';
+      note.className = 'cc-pacenote ' + (ahead ? 'cc-ok' : 'cc-low');
+      clickable(wrap, 'ov-' + c, step, 'Show details for ' + stepLabel(c, step));
+    });
+  };
+  const drawSparks = () => {
+    const rows = rowsOf('campaign_monthly');
+    root.querySelectorAll('.cc-spark').forEach((spark) => {
+      const c = spark.dataset.campaign;
+      const box = spark.querySelector('.cc-spark-chart');
+      if (status('campaign_monthly') === 'loading') return;
+      box.classList.remove('dash-skeleton');
+      if (!rows) { box.replaceChildren(failNode()); return; }
+      const mine = rows.filter((r) => r.campaign === c);
+      const w = Math.max(120, box.clientWidth || 240);
+      const h = 44;
+      const x = d3.scaleBand(mine.map((r) => r.month), [0, w]).paddingInner(0.28);
+      const max = d3.max(mine, (r) => r.deals) || 1;
+      const y = d3.scaleLinear([0, max], [h - 14, 0]);
+      const svg = d3.create('svg').attr('viewBox', `0 0 ${w} ${h}`).attr('preserveAspectRatio', 'none');
+      const card = spark.closest('.cc-card');
+      mine.forEach((r, i) => {
+        const last = i === mine.length - 1;
+        const bh = Math.max(2, (h - 14) - y(r.deals));
+        svg.append('rect').attr('x', x(r.month)).attr('y', h - 14 - bh).attr('width', x.bandwidth()).attr('height', bh).attr('rx', 2)
+          .attr('fill', r.deals ? (last ? hueOf(c) : ramp(hueOf(c), 0.5)) : 'var(--cds-chart-grid)')
+          .on('mousemove', (e) => showTip(card, e.clientX, e.clientY, monthF(new Date(r.month + '-01T00:00:00Z')), [[hueOf(c), 'Deals created', intF(r.deals)]]))
+          .on('mouseleave', () => hideTip(card));
+        if (i === 0 || last) svg.append('text').attr('x', x(r.month) + (last ? x.bandwidth() : 0)).attr('y', h - 1).attr('text-anchor', last ? 'end' : 'start')
+          .attr('fill', 'var(--color-fg-muted)').attr('font-size', 10).text(d3.utcFormat('%b')(new Date(r.month + '-01T00:00:00Z')));
+      });
+      box.replaceChildren(svg.node());
+      const now = mine[mine.length - 1];
+      const label = spark.querySelector('.cc-spark-now');
+      if (now) { label.replaceChildren(document.createTextNode('This month '), markEl('b', 'campaign_monthly', 'deals', { campaign: c, month: now.month }, now.deals, 'int')); }
+    });
+  };
+  let riverDrawn = false;
+  const drawRiver = () => {
+    const box = root.querySelector('#river');
+    if (!box || !visible(box)) return;
+    if (status('campaign_river') === 'loading') return;
+    box.classList.remove('dash-skeleton');
+    const rows = rowsOf('campaign_river');
+    if (!rows) { box.replaceChildren(failNode()); return; }
+    const card = box.closest('.cc-card');
+    const W = Math.max(300, box.clientWidth);
+    const wide = W >= 720;
+    const camps = ['rp', 'icp', 'fn'];
+    const maxV = d3.max(rows, (r) => r.value) || 1;
+    const bandMax = wide ? 64 : 46;
+    const laneH = bandMax + 58;
+    const top = 26;
+    const H = top + camps.length * laneH;
+    const padX = wide ? 4 : 2;
+    const x = d3.scalePoint(RIVER_STAGES.map(([s]) => s), [padX, W - padX]);
+    const wOf = (v) => Math.max(2.5, Math.sqrt(v / maxV) * bandMax);
+    const svg = d3.create('svg').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', 'Campaign flow from reached to won, for each campaign');
+    const defs = svg.append('defs');
+    const anchor = (i) => (i === 0 ? 'start' : i === RIVER_STAGES.length - 1 ? 'end' : 'middle');
+    RIVER_STAGES.forEach(([s, long, short], i) => {
+      svg.append('text').attr('class', 'cc-stage').attr('x', x(s)).attr('y', 12).attr('text-anchor', anchor(i)).text(wide ? long : short);
+      svg.append('line').attr('x1', x(s)).attr('x2', x(s)).attr('y1', 20).attr('y2', H).attr('stroke', 'var(--cds-chart-grid)').attr('stroke-dasharray', '2 4');
+    });
+    const bands = svg.append('g').attr('class', riverDrawn ? null : 'cc-enter');
+    const labels = svg.append('g');
+    const hits = svg.append('g');
+    camps.forEach((c, k) => {
+      const lane = rows.filter((r) => r.campaign === c);
+      const vals = RIVER_STAGES.map(([s]) => (lane.find((r) => r.stage === s) || { value: 0 }).value);
+      const ws = vals.map(wOf);
+      const laneTop = top + k * laneH;
+      const cy = laneTop + 42 + bandMax / 2;
+      const xs = RIVER_STAGES.map(([s]) => x(s));
+      const grad = defs.append('linearGradient').attr('id', 'cc-river-' + c).attr('x1', 0).attr('x2', 1).attr('y1', 0).attr('y2', 0);
+      grad.append('stop').attr('offset', '0%').attr('stop-color', resolve(hueOf(c))).attr('stop-opacity', 0.38);
+      grad.append('stop').attr('offset', '100%').attr('stop-color', resolve(hueOf(c))).attr('stop-opacity', 1);
+      let d = `M${xs[0]},${cy - ws[0] / 2}`;
+      for (let i = 0; i < xs.length - 1; i += 1) { const m = (xs[i] + xs[i + 1]) / 2; d += ` C${m},${cy - ws[i] / 2} ${m},${cy - ws[i + 1] / 2} ${xs[i + 1]},${cy - ws[i + 1] / 2}`; }
+      d += ` L${xs[xs.length - 1]},${cy + ws[ws.length - 1] / 2}`;
+      for (let i = xs.length - 1; i > 0; i -= 1) { const m = (xs[i] + xs[i - 1]) / 2; d += ` C${m},${cy + ws[i] / 2} ${m},${cy + ws[i - 1] / 2} ${xs[i - 1]},${cy + ws[i - 1] / 2}`; }
+      bands.append('path').attr('d', d + 'Z').attr('fill', `url(#cc-river-${c})`);
+      xs.forEach((xx, i) => { if (i > 0 && i < xs.length - 1) bands.append('line').attr('x1', xx).attr('x2', xx).attr('y1', cy - ws[i] / 2 - 1).attr('y2', cy + ws[i] / 2 + 1).attr('stroke', 'var(--color-panel)').attr('stroke-width', 2); });
+      labels.append('circle').attr('cx', xs[0] + 4).attr('cy', laneTop + 12).attr('r', 4).attr('fill', hueOf(c));
+      labels.append('text').attr('class', 'cc-lane').attr('x', xs[0] + 14).attr('y', laneTop + 16).text(META[c].name);
+      const gap = (xs[1] - xs[0]);
+      RIVER_STAGES.forEach(([s, long], i) => {
+        const v = vals[i];
+        const prev = i > 0 ? vals[i - 1] : null;
+        const tx = labels.append('text').attr('class', 'cc-rv').attr('x', xs[i]).attr('y', cy - ws[i] / 2 - 6).attr('text-anchor', anchor(i)).text(intF(v));
+        if (wide && prev && v <= prev) tx.append('tspan').text(' ' + pctF(v / prev));
+        const step = (lane.find((r) => r.stage === s) || {}).step;
+        const hx = i === 0 ? xs[i] : i === xs.length - 1 ? xs[i] - gap / 2 : xs[i] - gap / 2;
+        const hw = i === 0 || i === xs.length - 1 ? gap / 2 : gap;
+        const key = c + '|' + step;
+        if (picked.river === key) hits.append('rect').attr('class', 'cc-rpick').attr('x', hx + 2).attr('y', laneTop + 24).attr('width', hw - 4).attr('height', laneH - 28).attr('rx', 6);
+        const hit = hits.append('rect').attr('class', 'cc-rhit').attr('x', hx).attr('y', laneTop + 22).attr('width', hw).attr('height', laneH - 24)
+          .attr('tabindex', 0).attr('role', 'button').attr('aria-label', META[c].name + ', ' + long + ': ' + intF(v))
+          .on('mousemove', (e) => showTip(card, e.clientX, e.clientY, META[c].name + ' · ' + long, [[hueOf(c), stepLabel(c, step), intF(v)]].concat(prev && v <= prev ? [[null, 'Kept from previous stage', pctF(v / prev)]] : [])))
+          .on('mouseleave', () => hideTip(card))
+          .on('click', () => pick('river', key))
+          .on('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick('river', key); } });
+        hit.node();
+      });
+    });
+    box.replaceChildren(svg.node());
+    riverDrawn = true;
+    const conv = camps.map((c) => {
+      const lane = rows.filter((r) => r.campaign === c);
+      const g = (s) => (lane.find((r) => r.stage === s) || { value: 0 }).value;
+      return { c, reached: g('reached'), met: g('met'), rate: g('reached') ? g('met') / g('reached') : 0 };
+    });
+    const best = d3.greatest(conv, (d) => d.rate);
+    const worst = d3.least(conv, (d) => d.rate);
+    if (best && worst && best !== worst) {
+      said(root.querySelector('#ins-river'), [META[best.c].name, ' turns the largest share of the people it reaches into meetings: ',
+        b('campaign_river', 'value', { campaign: best.c, stage: 'met' }, best.met, 'int'), ' of ', b('campaign_river', 'value', { campaign: best.c, stage: 'reached' }, best.reached, 'int'), '. ',
+        META[worst.c].name, ' converts the smallest share: ', b('campaign_river', 'value', { campaign: worst.c, stage: 'met' }, worst.met, 'int'), ' met out of ',
+        b('campaign_river', 'value', { campaign: worst.c, stage: 'reached' }, worst.reached, 'int'), ' reached.']);
+    }
+  };
+
   /* Detail panels: every chart opens the records behind what was clicked */
   const picked = {};
   const DEAL_COLS = [['deal', 'Deal'], ['account', 'Account'], ['contact', 'Contact', null, true], ['stage', 'Stage'], ['amount', 'Amount', 'money', false, true], ['updated', 'Updated', 'date', true]];
@@ -2438,6 +2710,7 @@ dash.calc('attention', {
         rows: (rowsOf('deals_tagged') || []).filter((d) => String(d.created || '').slice(0, 7) === month).sort((a, b) => String(a.created).localeCompare(String(b.created))),
       }),
     },
+    river: { card: '#ov-river', build: (v) => { const [c, s] = v.split('|'); return stepSpec(c, s); } },
     'targets-all': { card: '#ov-targets', build: (v) => { const [c, s] = v.split('|'); return stepSpec(c, s); } },
     'targets-rp': { card: '#rp-targets', build: (s) => stepSpec('rp', s) },
     'targets-icp': { card: '#icp-targets', build: (s) => stepSpec('icp', s) },
@@ -2574,6 +2847,8 @@ dash.calc('attention', {
   };
 
   function drawSized() {
+    drawRiver();
+    drawSparks();
     drawMeetings();
     drawRefFlow();
     drawStageChart('#chart-rp-stages', {
@@ -2741,6 +3016,7 @@ dash.calc('attention', {
 
   function redrawAll() {
     fillMarks();
+    drawRings();
     drawFunnels();
     drawBullets();
     drawDonuts();
