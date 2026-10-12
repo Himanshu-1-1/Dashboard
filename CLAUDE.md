@@ -3,6 +3,7 @@
 Static campaign dashboard for True Lean Solutions / TechTranspire, published to GitHub Pages and refreshed daily from Zoho CRM.
 
 ## Layout
+- `site/boxbyte.js` (`window.__BOXBYTE__`): the latest Box Byte batch file (datasets `boxbyte_leads`, `boxbyte_messages`, `boxbyte_held`), kept on the orphan `boxbyte-snapshot` branch and copied in by the workflow. The data layer merges its datasets into `data.js`'s.
 - `scripts/fetch_zoho.py`: pulls the datasets from Zoho CRM via COQL (`/crm/v7/coql`) and writes `site/data.js` (`window.__DASH_DATA__ = {...}`, loads from file:// and Pages alike). Python standard library only; no dependencies.
 - `site/index.html`: the whole page (styles, data layer, charts). d3 v7.9.0 comes from cdnjs; everything else is inline.
 - `.github/workflows/refresh.yml`: runs the fetch at 02:30 UTC (8:00 AM IST), on push to `main` and on demand, then deploys `site/` with `actions/deploy-pages`.
@@ -18,7 +19,7 @@ Static campaign dashboard for True Lean Solutions / TechTranspire, published to 
 - Colors and spacing are CSS custom properties defined once in `:root`, with dark-mode values.
 
 ## Hard constraints
-- Never commit `site/data.js` or any Zoho credentials to `main`. Secrets live in GitHub Actions secrets only. The `data-snapshot` branch (orphan, single commit, force-pushed) is a stopgap used only while the secrets are missing.
+- Never commit `site/data.js`, `site/boxbyte.js` or any Zoho credentials to `main`. The `boxbyte-snapshot` branch (orphan, single commit, force-pushed) holds the Box Byte batch file; it never carries LinkedIn/Sales Navigator URLs or review notes. Secrets live in GitHub Actions secrets only. The `data-snapshot` branch (orphan, single commit, force-pushed) is a stopgap used only while the secrets are missing.
 - Meetings with no linked contact are published without titles (`redact_unlinked_meetings`); the calendar includes personal events.
 - The Zoho client is read-only (`ZohoCRM.coql.READ,ZohoCRM.modules.READ`). Don't add write scopes.
 - The site is public; planned next step is passcode encryption of `data.js` in the workflow.

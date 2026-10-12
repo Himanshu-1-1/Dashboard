@@ -45,6 +45,16 @@ jobs:
             exit 1
           fi
 
+      - name: Add the Box Byte batch file
+        run: |
+          # The latest Box Byte batch (drafted messages, held prospects, leads by profile) lives on its own
+          # branch so prospect data never lands on main. Replace it when a new batch file arrives.
+          if git fetch --depth=1 origin boxbyte-snapshot 2>/dev/null; then
+            git show FETCH_HEAD:boxbyte.js > site/boxbyte.js
+          else
+            echo "::warning::No boxbyte-snapshot branch, so the Box Byte tab can't show the batch file."
+          fi
+
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3

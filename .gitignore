@@ -3,3 +3,4 @@ site/data.json
 __pycache__/
 *.pyc
 .env
+site/boxbyte.js

@@ -76,6 +76,7 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <script src="data.js"></script>
+<script src="boxbyte.js"></script>
 <script>
 /* Data layer: reads data.json (written daily by scripts/fetch_zoho.py) and serves it to the page
    through the same interface the dashboard code was written against. */
@@ -153,8 +154,9 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
   };
   const start = () => {
     const json = window.__DASH_DATA__;
+    const extra = window.__BOXBYTE__;
     if (json && json.datasets) {
-      raw = json;
+      raw = { ...json, datasets: { ...json.datasets, ...(extra && extra.datasets ? extra.datasets : {}) } };
       cache = {};
       runAll();
       stamp('Data from Zoho CRM as of ' + when(json.generated_at) + '.');
@@ -332,6 +334,10 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
 .cc-fail { display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); min-height: 3rem; }
 .cc-fail::before { content: ""; width: .375rem; height: .375rem; border-radius: 50%; background: var(--color-bad); }
 .cc-notes { margin: 0; padding-left: 1.1rem; display: grid; gap: var(--cds-gap-xs); color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); line-height: 1.5; max-width: 80ch; }
+.cc-bbfunnel { display: grid; gap: 0; min-height: 10rem; align-content: start; }
+.cc-bbbars { display: grid; gap: var(--cds-gap-md); min-height: 6rem; align-content: start; }
+.cc-tbl td.cc-msg { white-space: pre-line; min-width: min(26rem, 70vw); line-height: 1.45; }
+.cc-tbl td.cc-subj { min-width: 10rem; }
 [data-dash-source-state=refreshing] { opacity: .5; transition: opacity var(--cds-dur-slow); }
 @media (max-width: 34rem) {
   .cc-hide-narrow { display: none; }
@@ -361,6 +367,7 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
     <button type="button" class="cc-tab" role="tab" id="tab-ref" data-tab="ref" aria-controls="ref"><i class="cc-dot" data-hue="rp"></i>Referrals</button>
     <button type="button" class="cc-tab" role="tab" id="tab-icp" data-tab="icp" aria-controls="icp"><i class="cc-dot" data-hue="icp"></i>ICP Prospecting</button>
     <button type="button" class="cc-tab" role="tab" id="tab-fn" data-tab="fn" aria-controls="fn"><i class="cc-dot" data-hue="fn"></i>Founder Network</button>
+    <button type="button" class="cc-tab" role="tab" id="tab-bb" data-tab="bb" aria-controls="bb"><i class="cc-dot" data-hue="bb"></i>Box Byte</button>
     <button type="button" class="cc-tab" role="tab" id="tab-pipeline" data-tab="pipeline" aria-controls="pipeline">Pipeline</button>
   </nav>
 
@@ -602,6 +609,58 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
         </table>
       </div>
       <p class="cc-empty" hidden>No Founder Network opportunities yet.</p>
+    </article>
+  </section>
+
+  <section class="cc-page" id="bb" role="tabpanel" aria-labelledby="tab-bb" hidden>
+    <p class="cc-intro">Box Byte sources prospects and drafts the LinkedIn outreach we send from our own profiles. Are their leads turning into conversations, meetings and deals?</p>
+    <div class="cc-grid">
+      <article class="cc-card" id="bb-funnel">
+        <div class="cc-card-head"><h3>Lead funnel</h3><p>Contacts tagged BoxByte in Zoho, from one left edge. This moves as the contacts are worked in Zoho. Select a deal step to see its deals.</p></div>
+        <div class="cc-bbfunnel dash-skeleton" id="bb-funnelviz" data-source="boxbyte_funnel"></div>
+        <p class="cc-insight" id="ins-bb-funnel"></p>
+      </article>
+      <article class="cc-card" id="bb-profiles">
+        <div class="cc-card-head"><h3>Leads by LinkedIn profile</h3><p>The profile each lead came through, from the batch file, and where that lead stands in Zoho today.</p></div>
+        <div class="cc-legend" id="leg-bb-profiles"></div>
+        <div class="cc-bbbars dash-skeleton" id="bb-profilebars" data-source="boxbyte_profiles"></div>
+        <p class="cc-insight" id="ins-bb-profiles"></p>
+      </article>
+    </div>
+    <div class="cc-grid">
+      <article class="cc-card" id="bb-batch">
+        <div class="cc-card-head"><h3>Outreach batch</h3><p>From the Box Byte batch file of <span class="dash-skeleton" data-source="boxbyte_batch" data-field="value" data-where="measure=batch" data-fmt="date">—</span>. These numbers change only when a new batch file is loaded.</p></div>
+        <dl class="cc-bigs">
+          <div class="cc-big"><dt>Prospects sourced</dt><dd><span class="cc-bignum dash-skeleton" data-source="boxbyte_batch" data-field="value" data-where="measure=sourced" data-fmt="int">—</span></dd></div>
+          <div class="cc-big"><dt>Messages drafted</dt><dd><span class="cc-bignum dash-skeleton" data-source="boxbyte_batch" data-field="value" data-where="measure=drafted" data-fmt="int">—</span></dd></div>
+          <div class="cc-big"><dt>Held back</dt><dd><span class="cc-bignum dash-skeleton" data-source="boxbyte_batch" data-field="value" data-where="measure=held" data-fmt="int">—</span></dd></div>
+        </dl>
+        <div class="cc-legend" id="leg-bb-review"></div>
+        <div class="cc-bbbars dash-skeleton" id="bb-reviewbars" data-source="boxbyte_senders"></div>
+        <p class="cc-insight" id="ins-bb-batch"></p>
+      </article>
+      <article class="cc-card" id="bb-held">
+        <div class="cc-card-head"><h3>Why prospects were held back</h3><p>Prospects in the batch file that got no message, by the reason given.</p></div>
+        <div class="cc-bbbars dash-skeleton" id="bb-heldbars" data-source="boxbyte_held"></div>
+      </article>
+    </div>
+    <article class="cc-card" id="bb-messages-card">
+      <div class="cc-card-head"><h3>Drafted messages</h3><p>Every LinkedIn message in the batch file, showing the rewrite where there is one. Review says whether it is ready to send, needs a check first, or should be dropped.</p></div>
+      <div class="cc-tools">
+        <button type="button" class="cc-chip" data-bb-review="Ready" aria-pressed="false">Ready</button>
+        <button type="button" class="cc-chip" data-bb-review="Check" aria-pressed="false">Needs a check</button>
+        <button type="button" class="cc-chip" data-bb-review="Drop" aria-pressed="false">Drop</button>
+        <input class="cc-search" id="bb-search" type="search" placeholder="Search messages" aria-label="Search messages">
+        <div class="cc-legend cc-rowkey"><span class="cc-l-bad">Drop</span><span class="cc-l-warn">Needs a check</span></div>
+      </div>
+      <p class="cc-state" hidden></p>
+      <div class="cc-scroll">
+        <table class="cc-tbl" id="bb-messages" data-source="boxbyte_messages" data-row-key="message_no">
+          <thead><tr><th data-field="message_no" class="cc-num">#</th><th data-field="send_from">From</th><th data-field="title" class="cc-hide-narrow">Prospect’s title</th><th data-field="location" class="cc-hide-narrow">Location</th><th data-field="style" class="cc-hide-narrow">Style</th><th data-field="review">Review</th><th data-field="rewritten" class="cc-hide-narrow">Rewritten</th><th data-field="subject" data-cell-class="cc-subj">Subject</th><th data-field="message" data-cell-class="cc-msg">Message</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="cc-empty" hidden>No messages match.</p>
     </article>
   </section>
 
@@ -901,6 +960,29 @@ dash.loader('meetings', {
     return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
   },
 });
+dash.loader('boxbyte_contacts', {
+  description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text, counts and amounts become numbers.',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? (answer.trim() ? JSON.parse(answer) : {}) : (answer || {});
+    if (a.status === 'error' || (a.code && !a.data)) throw new Error(a.message || a.code || 'Zoho CRM refused the query');
+    const body = a.data && !Array.isArray(a.data) ? a.data : a;
+    const list = Array.isArray(body.data) ? body.data : [];
+    const rename = { 'COUNT(id)': 'count', 'SUM(Amount)': 'amount_sum' };
+    const numeric = ['count', 'amount_sum', 'Amount', 'Total_Meetings_Created'];
+    const rows = list.map((r) => {
+      const o = {};
+      for (const [k, v] of Object.entries(r)) {
+        const key = rename[k] || k;
+        if (Array.isArray(v)) o[key] = v.join(', ');
+        else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
+        else o[key] = v;
+      }
+      for (const n of numeric) if (o[n] != null && o[n] !== '') o[n] = Number(o[n]);
+      return o;
+    });
+    return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
+  },
+});
 
 dash.calc('deals_tagged', {
   title: 'Deals by campaign',
@@ -917,7 +999,7 @@ dash.calc('deals_tagged', {
         : d['Account_Name.Priority'] ? 'ICP Prospecting' : 'Unattributed';
       return {
         id: d.id, deal: d.Deal_Name, kind, campaign, stage: d.Stage,
-        account: d.Account_Name, contact: d.Contact_Name, amount: d.Amount ?? 0,
+        account: d.Account_Name, contact: d.Contact_Name, contact_id: d.Contact_Name_id ?? null, amount: d.Amount ?? 0,
         referred: d.Lead_Source === 'External Referral',
         next_action: kind === 'Partnership' ? (nextFor[d.Stage] || '') : '',
         created: d.Created_Time, updated: d.Modified_Time,
@@ -1011,6 +1093,104 @@ dash.calc('referral_summary', {
       { measure: 'unsigned', value: linked.filter((r) => !r.signed).length },
       { measure: 'unrecorded', value: referrals.filter((r) => !r.recorded).length },
     ];
+  },
+});
+
+dash.calc('boxbyte_people', {
+  title: 'Box Byte leads in Zoho',
+  description: 'Each contact tagged BoxByte, with the LinkedIn profile it came through (from the batch file), its LinkedIn status, meetings, and client deals.',
+  inputs: ['boxbyte_contacts', 'boxbyte_leads', 'deals_tagged'],
+  fn: (boxbyte_contacts, boxbyte_leads, deals_tagged) => {
+    const profileOf = new Map(boxbyte_leads.filter((l) => l.contact_id).map((l) => [String(l.contact_id), l.profile]));
+    return boxbyte_contacts.map((c) => {
+      const mine = deals_tagged.filter((d) => d.kind === 'Client' && d.contact_id === c.id);
+      return {
+        contact_id: c.id, profile: profileOf.get(String(c.id)) || 'Not in the batch file',
+        linkedin: c.LI_Connect || 'Not set', connected: c.LI_Connect === 'Connected',
+        met: (c.Total_Meetings_Created || 0) >= 1, deals: mine.length, won: mine.filter((d) => d.stage === 'Closed').length,
+      };
+    });
+  },
+});
+
+dash.calc('boxbyte_funnel', {
+  title: 'Box Byte funnel',
+  description: 'Box Byte leads at each step: tagged in Zoho, connected on LinkedIn, met at least once, with a client deal, with a deal won; plus leads with no LinkedIn status set.',
+  inputs: ['boxbyte_people'],
+  fn: (boxbyte_people) => [
+    { step: 'tagged', value: boxbyte_people.length },
+    { step: 'connected', value: boxbyte_people.filter((p) => p.connected).length },
+    { step: 'met', value: boxbyte_people.filter((p) => p.met).length },
+    { step: 'deals', value: boxbyte_people.filter((p) => p.deals > 0).length },
+    { step: 'won', value: boxbyte_people.filter((p) => p.won > 0).length },
+    { step: 'no_status', value: boxbyte_people.filter((p) => p.linkedin === 'Not set').length },
+  ],
+});
+
+dash.calc('boxbyte_profiles', {
+  title: 'Box Byte leads by profile',
+  description: 'Leads in the batch file by the LinkedIn profile they came through, split by where each stands in Zoho: met, connected, no LinkedIn status, or not tagged in Zoho. Tagged contacts missing from the batch file are listed on their own.',
+  inputs: ['boxbyte_people', 'boxbyte_leads'],
+  fn: (boxbyte_people, boxbyte_leads) => {
+    const byId = new Map(boxbyte_people.map((p) => [String(p.contact_id), p]));
+    const rows = new Map();
+    const seen = new Set();
+    const add = (profile, p) => {
+      const r = rows.get(profile) || { profile, leads: 0, met: 0, connected: 0, no_status: 0, not_in_zoho: 0 };
+      r.leads += 1;
+      if (!p) r.not_in_zoho += 1;
+      else if (p.met) r.met += 1;
+      else if (p.connected) r.connected += 1;
+      else r.no_status += 1;
+      rows.set(profile, r);
+    };
+    for (const l of boxbyte_leads) {
+      const p = l.contact_id ? byId.get(String(l.contact_id)) : null;
+      if (p) seen.add(String(p.contact_id));
+      add(l.profile, p);
+    }
+    for (const p of boxbyte_people) if (!seen.has(String(p.contact_id))) add('Not in the batch file', p);
+    return [...rows.values()].sort((a, b) => Number(a.profile === 'Not in the batch file') - Number(b.profile === 'Not in the batch file') || b.leads - a.leads || a.profile.localeCompare(b.profile));
+  },
+});
+
+dash.calc('boxbyte_batch', {
+  title: 'Box Byte batch totals',
+  description: 'Totals from the Box Byte batch file: prospects sourced (messaged plus held back), messages by review status, rewrites, and question-led messages.',
+  inputs: ['boxbyte_messages', 'boxbyte_held', 'boxbyte_leads'],
+  fn: (boxbyte_messages, boxbyte_held, boxbyte_leads) => {
+    const held = boxbyte_held.reduce((t, r) => t + Number(r.prospects || 0), 0);
+    const n = (keep) => boxbyte_messages.filter(keep).length;
+    return [
+      { measure: 'batch', value: boxbyte_leads.map((l) => l.batch).filter(Boolean).sort().pop() || null },
+      { measure: 'sourced', value: boxbyte_messages.length + held },
+      { measure: 'drafted', value: boxbyte_messages.length },
+      { measure: 'held', value: held },
+      { measure: 'ready', value: n((m) => m.review === 'Ready') },
+      { measure: 'check', value: n((m) => m.review === 'Check') },
+      { measure: 'drop', value: n((m) => m.review === 'Drop') },
+      { measure: 'rewritten', value: n((m) => m.rewritten === 'Yes') },
+      { measure: 'question_led', value: n((m) => m.style === 'question-led') },
+    ];
+  },
+});
+
+dash.calc('boxbyte_senders', {
+  title: 'Box Byte messages by sender',
+  description: 'Drafted messages per profile they go out from, split by review status: ready, needs a check, drop.',
+  inputs: ['boxbyte_messages'],
+  fn: (boxbyte_messages) => {
+    const rows = new Map();
+    for (const m of boxbyte_messages) {
+      const k = m.send_from || 'Not set';
+      const r = rows.get(k) || { send_from: k, messages: 0, ready: 0, check: 0, drop: 0 };
+      r.messages += 1;
+      if (m.review === 'Drop') r.drop += 1;
+      else if (m.review === 'Check') r.check += 1;
+      else r.ready += 1;
+      rows.set(k, r);
+    }
+    return [...rows.values()].sort((a, b) => b.messages - a.messages || a.send_from.localeCompare(b.send_from));
   },
 });
 
@@ -1317,7 +1497,7 @@ dash.calc('attention', {
   const root = document.querySelector('.cc');
   const META = {"rp": {"name": "B2B Campaign", "reach": [["total", "Partner prospects in CRM"], ["invited", "LinkedIn invite sent"], ["connected", "Connected on LinkedIn"], ["met1", "Met at least once"], ["met5", "More than 4 meetings"]], "outcome": [["met1", "Met at least once"], ["met5", "More than 4 meetings"], ["partner_deals", "Partnership deals created"], ["agreements", "Agreement sent or signed"], ["signed", "Partners signed"], ["referred", "Client deals referred to us"], ["referred_won", "Referred deals won"], ["referred_value", "Referred contract value won"]]}, "icp": {"name": "ICP Prospecting", "reach": [["total", "Executives at target accounts"], ["invited", "LinkedIn invite sent"], ["connected", "Connected on LinkedIn"], ["met1", "Met at least once"], ["met5", "More than 4 meetings"]], "outcome": [["accounts", "Target accounts"], ["total", "Executives at those accounts"], ["connected", "Connected on LinkedIn"], ["meetings", "Meetings logged"], ["met5", "More than 4 meetings"], ["deals", "Client deals created"], ["won", "Deals won"]]}, "fn": {"name": "Founder Network", "reach": [["total", "Founder Network contacts"], ["connected", "Connected on LinkedIn"], ["met1", "Met at least once"], ["met5", "More than 4 meetings"]], "outcome": [["total", "Founder Network contacts"], ["meetings", "Meetings logged"], ["opps", "Client opportunities created"], ["won", "Opportunities won"]]}};
   const CAMPAIGN_KEY = { 'B2B Campaign': 'rp', 'ICP Prospecting': 'icp', 'Founder Network': 'fn' };
-  const HUE = { rp: dash.colors[0], icp: dash.colors[1], fn: dash.colors[2] };
+  const HUE = { rp: dash.colors[0], icp: dash.colors[1], fn: dash.colors[2], bb: dash.colors[3] };
   const hueOf = (key) => HUE[key] || 'var(--cds-chart-muted)';
   const CAMPAIGN_ORDER = ['B2B Campaign', 'ICP Prospecting', 'Founder Network', 'Unattributed'];
   const CAMPAIGN_COLOR = { 'B2B Campaign': HUE.rp, 'ICP Prospecting': HUE.icp, 'Founder Network': HUE.fn, 'Unattributed': 'var(--cds-chart-muted)' };
@@ -1455,7 +1635,7 @@ dash.calc('attention', {
   /* Static single values */
   const fillMarks = () => {
     root.querySelectorAll('[data-field][data-where]').forEach((n) => {
-      if (n.closest('table, .cc-funnelviz, .cc-bullets, .cc-donut, .cc-cov, .cc-insight, .cc-svgchart')) return;
+      if (n.closest('table, .cc-funnelviz, .cc-bbfunnel, .cc-bbbars, .cc-bullets, .cc-donut, .cc-cov, .cc-insight, .cc-svgchart')) return;
       const r = dash.data(n.dataset.source);
       if (r.status === 'loading') return;
       n.classList.remove('dash-skeleton');
@@ -2025,6 +2205,137 @@ dash.calc('attention', {
     }
   };
 
+  /* Box Byte */
+  const BB_STEPS = [['tagged', 'Leads in Zoho'], ['connected', 'Connected on LinkedIn'], ['met', 'Met at least once'], ['deals', 'With a client deal'], ['won', 'With a deal won']];
+  const BB_STATUS = [['met', 'Met'], ['connected', 'Connected'], ['no_status', 'No LinkedIn status'], ['not_in_zoho', 'Not tagged in Zoho']];
+  const BB_REVIEW = [['ready', 'Ready'], ['check', 'Needs a check'], ['drop', 'Drop']];
+  const bbStatusColor = (k) => ({ met: ramp(HUE.bb, 1), connected: ramp(HUE.bb, 0.6), no_status: ramp(HUE.bb, 0.28), not_in_zoho: 'var(--cds-chart-muted)' }[k]);
+  const bbReviewColor = (k) => ({ ready: ramp(HUE.bb, 0.9), check: 'var(--color-warn)', drop: 'var(--cds-chart-muted)' }[k]);
+  const splitBar = (card, row, keys, colorOf, name, width) => {
+    const outer = el('div');
+    outer.style.width = width;
+    outer.style.minWidth = '2rem';
+    const bar = el('div', 'cc-refbar');
+    keys.forEach(([k, label]) => {
+      if (!row[k]) return;
+      const seg = el('i');
+      seg.style.flex = String(row[k]);
+      seg.style.background = colorOf(k);
+      seg.addEventListener('mousemove', (e) => showTip(card, e.clientX, e.clientY, name, [[colorOf(k), label, intF(row[k])]]));
+      seg.addEventListener('mouseleave', () => hideTip(card));
+      bar.append(seg);
+    });
+    outer.append(bar);
+    return outer;
+  };
+  const drawBoxByte = () => {
+    const fbox = root.querySelector('#bb-funnelviz');
+    if (status('boxbyte_funnel') !== 'loading') {
+      fbox.classList.remove('dash-skeleton');
+      const f = rowsOf('boxbyte_funnel');
+      if (!f) fbox.replaceChildren(failNode());
+      else {
+        const val = (s) => (f.find((r) => r.step === s) || {}).value || 0;
+        const max = val('tagged') || 1;
+        fbox.replaceChildren(...BB_STEPS.map(([s, label], i) => {
+          const row = el('div', 'cc-frow');
+          const bar = el('div', 'cc-fbar');
+          const fill = el('i');
+          fill.style.width = (val(s) / max * 100).toFixed(2) + '%';
+          fill.style.background = ramp(HUE.bb, 1 - i * 0.12);
+          bar.append(fill);
+          const v = el('span', 'cc-fval');
+          v.append(markEl('span', 'boxbyte_funnel', 'value', { step: s }, val(s), 'int'));
+          row.append(el('span', 'cc-flabel', label), bar, v);
+          if (s === 'deals' || s === 'won') clickable(row, 'bb-funnel', s, 'Show deals for ' + label.toLowerCase());
+          return row;
+        }));
+        const parts = [b('boxbyte_funnel', 'value', { step: 'tagged' }, val('tagged'), 'int'), ' Box Byte leads are in Zoho; ',
+          b('boxbyte_funnel', 'value', { step: 'connected' }, val('connected'), 'int'), ' are marked connected and ',
+          b('boxbyte_funnel', 'value', { step: 'met' }, val('met'), 'int'), ' have been met. '];
+        if (val('no_status')) parts.push(b('boxbyte_funnel', 'value', { step: 'no_status' }, val('no_status'), 'int'), ' have no LinkedIn status set in Zoho yet, so the connected count is low until LI Connect is filled in.');
+        said(root.querySelector('#ins-bb-funnel'), parts);
+      }
+    }
+
+    legendInto(root.querySelector('#leg-bb-profiles'), BB_STATUS.map(([k, l]) => [bbStatusColor(k), l]));
+    const pbox = root.querySelector('#bb-profilebars');
+    if (status('boxbyte_profiles') !== 'loading') {
+      pbox.classList.remove('dash-skeleton');
+      const rows = rowsOf('boxbyte_profiles');
+      const card = pbox.closest('.cc-card');
+      if (!rows) pbox.replaceChildren(failNode());
+      else if (!rows.length) pbox.replaceChildren(el('p', 'cc-empty', 'No Box Byte leads yet.'));
+      else {
+        const max = d3.max(rows, (r) => r.leads) || 1;
+        pbox.replaceChildren(...rows.map((r) => {
+          const wrap = el('div', 'cc-refrow');
+          const top = el('div', 'cc-reftop');
+          const right = el('span');
+          right.append(markEl('b', 'boxbyte_profiles', 'leads', { profile: r.profile }, r.leads, 'int'), document.createTextNode(r.leads === 1 ? ' lead' : ' leads'));
+          top.append(el('span', 'cc-who', r.profile), right);
+          wrap.append(top, splitBar(card, r, BB_STATUS, bbStatusColor, r.profile, (r.leads / max * 100).toFixed(1) + '%'));
+          return wrap;
+        }));
+        const top = rows.find((r) => r.profile !== 'Not in the batch file');
+        if (top) said(root.querySelector('#ins-bb-profiles'), ['Most leads came through ', top.profile, ': ', b('boxbyte_profiles', 'leads', { profile: top.profile }, top.leads, 'int'), ' of them, with ', b('boxbyte_profiles', 'met', { profile: top.profile }, top.met, 'int'), ' met so far.']);
+      }
+    }
+
+    legendInto(root.querySelector('#leg-bb-review'), BB_REVIEW.map(([k, l]) => [bbReviewColor(k), l]));
+    const rbox = root.querySelector('#bb-reviewbars');
+    if (status('boxbyte_senders') !== 'loading') {
+      rbox.classList.remove('dash-skeleton');
+      const rows = rowsOf('boxbyte_senders');
+      const card = rbox.closest('.cc-card');
+      if (!rows) rbox.replaceChildren(failNode());
+      else if (!rows.length) rbox.replaceChildren(el('p', 'cc-empty', 'No messages in the batch file.'));
+      else {
+        const max = d3.max(rows, (r) => r.messages) || 1;
+        rbox.replaceChildren(...rows.map((r) => {
+          const wrap = el('div', 'cc-refrow');
+          const top = el('div', 'cc-reftop');
+          const right = el('span');
+          right.append(markEl('b', 'boxbyte_senders', 'messages', { send_from: r.send_from }, r.messages, 'int'), document.createTextNode(r.messages === 1 ? ' message' : ' messages'));
+          top.append(el('span', 'cc-who', r.send_from), right);
+          wrap.append(top, splitBar(card, r, BB_REVIEW, bbReviewColor, r.send_from, (r.messages / max * 100).toFixed(1) + '%'));
+          return wrap;
+        }));
+      }
+    }
+    const bt = rowsOf('boxbyte_batch');
+    if (bt) {
+      const g = (k) => (bt.find((r) => r.measure === k) || {}).value || 0;
+      said(root.querySelector('#ins-bb-batch'), [
+        b('boxbyte_batch', 'value', { measure: 'ready' }, g('ready'), 'int'), ' of ', b('boxbyte_batch', 'value', { measure: 'drafted' }, g('drafted'), 'int'),
+        ' drafts are ready to send, ', b('boxbyte_batch', 'value', { measure: 'check' }, g('check'), 'int'), ' need a check first and ',
+        b('boxbyte_batch', 'value', { measure: 'drop' }, g('drop'), 'int'), ' should be dropped. ',
+        b('boxbyte_batch', 'value', { measure: 'rewritten' }, g('rewritten'), 'int'), ' were rewritten after review, and ',
+        b('boxbyte_batch', 'value', { measure: 'question_led' }, g('question_led'), 'int'), ' open with a question rather than a pitch.']);
+    }
+
+    const hbox = root.querySelector('#bb-heldbars');
+    if (status('boxbyte_held') !== 'loading') {
+      hbox.classList.remove('dash-skeleton');
+      const rows = rowsOf('boxbyte_held');
+      const card = hbox.closest('.cc-card');
+      if (!rows) hbox.replaceChildren(failNode());
+      else if (!rows.length) hbox.replaceChildren(el('p', 'cc-empty', 'Nobody was held back in this batch.'));
+      else {
+        const max = d3.max(rows, (r) => Number(r.prospects)) || 1;
+        hbox.replaceChildren(...rows.map((r) => {
+          const wrap = el('div', 'cc-refrow');
+          const top = el('div', 'cc-reftop');
+          const right = el('span');
+          right.append(markEl('b', 'boxbyte_held', 'prospects', { reason: r.reason }, r.prospects, 'int'), document.createTextNode(Number(r.prospects) === 1 ? ' prospect' : ' prospects'));
+          top.append(el('span', 'cc-who', r.reason), right);
+          wrap.append(top, splitBar(card, { n: Number(r.prospects) }, [['n', 'Prospects']], () => 'var(--cds-chart-muted)', r.reason, (Number(r.prospects) / max * 100).toFixed(1) + '%'));
+          return wrap;
+        }));
+      }
+    }
+  };
+
   /* Detail panels: every chart opens the records behind what was clicked */
   const picked = {};
   const DEAL_COLS = [['deal', 'Deal'], ['account', 'Account'], ['contact', 'Contact', null, true], ['stage', 'Stage'], ['amount', 'Amount', 'money', false, true], ['updated', 'Updated', 'date', true]];
@@ -2132,6 +2443,17 @@ dash.calc('attention', {
       },
     },
     'ref-flow': { card: '#ref-flow-card', build: (id) => ({ title: 'Referral detail', source: 'referrals', rowKey: 'link_id', cols: REF_COLS, rows: (rowsOf('referrals') || []).filter((r) => r.link_id === id) }) },
+    'bb-funnel': {
+      card: '#bb-funnel',
+      build: (step) => {
+        const people = rowsOf('boxbyte_people') || [];
+        const ids = new Set(people.map((p) => p.contact_id));
+        return {
+          title: 'Box Byte · ' + (step === 'won' ? 'Deals won' : 'Client deals'), swatch: hueOf('bb'), source: 'deals_tagged', rowKey: 'id', cols: DEAL_COLS,
+          rows: (rowsOf('deals_tagged') || []).filter((d) => d.kind === 'Client' && ids.has(d.contact_id) && (step !== 'won' || d.stage === 'Closed')).sort(byStageThenRecentD),
+        };
+      },
+    },
     'ref-partners': { card: '#ref-partners-card', build: (partner) => ({ title: 'Deals referred by ' + partner, source: 'referrals', rowKey: 'link_id', cols: REF_COLS.filter(([f]) => !['partner', 'partner_contact', 'agreement'].includes(f)), rows: (rowsOf('referrals') || []).filter((r) => r.partner === partner || (r.recorded && r.partner_contact === partner)) }) },
   };
   const pick = (key, value) => {
@@ -2268,7 +2590,7 @@ dash.calc('attention', {
         const f = th.dataset.field;
         const td = document.createElement('td');
         td.textContent = fmt(r[f], (opts.fmt || {})[f]);
-        const c = [th.classList.contains('cc-num') ? 'cc-num' : '', th.classList.contains('cc-hide-narrow') ? 'cc-hide-narrow' : ''].filter(Boolean).join(' ');
+        const c = [th.classList.contains('cc-num') ? 'cc-num' : '', th.classList.contains('cc-hide-narrow') ? 'cc-hide-narrow' : '', th.dataset.cellClass || ''].filter(Boolean).join(' ');
         if (c) td.className = c;
         tr.append(td);
       }
@@ -2284,6 +2606,16 @@ dash.calc('attention', {
   const chipMissing = root.querySelector('#fn-only-missing');
   chipP1.addEventListener('click', () => { filters.p1 = !filters.p1; chipP1.setAttribute('aria-pressed', String(filters.p1)); drawTables(); });
   chipMissing.addEventListener('click', () => { filters.missing = !filters.missing; chipMissing.setAttribute('aria-pressed', String(filters.missing)); drawTables(); });
+
+  const bbReview = new Set();
+  root.querySelectorAll('[data-bb-review]').forEach((chip) => chip.addEventListener('click', () => {
+    const k = chip.dataset.bbReview;
+    if (bbReview.has(k)) bbReview.delete(k); else bbReview.add(k);
+    chip.setAttribute('aria-pressed', String(bbReview.has(k)));
+    drawTables();
+  }));
+  const bbSearch = root.querySelector('#bb-search');
+  bbSearch.addEventListener('input', () => drawTables());
 
   const sortState = { field: 'updated', dir: -1 };
   const search = root.querySelector('#deal-search');
@@ -2325,6 +2657,14 @@ dash.calc('attention', {
       const refs = (rowsOf('referrals') || []).slice().sort((a, c) => Number(c.recorded) - Number(a.recorded) || String(c.referred_on || '').localeCompare(String(a.referred_on || '')));
       fillTable(refTable, refs, { fmt: { amount: 'money', referred_on: 'date' }, rowClass: (r) => (!r.recorded ? 'cc-row-bad' : !r.signed ? 'cc-row-warn' : '') });
     }
+    const bbTable = root.querySelector('#bb-messages');
+    if (tableState(bbTable, 'boxbyte_messages') === 'ok') {
+      const q = bbSearch.value.trim().toLowerCase();
+      const msgs = (rowsOf('boxbyte_messages') || [])
+        .filter((m) => (!bbReview.size || bbReview.has(m.review)) && (!q || [m.send_from, m.title, m.location, m.subject, m.message, m.style].some((v) => String(v || '').toLowerCase().includes(q))))
+        .sort((a, c) => Number(a.message_no) - Number(c.message_no));
+      fillTable(bbTable, msgs, { rowClass: (m) => (m.review === 'Drop' ? 'cc-row-bad' : m.review === 'Check' ? 'cc-row-warn' : '') });
+    }
     const fnTable = root.querySelector('#fn-next');
     if (tableState(fnTable, 'fn_next') === 'ok') {
       const people = (rowsOf('fn_next') || [])
@@ -2357,6 +2697,7 @@ dash.calc('attention', {
     drawDonuts();
     drawCoverage();
     drawRefBars();
+    drawBoxByte();
     drawSized();
     Object.keys(DRILLS).forEach(drawDrill);
     drawTables();
