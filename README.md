@@ -10,7 +10,7 @@ Every morning at **8:00 AM IST** (9:30 PM Central the night before), a GitHub Ac
 
 | Tab | What it answers |
 |---|---|
-| Overview | Every 2026 target against today's pace, meetings per week, and the backlog across all campaigns |
+| Overview | The backlog for B2B, ICP and Founder Network at the top, then every 2026 target against today's pace and meetings per week |
 | B2B Campaign | Partner prospects through to signed referral agreements and referred deals |
 | Referrals | Which partner referred which client deal, and whether the partner's agreement is signed |
 | ICP Prospecting | Executives at target accounts from LinkedIn invite through meetings and deals |

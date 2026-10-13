@@ -320,12 +320,12 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
 .cc-tone-clear .cc-bl-n { color: var(--color-ok); font-size: 15px; font-family: var(--font-anthropic-sans); font-weight: var(--cds-font-weight-medium); }
 .cc-bl-label { font-weight: var(--cds-font-weight-medium); line-height: 1.3; }
 .cc-bl-hint { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); line-height: 1.35; }
-.cc-blall { display: grid; gap: var(--cds-gap-md); }
+.cc-blall { display: grid; gap: var(--cds-gap-md) var(--cds-gap-lg); grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); align-items: start; }
 .cc-blgroup { display: grid; gap: var(--cds-gap-xs); }
-.cc-blgroup-head { display: flex; align-items: center; gap: var(--cds-gap-sm); justify-content: space-between; }
+.cc-blgroup-head { display: flex; align-items: center; gap: var(--cds-gap-sm); justify-content: space-between; min-height: 30px; }
 .cc-blgroup-head h3 { display: flex; align-items: center; gap: 8px; font-size: var(--cds-font-size-body); font-weight: var(--cds-font-weight-medium); }
 .cc-blgroup-head small { color: var(--color-fg-muted); font-weight: 400; }
-.cc-blall .cc-bl { grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); }
+.cc-blall .cc-bl { grid-template-columns: minmax(0, 1fr); }
 .cc-blall .cc-bl-n { font-size: 20px; }
 .cc-blall .cc-bl-item { grid-template-columns: 2.6rem minmax(0, 1fr); padding: var(--cds-pad-xs) var(--cds-pad-sm); }
 .cc-attn { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--cds-gap-sm); }
@@ -442,6 +442,11 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
   </nav>
 
   <section class="cc-page" id="overview" role="tabpanel" aria-labelledby="tab-overview">
+    <article class="cc-card cc-backlog cc-blboard" id="attention">
+      <div class="cc-card-head"><h2>Backlog across campaigns</h2><p>What is lapsed, overdue or waiting on us, live from Zoho. Red means lapsed or overdue, amber means waiting on us. Select an item to list the records, or open the campaign for its full backlog. Medical Courier's backlog is on its own tab.</p></div>
+      <div class="cc-blall dash-skeleton" id="backlog-all" data-source="backlog"></div>
+    </article>
+
     <div class="cc-grid-3">
       <article class="cc-card" id="ov-rp">
         <div class="cc-card-head"><h2><i class="cc-dot" data-hue="rp"></i>B2B Campaign</h2><p>Contacts tagged “May 2026 - 100 B2B”: firms that do work like ours and refer clients to us.</p></div>
@@ -530,27 +535,21 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
       </article>
     </div>
 
-    <div class="cc-grid">
-      <article class="cc-card" id="attention">
-        <div class="cc-card-head"><h2>Backlog across campaigns</h2><p>Everything that is lapsed, overdue or waiting on us, live from Zoho. Select an item to list the records, or open the campaign for its full backlog.</p></div>
-        <div class="cc-blall dash-skeleton" id="backlog-all" data-source="backlog"></div>
-      </article>
-      <article class="cc-card" id="definitions">
-        <div class="cc-card-head"><h2>How each campaign is counted</h2><p>The rules this page applies to Zoho CRM records.</p></div>
-        <ul class="cc-notes">
-          <li>Every campaign leaves out Priority 9 (inactive) and 11 (do not contact). Anyone whose Relationship Type includes Founder Network counts only in the Founder Network, even if they carry another campaign's tag.</li>
-          <li>B2B Campaign: contacts tagged “May 2026 - 100 B2B”. Referral partnership deals are every deal whose Deal Type is Reseller/ Referral Partner, whoever the contact is.</li>
-          <li>ICP Prospecting: contacts tagged “2026ICP”; target accounts are accounts tagged “2026ICP”. A client deal is ICP when its contact or account carries the tag.</li>
-          <li>Founder Network: contacts whose Relationship Type includes Founder Network. Their opportunities are client deals with one of these contacts. Next steps are their open Zoho tasks.</li>
-          <li>Medical Courier: accounts tagged “2026MedicalCourier” and their contacts and deals. Emails, follow-ups and replies come from the Medical Courier prospects sheet, because those emails went to company addresses that have no contact in Zoho.</li>
-          <li>Campaign tabs and the monthly bars show the pipeline only: client deals that are won (Closed), Closed Lost or Closed Lost to Competition are left out of every list, chart and count, and lost partnership agreements are left out of the B2B Campaign. Signed agreements stay. The Pipeline tab still shows every deal.</li>
-          <li>Deals are sorted by Deal Type: Reseller/ Referral Partner is a referral partnership, Platform Provider Agreement is a platform we resell, everything else is client work. Deals with no Deal Type count nowhere until one is set.</li>
-          <li>Referred deals: client deals with Referred By Contact or Referred By Account filled in (counted once each), plus deals marked External Referral that have no referrer recorded yet. They count for the B2B Campaign, never ICP.</li>
-          <li>Backlog: agreements come from Zoho Sign (referral agreements and the Akhani MNDA; a party counts as signed once any copy is signed, and recalled or draft copies are ignored). Overdue tasks are open Zoho tasks past their due date, credited to the campaign of their contact. A deal is stale when it is open and has not been updated for 14 days or more.</li>
-          <li>Meetings come from Zoho Meetings linked to a contact. A meeting with no contact attached can't be credited to any campaign. The ICP sheet's “Contacted” step has no field in Zoho yet, so it isn't shown.</li>
-        </ul>
-      </article>
-    </div>
+    <article class="cc-card" id="definitions">
+      <div class="cc-card-head"><h2>How each campaign is counted</h2><p>The rules this page applies to Zoho CRM records.</p></div>
+      <ul class="cc-notes">
+        <li>Every campaign leaves out Priority 9 (inactive) and 11 (do not contact). Anyone whose Relationship Type includes Founder Network counts only in the Founder Network, even if they carry another campaign's tag.</li>
+        <li>B2B Campaign: contacts tagged “May 2026 - 100 B2B”. Referral partnership deals are every deal whose Deal Type is Reseller/ Referral Partner, whoever the contact is.</li>
+        <li>ICP Prospecting: contacts tagged “2026ICP”; target accounts are accounts tagged “2026ICP”. A client deal is ICP when its contact or account carries the tag.</li>
+        <li>Founder Network: contacts whose Relationship Type includes Founder Network. Their opportunities are client deals with one of these contacts. Next steps are their open Zoho tasks.</li>
+        <li>Medical Courier: accounts tagged “2026MedicalCourier” and their contacts and deals. Emails, follow-ups and replies come from the Medical Courier prospects sheet, because those emails went to company addresses that have no contact in Zoho.</li>
+        <li>Campaign tabs and the monthly bars show the pipeline only: client deals that are won (Closed), Closed Lost or Closed Lost to Competition are left out of every list, chart and count, and lost partnership agreements are left out of the B2B Campaign. Signed agreements stay. The Pipeline tab still shows every deal.</li>
+        <li>Deals are sorted by Deal Type: Reseller/ Referral Partner is a referral partnership, Platform Provider Agreement is a platform we resell, everything else is client work. Deals with no Deal Type count nowhere until one is set.</li>
+        <li>Referred deals: client deals with Referred By Contact or Referred By Account filled in (counted once each), plus deals marked External Referral that have no referrer recorded yet. They count for the B2B Campaign, never ICP.</li>
+        <li>Backlog: agreements come from Zoho Sign (referral agreements and the Akhani MNDA; a party counts as signed once any copy is signed, and recalled or draft copies are ignored). Overdue tasks are open Zoho tasks past their due date, credited to the campaign of their contact. A deal is stale when it is open and has not been updated for 14 days or more.</li>
+        <li>Meetings come from Zoho Meetings linked to a contact. A meeting with no contact attached can't be credited to any campaign. The ICP sheet's “Contacted” step has no field in Zoho yet, so it isn't shown.</li>
+      </ul>
+    </article>
   </section>
 
   <section class="cc-page" id="rp" role="tabpanel" aria-labelledby="tab-rp" hidden>
@@ -3149,7 +3148,7 @@ dash.calc('attention', {
     if (!all || status('backlog') === 'loading') return;
     all.classList.remove('dash-skeleton');
     if (!rows) { all.replaceChildren(failNode()); return; }
-    all.replaceChildren(...['rp', 'icp', 'fn', 'mc', 'all'].map((c) => {
+    all.replaceChildren(...['rp', 'icp', 'fn', 'all'].map((c) => {
       const mine = BL_ORDER[c].map((item) => rows.find((r) => r.key === c + '|' + item)).filter((r) => r && r.value);
       const g = el('section', 'cc-blgroup');
       const head = el('div', 'cc-blgroup-head');
