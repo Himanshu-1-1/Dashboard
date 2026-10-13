@@ -309,6 +309,25 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
 .cc-refbar i { display: block; height: 100%; border-radius: 4px; min-width: 3px; }
 .cc-flow-empty { display: grid; place-items: center; text-align: center; min-height: 10rem; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); max-width: 60ch; margin-inline: auto; line-height: 1.5; }
 
+.cc-bl { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--cds-gap-sm); grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); }
+.cc-bl-item { display: grid; grid-template-columns: 3.4rem minmax(0, 1fr); gap: 2px var(--cds-gap-sm); align-items: baseline; padding: var(--cds-pad-sm) var(--cds-pad-md); border: 1px solid var(--color-border-line); border-left: 3px solid var(--cds-chart-grid); border-radius: var(--cds-radius); background: var(--color-panel); }
+.cc-bl-item.cc-tone-bad { border-left-color: var(--color-bad); }
+.cc-bl-item.cc-tone-warn { border-left-color: var(--color-warn); }
+.cc-bl-item.cc-tone-clear { border-left-color: var(--color-ok); opacity: .72; }
+.cc-bl-n { grid-row: span 2; font-family: var(--font-anthropic-serif); font-size: 26px; line-height: 1; text-align: right; font-variant-numeric: tabular-nums; }
+.cc-tone-bad .cc-bl-n { color: var(--color-bad); }
+.cc-tone-warn .cc-bl-n { color: var(--color-warn); }
+.cc-tone-clear .cc-bl-n { color: var(--color-ok); font-size: 15px; font-family: var(--font-anthropic-sans); font-weight: var(--cds-font-weight-medium); }
+.cc-bl-label { font-weight: var(--cds-font-weight-medium); line-height: 1.3; }
+.cc-bl-hint { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); line-height: 1.35; }
+.cc-blall { display: grid; gap: var(--cds-gap-md); }
+.cc-blgroup { display: grid; gap: var(--cds-gap-xs); }
+.cc-blgroup-head { display: flex; align-items: center; gap: var(--cds-gap-sm); justify-content: space-between; }
+.cc-blgroup-head h3 { display: flex; align-items: center; gap: 8px; font-size: var(--cds-font-size-body); font-weight: var(--cds-font-weight-medium); }
+.cc-blgroup-head small { color: var(--color-fg-muted); font-weight: 400; }
+.cc-blall .cc-bl { grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); }
+.cc-blall .cc-bl-n { font-size: 20px; }
+.cc-blall .cc-bl-item { grid-template-columns: 2.6rem minmax(0, 1fr); padding: var(--cds-pad-xs) var(--cds-pad-sm); }
 .cc-attn { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--cds-gap-sm); }
 .cc-attn-item { display: grid; grid-template-columns: 3.5rem minmax(0, 1fr) auto; align-items: center; gap: var(--cds-gap-sm); padding-block: var(--cds-pad-xs); border-bottom: 1px solid var(--color-border-line); }
 .cc-attn-item:last-child { border-bottom: 0; }
@@ -513,13 +532,8 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
 
     <div class="cc-grid">
       <article class="cc-card" id="attention">
-        <div class="cc-card-head"><h2>Needs attention</h2><p>Open items across the campaigns.</p></div>
-        <ul class="cc-attn"><li class="cc-attn-item"><span class="cc-attn-num dash-skeleton" data-source="attention" data-field="value" data-where="item=fn_p1_no_step" data-fmt="int">—</span><span class="cc-attn-label">Priority 1 Founder Network contacts with no open task</span><button type="button" class="cc-go" data-go="fn">Open</button></li>
-<li class="cc-attn-item"><span class="cc-attn-num dash-skeleton" data-source="attention" data-field="value" data-where="item=partner_proposals" data-fmt="int">—</span><span class="cc-attn-label">Partnership agreements waiting for signature</span><button type="button" class="cc-go" data-go="rp">Open</button></li>
-<li class="cc-attn-item"><span class="cc-attn-num dash-skeleton" data-source="attention" data-field="value" data-where="item=partner_hold" data-fmt="int">—</span><span class="cc-attn-label">Partnership deals on hold</span><button type="button" class="cc-go" data-go="rp">Open</button></li>
-<li class="cc-attn-item"><span class="cc-attn-num dash-skeleton" data-source="attention" data-field="value" data-where="item=ref_unrecorded" data-fmt="int">—</span><span class="cc-attn-label">Referred client deals with no referral partner recorded</span><button type="button" class="cc-go" data-go="ref">Open</button></li>
-<li class="cc-attn-item"><span class="cc-attn-num dash-skeleton" data-source="attention" data-field="value" data-where="item=icp_connected_unmet" data-fmt="int">—</span><span class="cc-attn-label">ICP executives connected but never met</span><button type="button" class="cc-go" data-go="icp">Open</button></li>
-<li class="cc-attn-item"><span class="cc-attn-num dash-skeleton" data-source="attention" data-field="value" data-where="item=rp_no_priority" data-fmt="int">—</span><span class="cc-attn-label">Partner prospects with no Priority set</span><button type="button" class="cc-go" data-go="rp">Open</button></li></ul>
+        <div class="cc-card-head"><h2>Backlog across campaigns</h2><p>Everything that is lapsed, overdue or waiting on us, live from Zoho. Select an item to list the records, or open the campaign for its full backlog.</p></div>
+        <div class="cc-blall dash-skeleton" id="backlog-all" data-source="backlog"></div>
       </article>
       <article class="cc-card" id="definitions">
         <div class="cc-card-head"><h2>How each campaign is counted</h2><p>The rules this page applies to Zoho CRM records.</p></div>
@@ -532,6 +546,7 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
           <li>Campaign tabs and the monthly bars show the pipeline only: client deals that are won (Closed), Closed Lost or Closed Lost to Competition are left out of every list, chart and count, and lost partnership agreements are left out of the B2B Campaign. Signed agreements stay. The Pipeline tab still shows every deal.</li>
           <li>Deals are sorted by Deal Type: Reseller/ Referral Partner is a referral partnership, Platform Provider Agreement is a platform we resell, everything else is client work. Deals with no Deal Type count nowhere until one is set.</li>
           <li>Referred deals: client deals with Referred By Contact or Referred By Account filled in (counted once each), plus deals marked External Referral that have no referrer recorded yet. They count for the B2B Campaign, never ICP.</li>
+          <li>Backlog: agreements come from Zoho Sign (referral agreements and the Akhani MNDA; a party counts as signed once any copy is signed, and recalled or draft copies are ignored). Overdue tasks are open Zoho tasks past their due date, credited to the campaign of their contact. A deal is stale when it is open and has not been updated for 14 days or more.</li>
           <li>Meetings come from Zoho Meetings linked to a contact. A meeting with no contact attached can't be credited to any campaign. The ICP sheet's “Contacted” step has no field in Zoho yet, so it isn't shown.</li>
         </ul>
       </article>
@@ -540,7 +555,7 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
 
   <section class="cc-page" id="rp" role="tabpanel" aria-labelledby="tab-rp" hidden>
     <p class="cc-intro">Are partner prospects turning into signed referral agreements, and are those partners sending us work?</p>
-    <p class="cc-takeaway" id="takeaway-rp"><b data-source="funnel" data-field="value" data-where="campaign=rp&amp;step=connected" data-fmt="int" class="dash-skeleton">—</b> of <b data-source="funnel" data-field="value" data-where="campaign=rp&amp;step=total" data-fmt="int" class="dash-skeleton">—</b> prospects connected, <b data-source="attention" data-field="value" data-where="item=partner_proposals" data-fmt="int" class="dash-skeleton">—</b> agreements waiting for signature.</p>
+    <p class="cc-takeaway" id="takeaway-rp"><b data-source="funnel" data-field="value" data-where="campaign=rp&amp;step=connected" data-fmt="int" class="dash-skeleton">—</b> of <b data-source="funnel" data-field="value" data-where="campaign=rp&amp;step=total" data-fmt="int" class="dash-skeleton">—</b> prospects connected, <b data-source="backlog" data-field="value" data-where="campaign=rp&amp;item=agreements_out" data-fmt="int" class="dash-skeleton">—</b> agreements out for signature and <b data-source="backlog" data-field="value" data-where="campaign=rp&amp;item=agreements_expired" data-fmt="int" class="dash-skeleton">—</b> expired in Zoho Sign.</p>
     <article class="cc-card cc-hero" id="hero-rp">
       <div class="cc-hero-body">
           <div class="cc-ringwrap" data-ring="rp" data-step="agreements" data-drill="hero-rp">
@@ -561,6 +576,10 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
             <div class="cc-spark-chart dash-skeleton" data-source="campaign_monthly" data-campaign="rp"></div>
           </div>
       </div>
+    </article>
+    <article class="cc-card cc-backlog" id="backlog-rp">
+      <div class="cc-card-head"><h3>Backlog</h3><p>Where the B2B Campaign is behind, counted live from Zoho. Red means lapsed or overdue, amber means waiting on us. Select an item to list the records behind it.</p></div>
+      <ul class="cc-bl dash-skeleton" data-source="backlog" data-campaign="rp"></ul>
     </article>
     <div class="cc-grid">
       <article class="cc-card" id="rp-funnel">
@@ -684,6 +703,10 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
           </div>
       </div>
     </article>
+    <article class="cc-card cc-backlog" id="backlog-icp">
+      <div class="cc-card-head"><h3>Backlog</h3><p>Where ICP Prospecting is behind, counted live from Zoho. Red means lapsed or overdue, amber means waiting on us. Select an item to list the records behind it.</p></div>
+      <ul class="cc-bl dash-skeleton" data-source="backlog" data-campaign="icp"></ul>
+    </article>
     <div class="cc-grid">
       <article class="cc-card" id="icp-funnel">
         <div class="cc-card-head"><h3>Funnel</h3><p>Executives at each stage, narrowing as they move down. The red figure marks the biggest drop. Select a step for details.</p></div>
@@ -745,6 +768,10 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
             <div class="cc-spark-chart dash-skeleton" data-source="campaign_monthly" data-campaign="fn"></div>
           </div>
       </div>
+    </article>
+    <article class="cc-card cc-backlog" id="backlog-fn">
+      <div class="cc-card-head"><h3>Backlog</h3><p>Where the Founder Network is behind, counted live from Zoho. Red means lapsed or overdue, amber means waiting on us. Select an item to list the records behind it.</p></div>
+      <ul class="cc-bl dash-skeleton" data-source="backlog" data-campaign="fn"></ul>
     </article>
     <div class="cc-grid">
       <article class="cc-card" id="fn-coverage">
@@ -829,6 +856,10 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
             <div class="cc-spark-chart dash-skeleton" data-source="campaign_monthly" data-campaign="mc"></div>
           </div>
       </div>
+    </article>
+    <article class="cc-card cc-backlog" id="backlog-mc">
+      <div class="cc-card-head"><h3>Backlog</h3><p>Where Medical Courier is behind, counted live from Zoho. Red means lapsed or overdue, amber means waiting on us. Select an item to list the records behind it.</p></div>
+      <ul class="cc-bl dash-skeleton" data-source="backlog" data-campaign="mc"></ul>
     </article>
     <div class="cc-grid">
       <article class="cc-card" id="mc-funnel">
@@ -1042,6 +1073,52 @@ dash.loader('icp_accounts', {
     const list = Array.isArray(body.data) ? body.data : [];
     const rename = { 'COUNT(id)': 'count', 'SUM(Amount)': 'amount_sum' };
     const numeric = ['count', 'amount_sum', 'Amount', 'Total_Meetings_Created'];
+    const rows = list.map((r) => {
+      const o = {};
+      for (const [k, v] of Object.entries(r)) {
+        const key = rename[k] || k;
+        if (Array.isArray(v)) o[key] = v.map((x) => (x && typeof x === 'object' ? x.name : x)).filter((x) => x != null && x !== '').join(', ');
+        else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
+        else o[key] = v;
+      }
+      for (const n of numeric) if (o[n] != null && o[n] !== '') o[n] = Number(o[n]);
+      return o;
+    });
+    return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
+  },
+});
+dash.loader('sign_docs', {
+  description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text, counts and amounts become numbers.',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? (answer.trim() ? JSON.parse(answer) : {}) : (answer || {});
+    if (a.status === 'error' || (a.code && !a.data)) throw new Error(a.message || a.code || 'Zoho CRM refused the query');
+    const body = a.data && !Array.isArray(a.data) ? a.data : a;
+    const list = Array.isArray(body.data) ? body.data : [];
+    const rename = { 'COUNT(id)': 'count', 'SUM(Amount)': 'amount_sum' };
+    const numeric = ['count', 'amount_sum', 'Amount', 'Total_Meetings_Created'];
+    const rows = list.map((r) => {
+      const o = {};
+      for (const [k, v] of Object.entries(r)) {
+        const key = rename[k] || k;
+        if (Array.isArray(v)) o[key] = v.map((x) => (x && typeof x === 'object' ? x.name : x)).filter((x) => x != null && x !== '').join(', ');
+        else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
+        else o[key] = v;
+      }
+      for (const n of numeric) if (o[n] != null && o[n] !== '') o[n] = Number(o[n]);
+      return o;
+    });
+    return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
+  },
+});
+dash.loader('icp_account_list', {
+  description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text, counts and amounts become numbers.',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? (answer.trim() ? JSON.parse(answer) : {}) : (answer || {});
+    if (a.status === 'error' || (a.code && !a.data)) throw new Error(a.message || a.code || 'Zoho CRM refused the query');
+    const body = a.data && !Array.isArray(a.data) ? a.data : a;
+    const list = Array.isArray(body.data) ? body.data : [];
+    const rename = { 'COUNT(id)': 'count', 'SUM(Amount)': 'amount_sum' };
+    const numeric = ['count', 'amount_sum', 'Amount', 'Total_Meetings_Created', 'Count_of_associated_Contacts'];
     const rows = list.map((r) => {
       const o = {};
       for (const [k, v] of Object.entries(r)) {
@@ -1576,6 +1653,118 @@ dash.calc('courier_phases', {
     }
     const num = (p) => Number(String(p).replace(/\D+/g, '')) || 0;
     return [...by.values()].sort((a, b) => num(a.phase) - num(b.phase));
+  },
+});
+
+dash.calc('tasks_tagged', {
+  title: 'Open tasks by campaign',
+  description: 'Every open Zoho task with the campaign of its contact (same rules as the campaign counts), its due date and how many days it is overdue, in Central time.',
+  inputs: ['open_tasks', 'mc_people'],
+  fn: (open_tasks, mc_people) => {
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+    const t0 = Date.parse(today + 'T00:00:00Z');
+    const courier = new Set(mc_people.map((p) => p.contact_id));
+    return open_tasks.map((t) => {
+      let key = null;
+      if (t.Who_Id_id) {
+        const person = { Priority: t['Who_Id.Priority'], Relationship_Type: t['Who_Id.Relationship_Type'], Tag: t['Who_Id.Tag'] };
+        key = courier.has(t.Who_Id_id) && !CC_RULES.excluded(person.Priority) && !CC_RULES.isFN(person.Relationship_Type) ? 'mc' : CC_RULES.personCampaign(person);
+      }
+      const due = t.Due_Date ? String(t.Due_Date).slice(0, 10) : null;
+      const late = due ? Math.round((t0 - Date.parse(due + 'T00:00:00Z')) / 864e5) : null;
+      return {
+        id: t.id, subject: t.Subject || 'Untitled task', contact: t.Who_Id || '—', related: t.What_Id || '—', owner: t.Owner || 'Unassigned',
+        status: t.Status || 'Not Started', due, days_overdue: late != null && late > 0 ? late : 0, overdue: late != null && late > 0,
+        campaign_key: key, campaign: key ? CC_NAMES[key] : (t.Who_Id ? 'Contact not in a campaign' : 'No contact linked'),
+      };
+    });
+  },
+});
+
+dash.calc('agreements', {
+  title: 'Partner agreements and MNDAs',
+  description: 'Each party’s referral agreement and Akhani MNDA in Zoho Sign: Signed when any copy is signed; otherwise the newest copy decides: out for signature (with days to its deadline) or expired or declined with no newer copy sent. Recalled and draft copies, and internal test sends, are left out.',
+  inputs: ['sign_docs'],
+  fn: (sign_docs) => {
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+    const t0 = Date.parse(today + 'T00:00:00Z');
+    const days = (d) => (d ? Math.round((Date.parse(String(d).slice(0, 10) + 'T00:00:00Z') - t0) / 864e5) : null);
+    const internal = /tech transpire|true lean solutions/i;
+    const groups = new Map();
+    for (const d of sign_docs) {
+      const status = String(d.zohosign__Document_Status || '');
+      if (/recalled|draft/i.test(status) || internal.test(d.zohosign__Account || '')) continue;
+      const party = d.zohosign__Contact_id || d.zohosign__Account_id;
+      if (!party) continue;
+      const kind = /referral partner agreement/i.test(d.Name || '') ? 'Referral agreement' : 'MNDA';
+      const k = kind + '|' + party;
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(d);
+    }
+    const out = [];
+    for (const [key, list] of groups) {
+      list.sort((a, b) => String(b.zohosign__Date_Sent || '').localeCompare(String(a.zohosign__Date_Sent || '')));
+      const signed = list.find((d) => /signed|completed/i.test(d.zohosign__Document_Status || ''));
+      const doc = signed || list[0];
+      const status = String(doc.zohosign__Document_Status || '');
+      const state = signed ? 'Signed' : /out for signature|inprogress|in progress/i.test(status) ? 'Out for signature' : /expired|declined/i.test(status) ? 'Expired, not re-sent' : status;
+      out.push({
+        key, kind: key.split('|')[0], partner: doc.zohosign__Contact || doc.zohosign__Account, contact_id: doc.zohosign__Contact_id || null,
+        account: doc.zohosign__Account || '—', account_id: doc.zohosign__Account_id || null, state,
+        sent: doc.zohosign__Date_Sent || null, deadline: doc.zohosign__Document_Deadline || null, completed: doc.zohosign__Date_Completed || null,
+        days_left: state === 'Out for signature' ? days(doc.zohosign__Document_Deadline) : null, copies: list.length,
+      });
+    }
+    return out.sort((a, b) => a.kind.localeCompare(b.kind) || String(a.partner).localeCompare(String(b.partner)));
+  },
+});
+
+dash.calc('backlog', {
+  title: 'Backlog by campaign',
+  description: 'What each campaign is behind on, counted live: lapsed or unsigned agreements, overdue tasks, open deals not updated for 14 days or more, people connected but never met, priority contacts with no next step or LinkedIn request, thin target accounts, and courier prospects not yet emailed or followed up (from the prospects sheet).',
+  inputs: ['agreements', 'tasks_tagged', 'deals_tagged', 'rp_contacts', 'icp_contacts', 'fn_contacts', 'fn_next', 'icp_account_list', 'mc_accounts', 'mc_people', 'courier_sends'],
+  fn: (agreements, tasks_tagged, deals_tagged, rp_contacts, icp_contacts, fn_contacts, fn_next, icp_account_list, mc_accounts, mc_people, courier_sends) => {
+    const STALE_DAYS = 14;
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+    const t0 = Date.parse(today + 'T00:00:00Z');
+    const stale = (d) => CC_RULES.isOpen(d) && d.updated && (t0 - Date.parse(String(d.updated).slice(0, 10) + 'T00:00:00Z')) / 864e5 >= STALE_DAYS;
+    const sum = (rows, keep) => rows.filter(keep).reduce((n, r) => n + (r.count || 0), 0);
+    const met = (r) => r.Total_Meetings_Created || 0;
+    const overdue = (c) => tasks_tagged.filter((x) => x.campaign_key === c && x.overdue).length;
+    const client = (name) => deals_tagged.filter((d) => d.kind === 'Client' && d.campaign === name);
+    const ref = agreements.filter((a) => a.kind === 'Referral agreement');
+    const signedContacts = new Set(ref.filter((a) => a.state === 'Signed' && a.contact_id).map((a) => a.contact_id));
+    const signedAccounts = new Set(ref.filter((a) => a.state === 'Signed' && a.account_id).map((a) => a.account_id));
+    const signedDealOpen = deals_tagged.filter((d) => d.kind === 'Partnership' && CC_RULES.isOpen(d) && (signedContacts.has(d.contact_id) || signedAccounts.has(d.account_id)));
+    const mcAccounts = mc_accounts.reduce((n, r) => n + (r.count || 0), 0);
+    const row = (campaign, item, value, tone) => ({ key: campaign + '|' + item, campaign, item, value, tone: value ? tone : 'clear' });
+    return [
+      row('rp', 'agreements_expired', ref.filter((a) => a.state === 'Expired, not re-sent').length, 'bad'),
+      row('rp', 'tasks_overdue', overdue('rp'), 'bad'),
+      row('rp', 'agreements_out', ref.filter((a) => a.state === 'Out for signature').length, 'warn'),
+      row('rp', 'signed_deal_open', signedDealOpen.length, 'warn'),
+      row('rp', 'stale_deals', deals_tagged.filter((d) => d.kind === 'Partnership' && stale(d)).length, 'warn'),
+      row('rp', 'connected_unmet', sum(rp_contacts, (r) => r.LI_Connect === 'Connected' && !met(r)), 'warn'),
+      row('rp', 'connected_no_priority', sum(rp_contacts, (r) => r.LI_Connect === 'Connected' && !r.Priority), 'warn'),
+      row('icp', 'tasks_overdue', overdue('icp'), 'bad'),
+      row('icp', 'connected_unmet', sum(icp_contacts, (r) => r.LI_Connect === 'Connected' && !met(r)), 'warn'),
+      row('icp', 'p13_no_request', sum(icp_contacts, (r) => ['1', '3'].includes(r.Priority) && !r.LI_Connect), 'warn'),
+      row('icp', 'requests_pending', sum(icp_contacts, (r) => r.LI_Connect === 'Requested'), 'warn'),
+      row('icp', 'thin_accounts', icp_account_list.filter((a) => (a.Count_of_associated_Contacts || 0) < 5).length, 'warn'),
+      row('icp', 'stale_deals', client('ICP Prospecting').filter(stale).length, 'warn'),
+      row('fn', 'p1_no_step', fn_next.filter((p) => p.priority === '1' && p.open_tasks === 0).length, 'bad'),
+      row('fn', 'tasks_overdue', overdue('fn'), 'bad'),
+      row('fn', 'opps_on_hold', client('Founder Network').filter((d) => d.stage === 'Hold').length, 'warn'),
+      row('fn', 'stale_deals', client('Founder Network').filter(stale).length, 'warn'),
+      row('fn', 'connected_unmet', sum(fn_contacts, (r) => r.LI_Connect === 'Connected' && !met(r)), 'warn'),
+      row('mc', 'not_emailed', courier_sends.filter((s) => s.emailed !== true).length, 'warn'),
+      row('mc', 'emailed_once', courier_sends.filter((s) => s.emailed === true && s.followed_up !== true && s.replied !== true).length, 'bad'),
+      row('mc', 'accounts_no_contact', Math.max(0, mcAccounts - new Set(mc_people.map((p) => p.account)).size), 'warn'),
+      row('mc', 'tasks_overdue', overdue('mc'), 'bad'),
+      row('mc', 'stale_deals', client('Medical Courier').filter(stale).length, 'warn'),
+      row('all', 'mnda_out', agreements.filter((a) => a.kind === 'MNDA' && a.state === 'Out for signature').length, 'warn'),
+      row('all', 'tasks_unlinked', tasks_tagged.filter((x) => !x.campaign_key && x.overdue).length, 'warn'),
+    ];
   },
 });
 
@@ -2862,6 +3051,122 @@ dash.calc('attention', {
     if (stampNode) stampNode.textContent = saved ? day(saved.value) : '—';
   };
 
+  /* Backlog */
+  const BL_ORDER = {
+    rp: ['agreements_expired', 'tasks_overdue', 'agreements_out', 'signed_deal_open', 'stale_deals', 'connected_unmet', 'connected_no_priority'],
+    icp: ['tasks_overdue', 'connected_unmet', 'p13_no_request', 'requests_pending', 'thin_accounts', 'stale_deals'],
+    fn: ['p1_no_step', 'tasks_overdue', 'opps_on_hold', 'stale_deals', 'connected_unmet'],
+    mc: ['emailed_once', 'not_emailed', 'accounts_no_contact', 'tasks_overdue', 'stale_deals'],
+    all: ['mnda_out', 'tasks_unlinked'],
+  };
+  const BL_TEXT = {
+    'rp|agreements_expired': ['Referral agreements expired, not re-sent', 'Re-send in Zoho Sign with a longer deadline'],
+    'rp|agreements_out': ['Referral agreements out for signature', 'Chase the partner before the deadline'],
+    'rp|signed_deal_open': ['Signed agreements with the deal still open', 'Move the partnership deal to Closed'],
+    'rp|connected_unmet': ['Partners connected, never met', 'Book a first meeting'],
+    'rp|connected_no_priority': ['Connected partners with no Priority', 'Set Priority so they are worked in order'],
+    'icp|connected_unmet': ['Executives connected, never met', 'Send the meeting request'],
+    'icp|p13_no_request': ['Priority 1 and 3 executives with no LinkedIn request', 'Send the connection request'],
+    'icp|requests_pending': ['LinkedIn requests still pending', 'Follow up or withdraw and retry'],
+    'icp|thin_accounts': ['Target accounts with fewer than 5 executives', 'Add executives to reach 5 per account'],
+    'fn|p1_no_step': ['Priority 1 contacts with no next step', 'Add an open task for each one'],
+    'fn|opps_on_hold': ['Opportunities on hold', 'Revive them or close them out'],
+    'fn|connected_unmet': ['Contacts connected, never met', 'Book a catch-up'],
+    'mc|emailed_once': ['Emailed once, no follow-up', 'Send follow-up 1 (prospects sheet)'],
+    'mc|not_emailed': ['Prospects not emailed yet', 'Send the initial email, or mark it in the sheet'],
+    'mc|accounts_no_contact': ['Courier accounts with no contact in Zoho', 'Add the owner or operations lead as a contact'],
+    'all|mnda_out': ['MNDAs out for signature', 'Chase before the Zoho Sign deadline'],
+    'all|tasks_unlinked': ['Overdue tasks with no campaign contact', 'Link a contact, then do or close the task'],
+    tasks_overdue: ['Overdue tasks', 'Do, reschedule or close them in Zoho'],
+    stale_deals: ['Open deals not updated in 14+ days', 'Update the stage or log the next step'],
+  };
+  const blText = (c, item) => BL_TEXT[c + '|' + item] || BL_TEXT[item] || [item, ''];
+  const AGREE_COLS = [['partner', 'Partner'], ['account', 'Company', null, true], ['kind', 'Document', null, true], ['state', 'State'], ['sent', 'Sent', 'date', true], ['deadline', 'Deadline', 'date']];
+  const TASK_COLS = [['due', 'Due', 'date'], ['days_overdue', 'Days late', 'int', false, true], ['contact', 'Contact'], ['subject', 'Task'], ['related', 'Related to', null, true]];
+  const groupedBy = (source, keep, label) => {
+    const by = new Map();
+    for (const r of (rowsOf(source) || []).filter(keep)) { const p = r.Priority || 'Not set'; by.set(p, (by.get(p) || 0) + (r.count || 0)); }
+    return [...by.entries()].map(([priority, contacts]) => ({ priority: priority === 'Not set' ? 'Not set' : 'P' + priority + ' · ' + (PRIORITY[priority] || ''), contacts, sortKey: priority }))
+      .sort((a, b) => String(a.sortKey).localeCompare(String(b.sortKey), 'en', { numeric: true }));
+  };
+  const blSpec = (key) => {
+    const [c, item] = key.split('|');
+    const title = (c === 'all' ? 'Across campaigns' : META[c].name) + ' · ' + blText(c, item)[0];
+    const swatch = c === 'all' ? 'var(--cds-chart-muted)' : hueOf(c);
+    const today = parseDay(todayCT).getTime();
+    const staleKeep = (d) => CC_RULES.isOpen(d) && d.updated && (today - parseDay(d.updated).getTime()) / 864e5 >= 14;
+    const deals = (keep, note) => ({ title, swatch, source: 'deals_tagged', rowKey: 'id', cols: DEAL_COLS, rows: (rowsOf('deals_tagged') || []).filter(keep).sort((a, b) => String(a.updated || '').localeCompare(String(b.updated || ''))), note });
+    const ag = (kind, state) => ({ title, swatch, source: 'agreements', rowKey: 'key', cols: AGREE_COLS, rows: (rowsOf('agreements') || []).filter((a) => a.kind === kind && a.state === state).sort((a, b) => String(a.deadline || '').localeCompare(String(b.deadline || ''))) });
+    const people = (source, keep, note) => ({ title, swatch, source, rowKey: 'priority', cols: [['priority', 'Priority'], ['contacts', 'Contacts', 'int', false, true]], rows: groupedBy(source, keep), note: note || 'Grouped by Priority. Open the campaign list in Zoho to work through the names.' });
+    const campName = { rp: 'B2B Campaign', icp: 'ICP Prospecting', fn: 'Founder Network', mc: 'Medical Courier' }[c];
+    if (item === 'tasks_overdue' || item === 'tasks_unlinked') {
+      return { title, swatch, source: 'tasks_tagged', rowKey: 'id', cols: TASK_COLS, rows: (rowsOf('tasks_tagged') || []).filter((x) => x.overdue && (item === 'tasks_unlinked' ? !x.campaign_key : x.campaign_key === c)).sort((a, b) => b.days_overdue - a.days_overdue), note: 'All open tasks are owned by the shared Transpire user in Zoho, so this list has no individual owner.' };
+    }
+    if (item === 'stale_deals') return deals((d) => (c === 'rp' ? d.kind === 'Partnership' : d.kind === 'Client' && d.campaign === campName) && staleKeep(d), 'Oldest update first.');
+    if (item === 'agreements_expired') return ag('Referral agreement', 'Expired, not re-sent');
+    if (item === 'agreements_out') return ag('Referral agreement', 'Out for signature');
+    if (item === 'mnda_out') return ag('MNDA', 'Out for signature');
+    if (item === 'signed_deal_open') {
+      const signed = (rowsOf('agreements') || []).filter((a) => a.kind === 'Referral agreement' && a.state === 'Signed');
+      const ids = new Set(signed.flatMap((a) => [a.contact_id, a.account_id]).filter(Boolean));
+      return deals((d) => d.kind === 'Partnership' && CC_RULES.isOpen(d) && (ids.has(d.contact_id) || ids.has(d.account_id)), 'The partner signed in Zoho Sign, but the deal is not at Closed.');
+    }
+    if (item === 'connected_unmet') return people({ rp: 'rp_contacts', icp: 'icp_contacts', fn: 'fn_contacts' }[c], (r) => r.LI_Connect === 'Connected' && !(r.Total_Meetings_Created || 0));
+    if (item === 'connected_no_priority') return people('rp_contacts', (r) => r.LI_Connect === 'Connected' && !r.Priority);
+    if (item === 'p13_no_request') return people('icp_contacts', (r) => ['1', '3'].includes(r.Priority) && !r.LI_Connect);
+    if (item === 'requests_pending') return people('icp_contacts', (r) => r.LI_Connect === 'Requested');
+    if (item === 'thin_accounts') {
+      return { title, swatch, source: 'icp_account_list', rowKey: 'id', cols: [['Account_Name', 'Account'], ['Priority', 'Priority'], ['Count_of_associated_Contacts', 'Executives', 'int', false, true]],
+        rows: (rowsOf('icp_account_list') || []).filter((a) => (a.Count_of_associated_Contacts || 0) < 5).map((a) => ({ ...a, Count_of_associated_Contacts: a.Count_of_associated_Contacts || 0 })).sort((a, b) => a.Count_of_associated_Contacts - b.Count_of_associated_Contacts || String(a.Account_Name).localeCompare(String(b.Account_Name))) };
+    }
+    if (item === 'p1_no_step') return peopleSpec(title, swatch, (r) => r.priority === '1' && r.open_tasks === 0);
+    if (item === 'opps_on_hold') return deals((d) => d.kind === 'Client' && d.campaign === 'Founder Network' && d.stage === 'Hold');
+    if (item === 'emailed_once') return { title, swatch, source: 'courier_sends', rowKey: 'row_id', cols: SEND_COLS, rows: sendRows((x) => x.emailed === true && x.followed_up !== true && x.replied !== true) };
+    if (item === 'not_emailed') return { title, swatch, source: 'courier_sends', rowKey: 'row_id', cols: SEND_COLS, rows: sendRows((x) => x.emailed !== true), note: 'Includes companies the prospects sheet does not mark either way (Phases 2 and 10 have no Email sent column).' };
+    if (item === 'accounts_no_contact') return { title, swatch, source: 'mc_accounts', rowKey: 'Priority', cols: [['Priority', 'Account Priority'], ['count', 'Accounts', 'int', false, true]], rows: (rowsOf('mc_accounts') || []).slice().sort((a, b) => Number(a.Priority) - Number(b.Priority)), note: 'All courier accounts by Priority; only the accounts linked to the contacts in Medical Courier contacts have someone to email in Zoho.' };
+    return null;
+  };
+  const blItem = (r, drillKey, compact) => {
+    const [label, hint] = blText(r.campaign, r.item);
+    const li = el('li', 'cc-bl-item cc-tone-' + r.tone);
+    const n = r.value ? markEl('span', 'backlog', 'value', { key: r.key }, r.value, 'int') : el('span', null, 'Clear');
+    n.className = 'cc-bl-n';
+    li.append(n, el('span', 'cc-bl-label', label));
+    if (!compact && hint) li.append(el('span', 'cc-bl-hint', r.value ? hint : 'Nothing outstanding'));
+    if (r.value) clickable(li, drillKey, r.key, 'Show ' + label.toLowerCase());
+    return li;
+  };
+  const drawBacklog = () => {
+    const rows = rowsOf('backlog');
+    root.querySelectorAll('.cc-bl[data-campaign]').forEach((box) => {
+      if (status('backlog') === 'loading') return;
+      box.classList.remove('dash-skeleton');
+      if (!rows) { box.replaceChildren(failNode()); return; }
+      const c = box.dataset.campaign;
+      box.replaceChildren(...BL_ORDER[c].map((item) => rows.find((r) => r.key === c + '|' + item)).filter(Boolean).map((r) => blItem(r, 'backlog-' + c)));
+    });
+    const all = root.querySelector('#backlog-all');
+    if (!all || status('backlog') === 'loading') return;
+    all.classList.remove('dash-skeleton');
+    if (!rows) { all.replaceChildren(failNode()); return; }
+    all.replaceChildren(...['rp', 'icp', 'fn', 'mc', 'all'].map((c) => {
+      const mine = BL_ORDER[c].map((item) => rows.find((r) => r.key === c + '|' + item)).filter((r) => r && r.value);
+      const g = el('section', 'cc-blgroup');
+      const head = el('div', 'cc-blgroup-head');
+      const h = el('h3');
+      const dot = el('i', 'cc-dot');
+      dot.style.background = c === 'all' ? 'var(--cds-chart-muted)' : hueOf(c);
+      h.append(dot, document.createTextNode(c === 'all' ? 'Across campaigns' : META[c].name), el('small', null, mine.length ? ' · ' + mine.length + (mine.length === 1 ? ' item' : ' items') + ' open' : ' · all clear'));
+      head.append(h);
+      if (c !== 'all') { const go = el('button', 'cc-go', 'Open'); go.type = 'button'; go.dataset.go = c; head.append(go); }
+      const ul = el('ul', 'cc-bl');
+      ul.replaceChildren(...mine.map((r) => blItem(r, 'backlog-all', true)));
+      g.append(head);
+      if (mine.length) g.append(ul);
+      return g;
+    }));
+  };
+
   /* Overview: rings, sparks, river */
   const RIVER_STAGES = [['reached', 'Reached', 'Reached'], ['connected', 'Connected on LinkedIn', 'Connected'], ['met', 'Met at least once', 'Met'], ['deals', 'Deals or agreements', 'Deals'], ['won', 'Won or signed', 'Won']];
   const drawRings = () => {
@@ -3176,6 +3481,11 @@ dash.calc('attention', {
         return peopleSpec('Priority ' + p + ' · ' + state, state === 'No next step' ? 'var(--cds-chart-status-critical)' : hueOf('fn'), (r) => r.priority === p && (state === 'No next step' ? r.open_tasks === 0 : r.open_tasks > 0));
       },
     },
+    'backlog-rp': { card: '#backlog-rp', build: blSpec },
+    'backlog-icp': { card: '#backlog-icp', build: blSpec },
+    'backlog-fn': { card: '#backlog-fn', build: blSpec },
+    'backlog-mc': { card: '#backlog-mc', build: blSpec },
+    'backlog-all': { card: '#attention', build: blSpec },
     'ref-flow': { card: '#ref-flow-card', build: (id) => ({ title: 'Referral detail', source: 'referrals', rowKey: 'link_id', cols: REF_COLS, rows: (rowsOf('referrals') || []).filter((r) => r.link_id === id) }) },
     'bb-funnel': {
       card: '#bb-funnel',
@@ -3486,6 +3796,7 @@ dash.calc('attention', {
     drawRefBars();
     drawBoxByte();
     drawCourier();
+    drawBacklog();
     drawSized();
     Object.keys(DRILLS).forEach(drawDrill);
     drawTables();

@@ -10,15 +10,16 @@ Every morning at **8:00 AM IST** (9:30 PM Central the night before), a GitHub Ac
 
 | Tab | What it answers |
 |---|---|
-| Overview | Every 2026 target against today's pace, meetings per week, and the items that need attention |
+| Overview | Every 2026 target against today's pace, meetings per week, and the backlog across all campaigns |
 | B2B Campaign | Partner prospects through to signed referral agreements and referred deals |
 | Referrals | Which partner referred which client deal, and whether the partner's agreement is signed |
 | ICP Prospecting | Executives at target accounts from LinkedIn invite through meetings and deals |
 | Founder Network | Priority contacts with or without a next step, and the opportunities they've produced |
 | Box Byte | Box Byte's leads through Zoho (connected, met, deals), leads by LinkedIn profile, and the latest batch file's drafted messages and held prospects |
+| Medical Courier | Courier accounts, email outreach from the prospects sheet, and courier deals |
 | Pipeline | Every deal by stage, campaign and month created, with search |
 
-Every chart is clickable and opens the records behind it.
+Every chart is clickable and opens the records behind it. Each campaign tab also has a **Backlog** card listing where that campaign is behind (red = lapsed or overdue, amber = waiting on us); select an item to see the records.
 
 ## One-time setup
 
@@ -80,6 +81,7 @@ python3 -m http.server --directory site 8000
 - **Medical Courier email outreach:** the initial emails went to company addresses with no contact in Zoho, so emailed, followed up and replied come from the Medical Courier prospects sheet, stored as `courier.js` on the `courier-snapshot` branch.
 - **Box Byte:** live counts come from contacts tagged *BoxByte* in Zoho. The LinkedIn profile each lead came through, the drafted messages and the held prospects come from Box Byte's latest batch file, stored as `boxbyte.js` on the `boxbyte-snapshot` branch.
 - **Meetings:** Zoho Meetings linked to a contact. A meeting with no contact attached can't be credited to a campaign, and because the calendar also holds personal events, it's published without its title.
+- **Backlog:** agreements come from Zoho Sign (referral agreements and the Akhani MNDA). A party counts as signed once any copy is signed; otherwise the newest copy decides between out for signature and expired. Recalled, draft and internal test sends are ignored. Overdue tasks are open Zoho tasks past their due date, credited to their contact's campaign. A deal is stale when it is open and hasn't been updated for 14 days or more.
 - **Targets:** from the 2026 campaign tracking sheets. The pace line assumes the campaigns run Aug 17 to Dec 18, 2026.
 
 ## Things to know
