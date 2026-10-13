@@ -7,7 +7,7 @@ Static campaign dashboard for True Lean Solutions / TechTranspire, published to 
 - `site/courier.js` (`window.__COURIER__`): the Medical Courier prospects sheet (datasets `courier_sends`, `courier_file`), kept on the orphan `courier-snapshot` branch and copied in by the workflow. Company names and outreach flags only.
 - `scripts/fetch_zoho.py`: pulls the datasets from Zoho CRM via COQL (`/crm/v7/coql`) and writes `site/data.js` (`window.__DASH_DATA__ = {...}`, loads from file:// and Pages alike). Python standard library only; no dependencies.
 - `site/index.html`: the whole page (styles, data layer, charts). d3 v7.9.0 comes from cdnjs; everything else is inline.
-- `.github/workflows/refresh.yml`: runs the fetch at 02:30 UTC (8:00 AM IST), on push to `main` and on demand, then deploys `site/` with `actions/deploy-pages`.
+- `.github/workflows/refresh.yml`: runs the fetch at 12:30 UTC (6:00 PM IST), on push to `main` and on demand, then deploys `site/` with `actions/deploy-pages`.
 
 ## Commands
 - Fetch data: `python3 scripts/fetch_zoho.py` (needs `ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET`, `ZOHO_REFRESH_TOKEN`)

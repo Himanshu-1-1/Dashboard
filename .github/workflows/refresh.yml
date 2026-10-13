@@ -2,7 +2,7 @@ name: Refresh dashboard
 
 on:
   schedule:
-    - cron: "30 2 * * *"   # 02:30 UTC = 8:00 AM IST (9:30 PM Central the night before)
+    - cron: "30 12 * * *"  # 12:30 UTC = 6:00 PM IST (7:30 AM Central during daylight time, 6:30 AM in standard time)
   workflow_dispatch: {}
   push:
     branches: [main]

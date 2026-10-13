@@ -2,7 +2,7 @@
 
 A daily dashboard for the three outreach campaigns run by True Lean Solutions and TechTranspire: the **B2B Campaign** (referral partners), **ICP Prospecting** and the **Founder Network**. It also covers referrals (who sent us which client), the Box Byte lead-generation partnership, and the full deal pipeline.
 
-Every morning at **8:00 AM IST** (9:30 PM Central the night before), a GitHub Actions job pulls the numbers from Zoho CRM, saves them as `data.js`, and publishes the site to GitHub Pages. The data file is never committed to this repo. It exists only in the deployed site.
+Every day at **6:00 PM IST** (7:30 AM Central during daylight time, 6:30 AM in standard time), a GitHub Actions job pulls the numbers from Zoho CRM, saves them as `data.js`, and publishes the site to GitHub Pages. The data file is never committed to this repo. It exists only in the deployed site.
 
 > **Privacy:** this site is public. Anyone who has the link can see client names, deal titles and amounts. Passcode encryption is the planned next step; until then, share the link only with people who should see CRM data.
 
@@ -58,7 +58,7 @@ Repo **Settings → Secrets and variables → Actions → New repository secret*
 The org uses Zoho's US data center (`crm.zoho.com`), which is the default. For another data center, add **variables** (not secrets) `ZOHO_ACCOUNTS_URL` and `ZOHO_API_DOMAIN`, for example `https://accounts.zoho.in` and `https://www.zohoapis.in`.
 
 ### 4. Run it once
-**Actions → Refresh dashboard → Run workflow**. When it finishes, the site is live at `https://<owner>.github.io/<repo>/`. After that it refreshes every morning on its own, and on every push to `main`.
+**Actions → Refresh dashboard → Run workflow**. When it finishes, the site is live at `https://<owner>.github.io/<repo>/`. After that it refreshes every day at 6:00 PM IST on its own, and on every push to `main`.
 
 ## Running locally
 
@@ -91,4 +91,4 @@ python3 -m http.server --directory site 8000
 - **New Box Byte batch file:** rebuild `boxbyte.js` from the workbook (sheets *Leads*, *SEND* and *HELD*) and force-push it as the single commit on the `boxbyte-snapshot` branch, then run the workflow. Message text is published; links, sourcing URLs and review notes are left out.
 - If any Zoho query fails, the job stops and the site keeps yesterday's data. The failed run shows in the **Actions** tab with Zoho's error.
 - GitHub can start scheduled runs a few minutes late, and it pauses schedules on repos with no activity for 60 days. A push or a manual run turns the schedule back on.
-- To change the refresh time, edit the `cron` line in `.github/workflows/refresh.yml`. It's in UTC: `30 2 * * *` is 8:00 AM IST.
+- To change the refresh time, edit the `cron` line in `.github/workflows/refresh.yml`. It's in UTC: `30 12 * * *` is 6:00 PM IST.
