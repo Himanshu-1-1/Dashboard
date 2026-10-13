@@ -19,7 +19,7 @@ Every morning at **8:00 AM IST** (9:30 PM Central the night before), a GitHub Ac
 | Medical Courier | Courier accounts, email outreach from the prospects sheet, and courier deals |
 | Pipeline | Every deal by stage, campaign and month created, with search |
 
-Every chart is clickable and opens the records behind it. Each campaign tab also has a **Backlog** card listing where that campaign is behind (red = lapsed or overdue, amber = waiting on us); select an item to see the records.
+Every chart is clickable and opens the records behind it. Each campaign tab also has a **Backlog** card listing where that campaign is behind (red = lapsed or overdue, amber = waiting on us); select any item to see the records by name. Names, companies, deals and tasks in these lists open the record in Zoho CRM.
 
 ## One-time setup
 
