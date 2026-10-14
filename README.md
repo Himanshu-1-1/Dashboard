@@ -17,6 +17,7 @@ Every day at **6:00 PM IST** (7:30 AM Central during daylight time, 6:30 AM in s
 | Founder Network | Priority contacts with or without a next step, and the opportunities they've produced |
 | Box Byte | Box Byte's leads through Zoho (connected, met, deals), leads by LinkedIn profile, and the latest batch file's drafted messages and held prospects |
 | Medical Courier | Courier accounts, email outreach from the prospects sheet, and courier deals |
+| Deals | Every deal on a board by stage (open stages, then won and lost), win rate, time since last update, loss reasons, deals by month created and data-quality gaps, filtered by Deal Type |
 | Pipeline | Every deal by stage, campaign and month created, with search |
 
 Every chart is clickable and opens the records behind it. Each campaign tab also has a **Backlog** card listing where that campaign is behind (red = lapsed or overdue, amber = waiting on us); select any item to see the records by name. Names, companies, deals and tasks in these lists open the record in Zoho CRM.
