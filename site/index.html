@@ -373,6 +373,9 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
 .cc-dq-h { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
 .cc-dq-item.cc-dq-clear .cc-dq-n { color: var(--color-ok); font-size: 15px; font-family: inherit; font-weight: var(--cds-font-weight-medium); }
 @media (max-width: 640px) { .cc-srow { grid-template-columns: 5.5rem minmax(0, 1fr) 2.25rem; } .cc-vbars { gap: 4px; } .cc-vcol-l { font-size: 11px; } }
+.cc-thsel { font: inherit; font-weight: inherit; color: inherit; background: var(--color-bg); border: 1px solid var(--color-border-line); border-radius: 6px; padding: 2px 4px; cursor: pointer; max-width: 100%; }
+.cc-thsel:hover { border-color: var(--color-fg-muted); }
+.cc-thsel:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 1px; }
 .cc-zlink { color: inherit; text-decoration: underline; text-decoration-color: var(--color-border-line); text-underline-offset: 3px; }
 .cc-zlink:hover, .cc-zlink:focus-visible { text-decoration-color: currentColor; }
 .cc-blall { display: grid; gap: var(--cds-gap-md) var(--cds-gap-lg); grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); align-items: start; }
@@ -3779,6 +3782,10 @@ dash.calc('attention', {
     node.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(key, value); } });
     return node;
   };
+  const DRILL_STAGE = {};
+  const STAGE_FIELDS = ['stage_label', 'stage'];
+  const STAGE_SEQ = ['Proposals', 'Discovery', 'Hold', 'Identify', 'Closed Won', 'Closed', 'Closed Lost', 'Closed Lost to Competition'];
+  const stageRankOf = (s) => { const i = STAGE_SEQ.indexOf(s); return i < 0 ? 99 : i; };
   const drawDrill = (key) => {
     const cfg = DRILLS[key];
     const card = root.querySelector(cfg.card);
@@ -3792,10 +3799,18 @@ dash.calc('attention', {
     const value = picked[key];
     const spec = value == null ? null : cfg.build(value);
     if (!spec) {
+      Object.keys(DRILL_STAGE).forEach((k) => { if (k.startsWith(key + '|')) delete DRILL_STAGE[k]; });
       if (box.dataset.owner && box.dataset.owner !== key) return;
       box.hidden = true; box.replaceChildren(); delete box.dataset.owner; return;
     }
     box.dataset.owner = key;
+    const stateKey = key + '|' + value;
+    const stageField = spec.cols.map(([f]) => f).find((f) => STAGE_FIELDS.includes(f));
+    const stages = stageField ? [...new Set(spec.rows.map((r) => r[stageField]).filter(Boolean))].sort((a, b) => stageRankOf(a) - stageRankOf(b) || String(a).localeCompare(String(b))) : [];
+    let chosen = DRILL_STAGE[stateKey] || null;
+    if (chosen && !stages.includes(chosen)) { chosen = null; delete DRILL_STAGE[stateKey]; }
+    const rows = chosen ? spec.rows.filter((r) => r[stageField] === chosen) : spec.rows;
+    const refocus = !!(document.activeElement && document.activeElement.classList.contains('cc-thsel') && box.contains(document.activeElement));
     const head = el('div', 'cc-drill-head');
     const h = el('h4');
     if (spec.swatch) { const sw = el('i', 'cc-sw'); sw.style.background = spec.swatch; h.append(sw); }
@@ -3806,6 +3821,7 @@ dash.calc('attention', {
     head.append(h, close);
     const parts = [head];
     if (spec.note) parts.push(el('p', 'cc-empty', spec.note));
+    if (chosen) parts.push(el('p', 'cc-empty', 'Showing ' + intF(rows.length) + ' of ' + intF(spec.rows.length) + ' · Stage: ' + chosen + '. Pick "All" in the Stage column to see every row.'));
     if (status(spec.source) !== 'ok') parts.push(failNode());
     else if (!spec.rows.length) parts.push(el('p', 'cc-empty', spec.empty || 'Nothing here yet.'));
     else {
@@ -3815,11 +3831,27 @@ dash.calc('attention', {
       table.dataset.rowKey = spec.rowKey;
       const hr = el('tr');
       const cls = (num, narrow) => [num ? 'cc-num' : '', narrow ? 'cc-hide-narrow' : ''].filter(Boolean).join(' ') || null;
-      spec.cols.forEach(([f, label, , narrow, num]) => { const th = el('th', cls(num, narrow), label); th.dataset.field = f; hr.append(th); });
+      spec.cols.forEach(([f, label, , narrow, num]) => {
+        if (f === stageField && stages.length > 1) {
+          const th = el('th', cls(num, narrow));
+          th.dataset.field = f;
+          const sel = el('select', 'cc-thsel');
+          sel.setAttribute('aria-label', 'Show only one stage');
+          sel.append(new Option(label + ': All (' + spec.rows.length + ')', ''));
+          stages.forEach((s) => sel.append(new Option(s + ' (' + spec.rows.filter((r) => r[stageField] === s).length + ')', s)));
+          sel.value = chosen || '';
+          sel.addEventListener('click', (e) => e.stopPropagation());
+          sel.addEventListener('change', () => { if (sel.value) DRILL_STAGE[stateKey] = sel.value; else delete DRILL_STAGE[stateKey]; drawDrill(key); });
+          th.append(sel);
+          hr.append(th);
+          return;
+        }
+        const th = el('th', cls(num, narrow), label); th.dataset.field = f; hr.append(th);
+      });
       const thead = el('thead');
       thead.append(hr);
       const tbody = el('tbody');
-      spec.rows.forEach((r) => {
+      rows.forEach((r) => {
         const tr = el('tr');
         tr.dataset.key = r[spec.rowKey];
         spec.cols.forEach(([f, , kind, narrow, num, link]) => {
@@ -3841,6 +3873,7 @@ dash.calc('attention', {
     }
     box.replaceChildren(...parts);
     box.hidden = false;
+    if (refocus) { const s = box.querySelector('.cc-thsel'); if (s) s.focus(); }
   };
 
   function drawSized() {
