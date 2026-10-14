@@ -381,6 +381,63 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
 .cc-thsel { font: inherit; font-weight: inherit; color: inherit; background: var(--color-bg); border: 1px solid var(--color-border-line); border-radius: 6px; padding: 2px 4px; cursor: pointer; max-width: 100%; }
 .cc-thsel:hover { border-color: var(--color-fg-muted); }
 .cc-thsel:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 1px; }
+.cc-ic-verdict { gap: var(--cds-gap-md); }
+.cc-ic-headline { margin: 0; font-family: var(--font-anthropic-serif); font-size: clamp(24px, 3.2vw, 34px); line-height: 1.2; max-width: 30ch; letter-spacing: -0.01em; }
+.cc-ic-facts { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--cds-gap-sm) var(--cds-gap-xl); grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); }
+.cc-ic-facts li { display: grid; gap: 2px; padding-left: var(--cds-pad-sm); border-left: 2px solid var(--color-border-line); }
+.cc-ic-facts b { font-size: 20px; font-variant-numeric: tabular-nums; font-weight: var(--cds-font-weight-medium); }
+.cc-ic-facts span { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); line-height: 1.4; }
+.cc-ic-steps { margin: 0; padding: 0; list-style: none; counter-reset: icstep; display: grid; }
+.cc-ic-step { counter-increment: icstep; display: grid; grid-template-columns: 1.75rem minmax(0, 1fr); gap: 2px var(--cds-gap-sm); padding: var(--cds-pad-sm) var(--cds-pad-xs); border-bottom: 1px solid var(--color-border-line); }
+.cc-ic-step:last-child { border-bottom: 0; }
+.cc-ic-step::before { content: counter(icstep); grid-row: span 2; width: 1.5rem; height: 1.5rem; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: var(--cds-font-weight-medium); background: var(--color-fg); color: var(--color-bg); }
+.cc-ic-step-t { font-weight: var(--cds-font-weight-medium); }
+.cc-ic-step-d { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); line-height: 1.45; }
+.cc-ic-math { display: grid; gap: var(--cds-gap-md); }
+.cc-ic-mrow { display: grid; gap: 6px; padding-bottom: var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); }
+.cc-ic-mrow:last-child { border-bottom: 0; }
+.cc-ic-mtop { display: flex; justify-content: space-between; align-items: baseline; gap: var(--cds-gap-sm); flex-wrap: wrap; }
+.cc-ic-mtop h4 { margin: 0; font-size: var(--cds-font-size-body); font-weight: var(--cds-font-weight-medium); }
+.cc-ic-verdict-chip { font-size: 12px; border-radius: 999px; padding: 2px 10px; border: 1px solid currentColor; font-weight: var(--cds-font-weight-medium); }
+.cc-ic-ok { color: var(--color-ok); }
+.cc-ic-warn { color: var(--color-warn); }
+.cc-ic-bad { color: var(--color-bad); }
+.cc-ic-mgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr)); gap: 4px var(--cds-gap-md); }
+.cc-ic-mgrid div { display: grid; gap: 1px; }
+.cc-ic-mgrid b { font-variant-numeric: tabular-nums; font-size: 18px; font-weight: var(--cds-font-weight-medium); }
+.cc-ic-mgrid span { color: var(--color-fg-muted); font-size: 12px; line-height: 1.35; }
+.cc-ic-asks { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--cds-gap-sm); counter-reset: icask; }
+.cc-ic-ask { counter-increment: icask; display: grid; grid-template-columns: 2.25rem minmax(0, 1.1fr) minmax(0, 1.4fr); gap: 4px var(--cds-gap-md); padding: var(--cds-pad-sm) var(--cds-pad-md); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-panel); align-items: start; }
+.cc-ic-ask::before { content: counter(icask); font-family: var(--font-anthropic-serif); font-size: 22px; line-height: 1.1; color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
+.cc-ic-who { display: grid; gap: 3px; min-width: 0; }
+.cc-ic-who a, .cc-ic-who .cc-ic-nm { font-weight: var(--cds-font-weight-medium); color: var(--color-fg); }
+.cc-ic-who small { color: var(--color-fg-muted); font-size: 12px; overflow-wrap: anywhere; }
+.cc-ic-why { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.cc-ic-why span { font-size: 11px; border: 1px solid var(--color-border-line); border-radius: 999px; padding: 1px 7px; color: var(--color-fg); }
+.cc-ic-why span.cc-ic-neg { color: var(--color-warn); border-color: currentColor; }
+.cc-ic-msg { display: grid; gap: 6px; min-width: 0; }
+.cc-ic-msg p { margin: 0; font-size: 13px; line-height: 1.5; padding: var(--cds-pad-xs) var(--cds-pad-sm); border-left: 2px solid var(--color-border-line); background: color-mix(in oklab, var(--color-fg) 3%, var(--color-panel)); border-radius: 0 6px 6px 0; overflow-wrap: anywhere; }
+.cc-ic-msg .cc-go { justify-self: start; }
+.cc-ic-score { font-size: 11px; color: var(--color-fg-muted); }
+.cc-ic-more { display: flex; justify-content: center; }
+.cc-ic-segs { display: grid; gap: var(--cds-gap-md); }
+.cc-ic-seg h4 { margin: 0 0 6px; font-size: var(--cds-font-size-caption); font-weight: var(--cds-font-weight-medium); color: var(--color-fg-muted); }
+.cc-ic-srow { display: grid; grid-template-columns: minmax(7rem, 11rem) minmax(0, 1fr) 6.5rem; gap: var(--cds-gap-sm); align-items: center; font-size: var(--cds-font-size-caption); padding: 2px 4px; }
+.cc-ic-track { position: relative; height: 14px; border-radius: 3px; background: color-mix(in oklab, var(--color-fg) 6%, var(--color-panel)); }
+.cc-ic-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: color-mix(in oklab, var(--color-fg) 62%, var(--color-panel)); }
+.cc-ic-avg { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--color-fg); }
+.cc-ic-srow b { font-variant-numeric: tabular-nums; text-align: right; font-weight: var(--cds-font-weight-medium); white-space: nowrap; }
+.cc-ic-srow b small { color: var(--color-fg-muted); font-weight: 400; }
+.cc-ic-thin { opacity: .55; }
+.cc-ic-fitbar { display: flex; gap: 2px; height: 26px; }
+.cc-ic-fitbar .cc-seg { border-radius: 3px; min-width: 6px; }
+.cc-ic-fitlist { display: grid; gap: 4px; }
+.cc-ic-fitrow { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: var(--cds-gap-sm); align-items: center; font-size: var(--cds-font-size-caption); padding: 4px; }
+.cc-ic-fitrow b { font-variant-numeric: tabular-nums; font-weight: var(--cds-font-weight-medium); }
+.cc-ic-fitrow small { color: var(--color-fg-muted); }
+.cc-ic-flag { display: inline-block; font-size: 11px; border-radius: 999px; padding: 1px 7px; margin: 1px 3px 1px 0; border: 1px solid var(--color-border-line); white-space: nowrap; }
+.cc-ic-flag.cc-ic-ok, .cc-ic-flag.cc-ic-warn, .cc-ic-flag.cc-ic-bad { border-color: currentColor; }
+@media (max-width: 760px) { .cc-ic-ask { grid-template-columns: 1.75rem minmax(0, 1fr); } .cc-ic-msg { grid-column: 2; } .cc-ic-srow { grid-template-columns: 6rem minmax(0, 1fr) 5.5rem; } }
 .cc-zlink { color: inherit; text-decoration: underline; text-decoration-color: var(--color-border-line); text-underline-offset: 3px; }
 .cc-zlink:hover, .cc-zlink:focus-visible { text-decoration-color: currentColor; }
 .cc-blall { display: grid; gap: var(--cds-gap-md) var(--cds-gap-lg); grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); align-items: start; }
@@ -769,6 +826,45 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
     <article class="cc-card cc-backlog" id="backlog-icp">
       <div class="cc-card-head"><h3>Backlog</h3><p>Where ICP Prospecting is behind, counted live from Zoho. Red means lapsed or overdue, amber means waiting on us. Select any item to list the records behind it; names open the record in Zoho CRM.</p></div>
       <ul class="cc-bl dash-skeleton" data-source="backlog" data-campaign="icp"></ul>
+    </article>
+    <article class="cc-card cc-ic-verdict" id="ic-verdict">
+      <p class="cc-ic-headline dash-skeleton" id="ic-headline" data-source="icp_backlog_people"></p>
+      <ul class="cc-ic-facts" id="ic-facts"></ul>
+    </article>
+    <div class="cc-grid cc-ic-pair">
+      <article class="cc-card" id="ic-steps">
+        <div class="cc-card-head"><h3>What to do next</h3><p>In order of impact, worked out from today’s Zoho data. Select a step to list the people or accounts behind it.</p></div>
+        <ol class="cc-ic-steps dash-skeleton" id="ic-steps-list" data-source="icp_backlog_people"></ol>
+      </article>
+      <article class="cc-card" id="ic-math">
+        <div class="cc-card-head"><h3>Can the targets be reached?</h3><p>The tracking-sheet targets against the acceptance rate so far and the days left until Dec 18.</p></div>
+        <div class="cc-ic-math dash-skeleton" id="ic-math-body" data-source="icp_backlog_people"></div>
+        <p class="cc-insight" id="ins-ic-math"></p>
+      </article>
+    </div>
+    <article class="cc-card" id="ic-ask">
+      <div class="cc-card-head"><h3>Who to ask for a meeting</h3><p>Executives who accepted the LinkedIn request and haven’t met us yet, ranked by Priority, seniority, ICP fit, company size and colleagues already connected. Each has a suggested opener that starts with their likely problem; copy it, adjust it, send it.</p></div>
+      <ol class="cc-ic-asks dash-skeleton" id="ic-ask-list" data-source="icp_backlog_people"></ol>
+      <div class="cc-ic-more" id="ic-ask-more"></div>
+    </article>
+    <div class="cc-grid cc-ic-pair">
+      <article class="cc-card" id="ic-seg">
+        <div class="cc-card-head"><h3>Who accepts</h3><p>Share of sent LinkedIn requests accepted so far, by segment. Pending requests count as not accepted yet. Select a row to list its executives.</p></div>
+        <div class="cc-ic-segs dash-skeleton" id="ic-seg-body" data-source="icp_backlog_people"></div>
+        <p class="cc-insight" id="ins-ic-seg"></p>
+      </article>
+      <article class="cc-card" id="ic-fit">
+        <div class="cc-card-head"><h3>ICP fit of target accounts</h3><p>Each 2026ICP account checked against the ICP industry list. Consulting and IT firms are more often partners or competitors than buyers. Select a group to list its accounts.</p></div>
+        <div class="cc-ic-fitbar dash-skeleton" id="ic-fit-bar" data-source="icp_account_list"></div>
+        <div class="cc-ic-fitlist" id="ic-fit-list"></div>
+        <p class="cc-insight" id="ins-ic-fit"></p>
+      </article>
+    </div>
+    <article class="cc-card" id="ic-cov">
+      <div class="cc-card-head"><h3>Account coverage</h3><p>Every target account with its contacts in Zoho, requests sent and executives connected. Use the filters to find warm accounts to build on and accounts to fix.</p></div>
+      <div class="cc-tools" role="group" aria-label="Account filter" id="ic-cov-chips"></div>
+      <div class="cc-scroll"><table class="cc-tbl" id="ic-cov-table" data-source="icp_account_list" data-row-key="id"><thead></thead><tbody></tbody></table></div>
+      <div class="cc-ic-more" id="ic-cov-more"></div>
     </article>
     <div class="cc-grid">
       <article class="cc-card" id="icp-funnel">
@@ -4375,6 +4471,470 @@ dash.calc('attention', {
     } },
   });
 
+  /* ICP analysis */
+  const IC_PARTNER = /business consulting|it services|consulting|software|technology, information|outsourcing|strategic management/i;
+  const IC_IND = [
+    ['Healthcare', /health|medical|\bhospitals?\b|physician|clinic|dental|hospice|physical therapy|optometr|behavioral|mental/i],
+    ['Financial services & insurance', /financial|bank|insurance|investment|capital|private equity|wealth|asset management|fintech|blockchain|credit/i],
+    ['Logistics & aviation', /logistic|transport|truck|freight|warehous|aviation|aerospace|airline|shipping|supply chain|courier|parcel|3pl/i],
+    ['Staffing & HR', /staffing|recruit|human resources|employment/i],
+    ['Hospitality & entertainment', /hospitality|hotel|restaurant|food and beverage services|entertainment|recreation|leisure|travel|casino|sport/i],
+    ['Retail & eCommerce', /retail|e-?commerce|apparel|fashion|wholesale/i],
+    ['Legal', /\blaw\b|legal/i],
+    ['Tax & accounting', /accounting|\btax\b|\bcpa\b/i],
+    ['Automotive', /automotive|collision|motor vehicle/i],
+    ['Self-storage', /self-storage/i],
+    ['Social media', /social media/i],
+  ];
+  const IC_FIT = {
+    icp: ['ICP industry', 'var(--color-ok)'],
+    partner: ['Consulting & IT (partner or competitor)', 'color-mix(in oklab, var(--color-fg) 58%, var(--color-panel))'],
+    outside: ['Outside the ICP industry list', 'var(--color-warn)'],
+    unknown: ['Industry not set', 'color-mix(in oklab, var(--color-fg) 22%, var(--color-panel))'],
+  };
+  const IC_TIERS = ['C-suite / Founder', 'VP', 'Director / Head', 'Other'];
+  const IC_SIZES = ['Under 100', '100–499', '500–999', '1,000+', 'Unknown'];
+  const IC_MAX_PER_ACCOUNT = 8;
+  const IC_OPENER = {
+    'Healthcare': (p, c) => p + ', as ' + c + ' grows, are scheduling, billing and reporting still living in separate systems?',
+    'Financial services & insurance': (p, c) => p + ', how much of ' + c + '’s reporting still depends on spreadsheets pulled from different systems?',
+    'Logistics & aviation': (p, c) => p + ', is ' + c + ' still reconciling dispatch, billing and customer updates by hand as volume grows?',
+    'Staffing & HR': (p, c) => p + ', are placements, timesheets and billing at ' + c + ' still spread across tools that don’t talk to each other?',
+    'Hospitality & entertainment': (p, c) => p + ', which part of operations at ' + c + ' is still held together by manual work across locations?',
+    'Retail & eCommerce': (p, c) => p + ', how well do ' + c + '’s orders, inventory and customer data line up across channels today?',
+    'Legal': (p, c) => p + ', how is ' + c + ' handling intake, documents and billing as the firm grows?',
+    'Tax & accounting': (p, c) => p + ', how much of ' + c + '’s client work still runs on manual handoffs in busy season?',
+    'Automotive': (p, c) => p + ', as ' + c + ' adds locations, are parts, jobs and billing still tracked in separate systems?',
+    'Self-storage': (p, c) => p + ', how is ' + c + ' keeping occupancy, billing and site reporting in one view as the portfolio grows?',
+  };
+  const IC_ASK = 'Open to a 20-minute call next week to compare notes?';
+  let icAskAll = false;
+  let icCov = 'all';
+  let icCovAll = false;
+  const icClass = (ind) => {
+    const s = String(ind || '').trim();
+    if (!s) return { fit: 'unknown', group: 'Industry not set' };
+    if (IC_PARTNER.test(s)) return { fit: 'partner', group: 'Consulting & IT' };
+    const hit = IC_IND.find(([, re]) => re.test(s));
+    return hit ? { fit: 'icp', group: hit[0] } : { fit: 'outside', group: 'Outside ICP list' };
+  };
+  const icFirst = (full) => {
+    const w = String(full || '').trim().split(/\s+/)[0] || '';
+    if (w.replace(/[^\p{L}]/gu, '').length < 2) return 'Hi';
+    return w === w.toUpperCase() || w === w.toLowerCase() ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : w;
+  };
+  const icSize = (v) => { const m = String(v ?? '').replace(/,/g, '').match(/\d+/); return m ? Number(m[0]) : null; };
+  const icSizeLabel = (n) => (n == null ? 'Unknown' : n < 100 ? 'Under 100' : n < 500 ? '100–499' : n < 1000 ? '500–999' : '1,000+');
+  const icTier = (title) => {
+    const s = String(title || '').toLowerCase();
+    if (/\b(vp|vice president|svp|evp)\b/.test(s)) return 'VP';
+    if (/\b(ceo|coo|cio|cto|cfo|cmo|chro|cro|cdo|ciso|chief|president|founder|owner|managing partner|operating partner|managing director)\b/.test(s)) return 'C-suite / Founder';
+    if (/\bdirector\b|\bhead of\b/.test(s)) return 'Director / Head';
+    return 'Other';
+  };
+  const icData = () => {
+    const people = rowsOf('icp_backlog_people');
+    const accts = rowsOf('icp_account_list');
+    const contacts = rowsOf('icp_contacts');
+    const funnel = rowsOf('funnel');
+    if (!people || !accts || !contacts || !funnel) return null;
+    const t0 = parseDay(todayCT).getTime();
+    const accById = new Map(accts.map((a) => [a.id, a]));
+    const ppl = people.map((r) => {
+      const acc = accById.get(r.Account_Name_id) || {};
+      const ind = r['Account_Name.Industries'] || acc.Industries || null;
+      const cls = icClass(ind);
+      const size = icSize(r['Account_Name.No_Of_employees'] ?? acc.No_Of_employees);
+      const name = r.Full_Name || '—';
+      return {
+        id: r.id, name, first: icFirst(r.Full_Name), title: r.Title || '—', tier: icTier(r.Title),
+        account: r.Account_Name || null, account_id: r.Account_Name_id || null, industry: ind || 'Not set', fit: cls.fit, group: cls.group,
+        size, size_label: icSizeLabel(size), priority: r.Priority || null, priority_label: r.Priority ? 'P' + r.Priority : 'Not set',
+        li: r.LI_Connect || 'Not requested', met: (r.Total_Meetings_Created || 0) > 0,
+        act_days: r.Last_Activity_Time ? Math.max(0, Math.round((t0 - parseDay(r.Last_Activity_Time).getTime()) / 864e5)) : null,
+      };
+    });
+    const byAcc = new Map();
+    ppl.forEach((p) => { if (!p.account_id) return; if (!byAcc.has(p.account_id)) byAcc.set(p.account_id, []); byAcc.get(p.account_id).push(p); });
+    const accounts = accts.map((a) => {
+      const cls = icClass(a.Industries);
+      const size = icSize(a.No_Of_employees);
+      const mine = byAcc.get(a.id) || [];
+      const row = {
+        id: a.id, account: a.Account_Name || '—', industry: a.Industries || 'Not set', fit: cls.fit, fit_label: IC_FIT[cls.fit][0], group: cls.group,
+        size, size_label: icSizeLabel(size), contacts: a.Count_of_associated_Contacts || 0, priority: a.Priority || null,
+        requested: mine.filter((p) => p.li === 'Requested').length, connected: mine.filter((p) => p.li === 'Connected').length,
+        p13_open: mine.filter((p) => p.li === 'Not requested').length,
+      };
+      row.sent = row.requested + row.connected;
+      row.accept = row.sent ? row.connected / row.sent : null;
+      row.flags = [];
+      if (row.connected >= 2) row.flags.push('warm');
+      if (row.requested + row.connected >= 5 && row.connected === 0) row.flags.push('dead');
+      if (row.contacts > IC_MAX_PER_ACCOUNT) row.flags.push('overloaded');
+      if (row.contacts < 5) row.flags.push('thin');
+      if (!row.sent) row.flags.push('untouched');
+      return row;
+    });
+    const sumBy = (keep) => contacts.filter(keep).reduce((n, r) => n + (r.count || 0), 0);
+    const total = sumBy(() => true);
+    const connected = sumBy((r) => r.LI_Connect === 'Connected');
+    const pending = sumBy((r) => r.LI_Connect === 'Requested');
+    const emailReq = sumBy((r) => r.LI_Connect === 'Email Required');
+    const never = Math.max(0, total - connected - pending - emailReq);
+    const met = sumBy((r) => r.LI_Connect === 'Connected' && (r.Total_Meetings_Created || 0) > 0);
+    const f = (step) => funnel.find((r) => r.campaign === 'icp' && r.step === step) || {};
+    const connWarm = new Map();
+    ppl.filter((p) => p.li === 'Connected' && p.account_id).forEach((p) => connWarm.set(p.account_id, (connWarm.get(p.account_id) || 0) + 1));
+    const asks = ppl.filter((p) => p.li === 'Connected' && !p.met).map((p) => {
+      const why = [];
+      let score = 0;
+      const pr = { '1': 30, '3': 15 }[p.priority] || 0;
+      score += pr; if (pr) why.push(['Priority ' + p.priority, false]);
+      const ti = { 'C-suite / Founder': 25, VP: 15, 'Director / Head': 10 }[p.tier] || 0;
+      score += ti; if (ti) why.push([p.tier, false]);
+      const fi = { icp: 20, unknown: 5, partner: -25, outside: -20 }[p.fit];
+      score += fi;
+      if (p.fit === 'icp') why.push([p.group, false]);
+      else if (p.fit === 'partner') why.push(['Consulting or IT firm', true]);
+      else if (p.fit === 'outside') why.push(['Outside ICP industries', true]);
+      else why.push(['Industry not set', true]);
+      if (p.size != null && p.size >= 100) { score += 10; why.push([p.size_label + ' employees', false]); }
+      const mates = Math.max(0, (connWarm.get(p.account_id) || 0) - 1);
+      if (mates) { score += Math.min(15, mates * 5); why.push([mates + (mates === 1 ? ' colleague' : ' colleagues') + ' connected', false]); }
+      if (p.act_days != null && p.act_days <= 30) { score += 5; why.push(['Active in Zoho this month', false]); }
+      const company = p.account || 'your team';
+      const opener = (IC_OPENER[p.group] || ((a, c) => a + ', what’s the one system or process at ' + c + ' slowing the team down right now?'))(p.first, company);
+      return { ...p, score, why, opener };
+    }).sort((a, b) => b.score - a.score || String(a.name).localeCompare(String(b.name)));
+    const perAccount = new Map();
+    ppl.filter((p) => p.li !== 'Not requested').forEach((p) => { if (p.account_id) perAccount.set(p.account_id, (perAccount.get(p.account_id) || 0) + 1); });
+    const queue = [];
+    ppl.filter((p) => p.li === 'Not requested' && ['1', '3'].includes(p.priority))
+      .sort((a, b) => Number(a.priority) - Number(b.priority) || IC_TIERS.indexOf(a.tier) - IC_TIERS.indexOf(b.tier) || String(a.name).localeCompare(String(b.name)))
+      .forEach((p) => {
+        const used = perAccount.get(p.account_id) || 0;
+        if (p.account_id && used >= IC_MAX_PER_ACCOUNT) return;
+        if (p.account_id) perAccount.set(p.account_id, used + 1);
+        queue.push(p);
+      });
+    return { ppl, accounts, total, connected, pending, emailReq, never, met, f, asks, queue };
+  };
+  const IC_PEOPLE_COLS = [['name', 'Executive', null, false, false, ['Contacts', 'id']], ['title', 'Title', null, true], ['account', 'Company', null, false, false, ['Accounts', 'account_id']], ['group', 'Industry group', null, true], ['priority_label', 'Priority'], ['li', 'LinkedIn']];
+  const IC_ACC_COLS = [['account', 'Account', null, false, false, ['Accounts', 'id']], ['industry', 'Industry', null, true], ['fit_label', 'ICP fit', null, true], ['size_label', 'Size', null, true], ['contacts', 'Contacts', 'int', false, true], ['sent', 'Requests sent', 'int', true, true], ['connected', 'Connected', 'int', false, true]];
+  const icPeopleSpec = (title, rows, note) => ({ title: 'ICP · ' + title, swatch: hueOf('icp'), source: 'icp_backlog_people', rowKey: 'id', cols: IC_PEOPLE_COLS, rows, note: note || 'Select a name or company to open it in Zoho CRM.', empty: 'Nobody matches.' });
+  const icAccSpec = (title, rows, note) => ({ title: 'ICP · ' + title, swatch: hueOf('icp'), source: 'icp_account_list', rowKey: 'id', cols: IC_ACC_COLS, rows, note: note || 'Select an account to open it in Zoho CRM.', empty: 'No accounts match.' });
+  const icReady = (box, d) => {
+    if (!box) return false;
+    if (['icp_backlog_people', 'icp_account_list', 'icp_contacts', 'funnel'].some((id) => status(id) === 'loading')) return false;
+    box.classList.remove('dash-skeleton');
+    if (!d) { box.replaceChildren(failNode()); return false; }
+    return true;
+  };
+  const icPct = (v) => (v == null || Number.isNaN(v) ? '—' : pctF(v));
+  const icMath = (d) => {
+    const answered = d.connected + d.pending;
+    const rate = answered ? d.connected / answered : 0;
+    const t0 = parseDay(todayCT).getTime();
+    const daysLeft = Math.max(0, Math.ceil((END - t0) / 864e5));
+    const elapsed = Math.max(1, Math.round((t0 - START) / 864e5));
+    const target = d.f('connected').target || 0;
+    const left = d.pending + d.never;
+    const wholeList = Math.round(d.connected + rate * left);
+    const needRate = left ? (target - d.connected) / left : null;
+    const perDay = d.connected / elapsed;
+    const atPace = Math.round(d.connected + perDay * daysLeft);
+    const needPerDay = daysLeft ? Math.max(0, target - d.connected) / daysLeft : null;
+    const needReqPerDay = rate && needPerDay != null ? needPerDay / rate : null;
+    return { answered, rate, daysLeft, elapsed, target, left, wholeList, needRate, perDay, atPace, needPerDay, needReqPerDay };
+  };
+  const drawIcpVerdict = (d) => {
+    const h = root.querySelector('#ic-headline');
+    if (!icReady(h, d)) return;
+    const m = icMath(d);
+    h.textContent = d.connected
+      ? (d.met ? intF(d.connected) + ' executives accepted; ' + intF(d.met) + ' have met us so far.' : intF(d.connected) + ' executives accepted. None has a meeting yet.')
+      : 'No executive has accepted a request yet.';
+    const facts = [
+      [icPct(m.rate), 'of LinkedIn requests sent so far have been accepted (' + intF(d.connected) + ' of ' + intF(m.answered) + '; the rest are still pending)'],
+      [intF(d.never), 'of ' + intF(d.total) + ' executives in the campaign have never been sent a request'],
+      ['≈ ' + intF(m.wholeList), 'connections if every remaining executive is requested at today’s rate, against a target of ' + intF(m.target)],
+      [intF(d.asks.length), 'connected executives ready for a meeting ask right now'],
+    ];
+    root.querySelector('#ic-facts').replaceChildren(...facts.map(([b, s]) => { const li = el('li'); li.append(el('b', null, b), el('span', null, s)); return li; }));
+  };
+  const drawIcpSteps = (d) => {
+    const box = root.querySelector('#ic-steps-list');
+    if (!icReady(box, d)) return;
+    const m = icMath(d);
+    const offAccts = d.accounts.filter((a) => a.fit === 'outside' || a.fit === 'partner');
+    const noInd = d.accounts.filter((a) => a.fit === 'unknown');
+    const over = d.accounts.filter((a) => a.flags.includes('overloaded'));
+    const p13 = d.ppl.filter((p) => p.li === 'Not requested' && ['1', '3'].includes(p.priority)).length;
+    const steps = [
+      ['asks', 'Ask ' + intF(d.asks.length) + ' connected executives for a meeting', 'They already accepted. Start with the top 10 in Who to ask below; each has an opener ready. Log every meeting in Zoho so it counts here.'],
+      ['queue', 'Send requests to ' + intF(d.queue.length) + ' Priority 1 and 3 executives', intF(p13) + ' have never been requested; this list caps each company at ' + IC_MAX_PER_ACCOUNT + ' people so no account gets flooded. Lead with a note about their industry, not a generic line.'],
+      ['off', 'Review ' + intF(offAccts.length) + ' accounts outside the ICP industries', 'Consulting, IT, advertising, media, non-profit and similar accounts rarely buy. Keep the ones that do, move consulting and IT firms to the B2B partner list, drop the rest.'],
+      ['noind', 'Fill in Industry on ' + intF(noInd.length) + ' accounts', 'Without it, fit can’t be checked and acceptance by industry is blind for these accounts.'],
+      ['over', 'Stop adding people at ' + intF(over.length) + ' accounts with more than ' + IC_MAX_PER_ACCOUNT + ' contacts', 'Dozens of requests into one company reads as spam. Keep the most senior ' + IC_MAX_PER_ACCOUNT + ' and spend the volume on new accounts toward the ' + intF(d.f('accounts').target || 0) + '-account target.'],
+      ['reset', 'Reset the connection target to what the list can reach', 'At ' + icPct(m.rate) + ' acceptance the whole list yields about ' + intF(m.wholeList) + ' connections. Reaching ' + intF(m.target) + ' needs ' + (m.needRate == null ? '—' : m.needRate > 1 ? 'more executives than the list holds' : icPct(m.needRate) + ' acceptance') + '.'],
+      [null, 'Add three date fields in Zoho', 'LI Requested On, Connected On and Contacted On. They switch on the Contacted step, follow-up time and weekly pace on this tab.'],
+    ];
+    box.replaceChildren(...steps.map(([key, title, desc]) => {
+      const li = el('li', 'cc-ic-step');
+      li.append(el('span', 'cc-ic-step-t', title), el('span', 'cc-ic-step-d', desc));
+      if (key === 'asks') {
+        li.classList.add('cc-clickable'); li.tabIndex = 0; li.setAttribute('role', 'button'); li.setAttribute('aria-label', 'Go to who to ask for a meeting');
+        const go = () => { const tgt = root.querySelector('#ic-ask'); if (tgt) tgt.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+        li.addEventListener('click', go);
+        li.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+      } else if (key && key !== 'reset') clickable(li, 'ic-steps', key, 'Show the list for: ' + title.toLowerCase());
+      return li;
+    }));
+  };
+  const drawIcpMath = (d) => {
+    const box = root.querySelector('#ic-math-body');
+    if (!icReady(box, d)) return;
+    const m = icMath(d);
+    const meetT = d.f('meetings').target || 0;
+    const dealsT = d.f('deals').target || 0;
+    const meetNow = d.f('meetings').value || 0;
+    const reach = m.atPace >= m.target ? ['On track', 'cc-ic-ok'] : m.wholeList >= m.target ? ['Behind pace', 'cc-ic-warn'] : ['Out of reach at today’s rate', 'cc-ic-bad'];
+    const row = (title, chip, cells) => {
+      const r = el('div', 'cc-ic-mrow');
+      const top = el('div', 'cc-ic-mtop');
+      top.append(el('h4', null, title));
+      if (chip) top.append(el('span', 'cc-ic-verdict-chip ' + chip[1], chip[0]));
+      const g = el('div', 'cc-ic-mgrid');
+      cells.forEach(([b, s]) => { const c = el('div'); c.append(el('b', null, b), el('span', null, s)); g.append(c); });
+      r.append(top, g);
+      return r;
+    };
+    const meetRate = m.target ? meetT / m.target : null;
+    box.replaceChildren(
+      row('Connections · target ' + intF(m.target), reach, [
+        [intF(d.connected), 'connected today'],
+        ['≈ ' + intF(m.atPace), 'by Dec 18 at the pace since Aug 17 (' + (Math.round(m.perDay * 10) / 10) + ' a day)'],
+        ['≈ ' + intF(m.wholeList), 'if the whole list is requested at ' + icPct(m.rate) + ' acceptance'],
+        [m.needRate == null ? '—' : m.needRate > 1 ? 'Not possible' : icPct(m.needRate), 'acceptance needed from the remaining ' + intF(m.left) + ' executives'],
+        m.rate ? (() => { const need = Math.ceil(Math.max(0, m.target - d.connected) / m.rate); return ['≈ ' + intF(need), 'more requests needed at today’s rate (' + intF(Math.ceil(m.needReqPerDay || 0)) + ' a day); ' + (need > d.never ? 'only ' + intF(d.never) + ' executives have never been asked' : intF(d.never) + ' executives have never been asked')]; })() : ['—', 'requests needed (no acceptances yet)'],
+      ]),
+      row('Meetings · target ' + intF(meetT), meetNow ? null : ['None logged yet', 'cc-ic-bad'], [
+        [intF(meetNow), 'meetings logged with ICP executives'],
+        [icPct(meetRate), 'of connections would have to meet us to hit the target'],
+        ['≈ ' + intF(Math.round(m.wholeList * 0.25)), 'meetings if 1 in 4 of a realistic ' + intF(m.wholeList) + ' connections meets'],
+      ]),
+      row('Deals · target ' + intF(dealsT), null, [
+        [intF(d.f('deals').value || 0), 'open ICP client deals'],
+        [icPct(meetT ? dealsT / meetT : null), 'of meetings must become deals to hit the target'],
+      ]),
+    );
+    dlInsight('ins-ic-math', 'The connection target assumes far more acceptances than the list can give: ' + intF(m.target) + ' needs ' + (m.needRate == null ? '—' : m.needRate > 1 ? 'more people than the list holds' : icPct(m.needRate) + ' acceptance') + ' against ' + icPct(m.rate) + ' so far. Meetings, not connections, are the number to chase now.');
+  };
+  const drawIcpAsks = (d) => {
+    const box = root.querySelector('#ic-ask-list');
+    if (!icReady(box, d)) return;
+    const list = icAskAll ? d.asks : d.asks.slice(0, 10);
+    if (!d.asks.length) { box.replaceChildren(el('li', 'cc-empty', 'Everyone connected has met us. Send new requests to grow this list.')); root.querySelector('#ic-ask-more').replaceChildren(); return; }
+    box.replaceChildren(...list.map((p) => {
+      const li = el('li', 'cc-ic-ask');
+      const who = el('div', 'cc-ic-who');
+      const href = zohoUrl(['Contacts', 'id'], p);
+      const nm = el(href ? 'a' : 'span', 'cc-ic-nm' + (href ? ' cc-zlink' : ''), p.name);
+      if (href) { nm.href = href; nm.target = '_blank'; nm.rel = 'noopener'; nm.title = 'Open in Zoho CRM'; }
+      who.append(nm, el('small', null, p.title), el('small', null, [p.account || 'No company linked', p.industry !== 'Not set' ? p.industry : null].filter(Boolean).join(' · ')));
+      const why = el('div', 'cc-ic-why');
+      p.why.forEach(([w, neg]) => why.append(el('span', neg ? 'cc-ic-neg' : null, w)));
+      who.append(why, el('span', 'cc-ic-score', 'Score ' + p.score));
+      const msg = el('div', 'cc-ic-msg');
+      const text = p.opener + ' ' + IC_ASK;
+      msg.append(el('p', null, text));
+      const copy = el('button', 'cc-go', 'Copy message');
+      copy.type = 'button';
+      copy.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(text); copy.textContent = 'Copied'; } catch (e) { copy.textContent = 'Select the text to copy'; }
+        setTimeout(() => { copy.textContent = 'Copy message'; }, 1800);
+      });
+      msg.append(copy);
+      li.append(who, msg);
+      return li;
+    }));
+    const more = root.querySelector('#ic-ask-more');
+    if (d.asks.length > 10) {
+      const b = el('button', 'cc-go', icAskAll ? 'Show the top 10' : 'Show all ' + intF(d.asks.length));
+      b.type = 'button';
+      b.addEventListener('click', () => { icAskAll = !icAskAll; drawIcpAsks(icData()); });
+      more.replaceChildren(b);
+    } else more.replaceChildren();
+  };
+  const icSegGroups = (d) => {
+    const sent = d.ppl.filter((p) => p.li === 'Connected' || p.li === 'Requested');
+    const grp = (key, order) => {
+      const keys = order || [...new Set(sent.map((p) => p[key]))];
+      return keys.map((k) => {
+        const rows = sent.filter((p) => p[key] === k);
+        const c = rows.filter((p) => p.li === 'Connected').length;
+        return { key: key + '|' + k, label: k, n: rows.length, c, rate: rows.length ? c / rows.length : null };
+      }).filter((r) => r.n);
+    };
+    const ind = grp('group').sort((a, b) => b.n - a.n);
+    return [
+      ['By seniority', grp('tier', IC_TIERS)],
+      ['By Priority', grp('priority_label', ['P1', 'P3', 'P5', 'Not set'])],
+      ['By industry group', ind],
+      ['By company size', grp('size_label', IC_SIZES)],
+    ];
+  };
+  const drawIcpSeg = (d) => {
+    const box = root.querySelector('#ic-seg-body');
+    if (!icReady(box, d)) return;
+    const overall = d.connected + d.pending ? d.connected / (d.connected + d.pending) : 0;
+    const groups = icSegGroups(d);
+    const max = Math.max(0.05, ...groups.flatMap(([, rows]) => rows.map((r) => r.rate || 0))) * 1.1;
+    box.replaceChildren(...groups.map(([title, rows]) => {
+      const g = el('div', 'cc-ic-seg');
+      g.append(el('h4', null, title));
+      rows.forEach((r) => {
+        const row = el('div', 'cc-ic-srow' + (r.n < 10 ? ' cc-ic-thin' : ''));
+        const tr = el('div', 'cc-ic-track');
+        const fill = el('span', 'cc-ic-fill'); fill.style.width = ((r.rate || 0) / max * 100) + '%';
+        const avg = el('span', 'cc-ic-avg'); avg.style.left = (overall / max * 100) + '%'; avg.title = 'Campaign average ' + pctF(overall);
+        tr.append(fill, avg);
+        const b = el('b', null, icPct(r.rate) + ' ');
+        b.append(el('small', null, intF(r.c) + '/' + intF(r.n)));
+        row.append(el('span', null, r.label + (r.n < 10 ? ' (small sample)' : '')), tr, b);
+        clickable(row, 'ic-seg', r.key, r.label + ': ' + icPct(r.rate) + ' accepted');
+        dlTip(row, '#ic-seg', title.replace('By ', '').replace(/^./, (c) => c.toUpperCase()) + ': ' + r.label, [[null, 'Accepted', intF(r.c)], [null, 'Requests sent', intF(r.n)], [null, 'Campaign average', pctF(overall)]]);
+        g.append(row);
+      });
+      return g;
+    }));
+    const tiers = groups[0][1];
+    const cs = tiers.find((r) => r.label === 'C-suite / Founder');
+    const best = groups.flatMap(([, rows]) => rows).filter((r) => r.n >= 10).sort((a, b) => b.rate - a.rate)[0];
+    dlInsight('ins-ic-seg', 'Campaign average ' + pctF(overall) + ' (the black line).' + (cs ? ' C-suite accept ' + icPct(cs.rate) + ' of the time,' : '') + (best ? ' while ' + best.label + ' is highest at ' + icPct(best.rate) + ' (' + best.c + ' of ' + best.n + ').' : '') + ' Segments under 10 requests are faded.');
+  };
+  const drawIcpFit = (d) => {
+    const bar = root.querySelector('#ic-fit-bar');
+    if (!icReady(bar, d)) return;
+    const order = ['icp', 'partner', 'outside', 'unknown'];
+    const counts = order.map((k) => [k, d.accounts.filter((a) => a.fit === k)]);
+    const total = Math.max(1, d.accounts.length);
+    bar.replaceChildren(...counts.filter(([, l]) => l.length).map(([k, l]) => {
+      const seg = el('span', 'cc-seg');
+      seg.style.flex = String(l.length);
+      seg.style.background = IC_FIT[k][1];
+      clickable(seg, 'ic-fit', 'fit|' + k, IC_FIT[k][0] + ': ' + l.length + ' accounts');
+      dlTip(seg, '#ic-fit', IC_FIT[k][0], [[IC_FIT[k][1], 'Accounts', intF(l.length)], [null, 'Share', pctF(l.length / total)]]);
+      return seg;
+    }));
+    const listBox = root.querySelector('#ic-fit-list');
+    const rows = counts.map(([k, l]) => {
+      const r = el('div', 'cc-ic-fitrow');
+      const sw = el('i', 'cc-sw'); sw.style.background = IC_FIT[k][1];
+      const lab = el('span', null, IC_FIT[k][0] + ' ');
+      lab.append(el('small', null, '· ' + intF(l.reduce((n, a) => n + a.connected, 0)) + ' connected'));
+      r.append(sw, lab, el('b', null, intF(l.length) + ' (' + pctF(l.length / total) + ')'));
+      if (l.length) clickable(r, 'ic-fit', 'fit|' + k, 'Show ' + IC_FIT[k][0].toLowerCase());
+      return r;
+    });
+    const outsideInd = new Map();
+    d.accounts.filter((a) => a.fit === 'outside' || a.fit === 'partner').forEach((a) => outsideInd.set(a.industry, (outsideInd.get(a.industry) || 0) + 1));
+    const topOut = [...outsideInd.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+    const head = el('div', 'cc-subhead', 'Largest off-ICP industries');
+    const outRows = topOut.map(([ind, n]) => {
+      const r = el('div', 'cc-ic-fitrow');
+      r.append(el('i'), el('span', null, ind), el('b', null, intF(n)));
+      clickable(r, 'ic-fit', 'ind|' + ind, 'Show ' + ind + ' accounts');
+      return r;
+    });
+    listBox.replaceChildren(...rows, ...(topOut.length ? [head, ...outRows] : []));
+    const icp = counts[0][1].length;
+    dlInsight('ins-ic-fit', 'Only ' + intF(icp) + ' of ' + intF(d.accounts.length) + ' target accounts (' + pctF(icp / total) + ') are in an ICP industry. ' + intF(counts[1][1].length) + ' are consulting or IT firms and ' + intF(counts[3][1].length) + ' have no industry set.');
+  };
+  const IC_FLAGS = { warm: ['Warm', 'cc-ic-ok', 'Two or more executives connected'], dead: ['No response', 'cc-ic-bad', 'Five or more requests, nobody accepted'], overloaded: ['Overloaded', 'cc-ic-warn', 'More than ' + IC_MAX_PER_ACCOUNT + ' contacts'], thin: ['Thin', 'cc-ic-warn', 'Fewer than 5 contacts'], untouched: ['Untouched', null, 'No request sent yet'] };
+  const drawIcpCov = (d) => {
+    const table = root.querySelector('#ic-cov-table');
+    if (!table) return;
+    const chips = root.querySelector('#ic-cov-chips');
+    if (!icReady(table.querySelector('tbody'), d)) return;
+    const opts = [['all', 'All accounts', d.accounts.length], ...Object.entries(IC_FLAGS).map(([k, [lab]]) => [k, lab, d.accounts.filter((a) => a.flags.includes(k)).length])];
+    chips.replaceChildren(...opts.filter(([k, , n]) => k === 'all' || n || icCov === k).map(([k, lab, n]) => {
+      const b = el('button', 'cc-chip', lab + ' (' + n + ')');
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(icCov === k));
+      b.addEventListener('click', () => { icCov = k; icCovAll = false; drawIcpCov(icData()); });
+      return b;
+    }));
+    const rows = d.accounts.filter((a) => icCov === 'all' || a.flags.includes(icCov))
+      .sort((a, b) => b.connected - a.connected || b.sent - a.sent || b.contacts - a.contacts || String(a.account).localeCompare(String(b.account)));
+    const shown = icCovAll ? rows : rows.slice(0, 25);
+    const cols = [['account', 'Account'], ['industry', 'Industry', true], ['fit_label', 'ICP fit', true], ['size_label', 'Size', true], ['contacts', 'Contacts', false, true], ['sent', 'Requests sent', true, true], ['connected', 'Connected', false, true], ['accept', 'Accepted', true, true], ['flags', 'Flags']];
+    const hr = el('tr');
+    cols.forEach(([, label, narrow, num]) => hr.append(el('th', [num ? 'cc-num' : '', narrow ? 'cc-hide-narrow' : ''].filter(Boolean).join(' ') || null, label)));
+    table.querySelector('thead').replaceChildren(hr);
+    table.querySelector('tbody').replaceChildren(...shown.map((a) => {
+      const tr = el('tr');
+      tr.dataset.key = a.id;
+      cols.forEach(([f, , narrow, num]) => {
+        const td = el('td', [num ? 'cc-num' : '', narrow ? 'cc-hide-narrow' : ''].filter(Boolean).join(' ') || null);
+        if (f === 'account') {
+          const href = zohoUrl(['Accounts', 'id'], a);
+          const n = el(href ? 'a' : 'span', href ? 'cc-zlink' : null, a.account);
+          if (href) { n.href = href; n.target = '_blank'; n.rel = 'noopener'; n.title = 'Open in Zoho CRM'; }
+          td.append(n);
+        } else if (f === 'flags') {
+          a.flags.forEach((k) => { const s = el('span', 'cc-ic-flag' + (IC_FLAGS[k][1] ? ' ' + IC_FLAGS[k][1] : ''), IC_FLAGS[k][0]); s.title = IC_FLAGS[k][2]; td.append(s); });
+          if (!a.flags.length) td.textContent = '—';
+        } else if (f === 'accept') td.textContent = a.accept == null ? '—' : pctF(a.accept);
+        else td.textContent = fmt(a[f], num ? 'int' : null);
+        tr.append(td);
+      });
+      return tr;
+    }));
+    const more = root.querySelector('#ic-cov-more');
+    if (rows.length > 25) {
+      const b = el('button', 'cc-go', icCovAll ? 'Show the first 25' : 'Show all ' + intF(rows.length));
+      b.type = 'button';
+      b.addEventListener('click', () => { icCovAll = !icCovAll; drawIcpCov(icData()); });
+      more.replaceChildren(b);
+    } else more.replaceChildren();
+  };
+  const drawIcp = () => {
+    const d = icData();
+    drawIcpVerdict(d);
+    drawIcpSteps(d);
+    drawIcpMath(d);
+    drawIcpAsks(d);
+    drawIcpSeg(d);
+    drawIcpFit(d);
+    drawIcpCov(d);
+  };
+  Object.assign(DRILLS, {
+    'ic-steps': { card: '#ic-steps', build: (k) => {
+      const d = icData(); if (!d) return null;
+      if (k === 'queue') return icPeopleSpec('Priority 1 and 3 executives to request next', d.queue, 'Capped at ' + IC_MAX_PER_ACCOUNT + ' people per company, Priority 1 and the most senior first. Select a name to open it in Zoho CRM.');
+      if (k === 'off') return icAccSpec('Accounts outside the ICP industries', d.accounts.filter((a) => a.fit === 'outside' || a.fit === 'partner').sort((a, b) => String(a.industry).localeCompare(String(b.industry))));
+      if (k === 'noind') return icAccSpec('Accounts with no industry set', d.accounts.filter((a) => a.fit === 'unknown'), 'Open each account in Zoho and fill in Industry.');
+      if (k === 'over') return icAccSpec('Accounts with more than ' + IC_MAX_PER_ACCOUNT + ' contacts', d.accounts.filter((a) => a.flags.includes('overloaded')).sort((a, b) => b.contacts - a.contacts));
+      return null;
+    } },
+    'ic-seg': { card: '#ic-seg', build: (v) => {
+      const d = icData(); if (!d) return null;
+      const [key, ...rest] = String(v).split('|');
+      const val = rest.join('|');
+      const rows = d.ppl.filter((p) => (p.li === 'Connected' || p.li === 'Requested') && p[key] === val).sort((a, b) => (a.li === b.li ? String(a.name).localeCompare(String(b.name)) : a.li === 'Connected' ? -1 : 1));
+      return icPeopleSpec(val + ' · requests sent', rows, 'Connected first, then pending. Select a name to open it in Zoho CRM.');
+    } },
+    'ic-fit': { card: '#ic-fit', build: (v) => {
+      const d = icData(); if (!d) return null;
+      const [what, ...rest] = String(v).split('|');
+      const val = rest.join('|');
+      if (what === 'fit') return icAccSpec(IC_FIT[val][0], d.accounts.filter((a) => a.fit === val).sort((a, b) => b.connected - a.connected || String(a.account).localeCompare(String(b.account))));
+      return icAccSpec(val, d.accounts.filter((a) => a.industry === val));
+    } },
+  });
+
   function redrawAll() {
     fillMarks();
     drawRings();
@@ -4387,6 +4947,7 @@ dash.calc('attention', {
     drawCourier();
     drawBacklog();
     drawDeals();
+    drawIcp();
     drawSized();
     Object.keys(DRILLS).forEach(drawDrill);
     drawTables();
