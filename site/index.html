@@ -340,6 +340,11 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
 .cc-bcard-name:hover, .cc-bcard-name:focus-visible { text-decoration: underline; }
 .cc-bcard-acc { color: var(--color-fg-muted); font-size: 12px; overflow-wrap: anywhere; }
 .cc-bcard-meta, .cc-bcard-foot { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--color-fg-muted); }
+.cc-bcard-person { font-size: 12px; overflow-wrap: anywhere; }
+.cc-bcard-plabel { color: var(--color-fg-muted); }
+.cc-bcard-pname { color: var(--color-fg); text-decoration: underline; text-decoration-color: var(--color-border-line); text-underline-offset: 3px; }
+.cc-bcard-pname:hover, .cc-bcard-pname:focus-visible { text-decoration-color: currentColor; }
+.cc-bcard-none { color: var(--color-fg-muted); font-style: italic; }
 .cc-bcard-kind { display: inline-flex; align-items: center; gap: 5px; }
 .cc-bcard-amt { color: var(--color-fg); font-variant-numeric: tabular-nums; font-weight: var(--cds-font-weight-medium); }
 .cc-bcard-stale { color: var(--color-warn); font-weight: var(--cds-font-weight-medium); }
@@ -4094,8 +4099,8 @@ dash.calc('attention', {
   };
   const dlRows = () => dlAll().filter((d) => dlKind === 'All' || d.kind === dlKind);
   const dlSum = (list) => list.reduce((n, d) => n + (d.amount > 0 ? d.amount : 0), 0);
-  const DL_COLS = [['deal', 'Deal', null, false, false, ['Potentials', 'id']], ['account', 'Account', null, true, false, ['Accounts', 'account_id']], ['kind_label', 'Deal Type', null, true], ['stage_label', 'Stage'], ['amount_known', 'Amount', 'money', false, true], ['age', 'Days since update', 'int', true, true]];
-  const DL_COLS_LOST = [...DL_COLS.slice(0, 4), ['reason', 'Loss reason'], ['amount_known', 'Amount', 'money', false, true]];
+  const DL_COLS = [['deal', 'Deal', null, false, false, ['Potentials', 'id']], ['account', 'Account', null, true, false, ['Accounts', 'account_id']], ['contact', 'Contact', null, false, false, ['Contacts', 'contact_id']], ['kind_label', 'Deal Type', null, true], ['stage_label', 'Stage'], ['amount_known', 'Amount', 'money', false, true], ['age', 'Days since update', 'int', true, true]];
+  const DL_COLS_LOST = [...DL_COLS.slice(0, 5), ['reason', 'Loss reason'], ['amount_known', 'Amount', 'money', false, true]];
   const dlScope = () => (dlKind === 'All' ? '' : ' · ' + DL_KIND_NAME[dlKind]);
   const dlSpec = (title, keep, opts = {}) => ({
     title: 'Deals' + dlScope() + ' · ' + title, swatch: opts.swatch || null, source: 'deals_tagged', rowKey: 'id',
@@ -4125,6 +4130,14 @@ dash.calc('attention', {
     if (href) { name.href = href; name.target = '_blank'; name.rel = 'noopener'; name.title = 'Open in Zoho CRM'; }
     li.append(name);
     if (x.account) li.append(el('span', 'cc-bcard-acc', x.account));
+    const person = el('span', 'cc-bcard-person');
+    const pHref = x.contact ? zohoUrl(['Contacts', 'contact_id'], x) : null;
+    if (x.contact) {
+      const p = el(pHref ? 'a' : 'span', 'cc-bcard-pname', x.contact);
+      if (pHref) { p.href = pHref; p.target = '_blank'; p.rel = 'noopener'; p.title = 'Open contact in Zoho CRM'; }
+      person.append(el('span', 'cc-bcard-plabel', 'Contact '), p);
+    } else person.append(el('span', 'cc-bcard-none', 'No contact linked'));
+    li.append(person);
     const meta = el('div', 'cc-bcard-meta');
     const kind = el('span', 'cc-bcard-kind');
     const dot = el('i', 'cc-dot');
