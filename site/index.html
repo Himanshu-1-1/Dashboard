@@ -381,12 +381,6 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
 .cc-thsel { font: inherit; font-weight: inherit; color: inherit; background: var(--color-bg); border: 1px solid var(--color-border-line); border-radius: 6px; padding: 2px 4px; cursor: pointer; max-width: 100%; }
 .cc-thsel:hover { border-color: var(--color-fg-muted); }
 .cc-thsel:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 1px; }
-.cc-ic-verdict { gap: var(--cds-gap-md); }
-.cc-ic-headline { margin: 0; font-family: var(--font-anthropic-serif); font-size: clamp(24px, 3.2vw, 34px); line-height: 1.2; max-width: 30ch; letter-spacing: -0.01em; }
-.cc-ic-facts { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--cds-gap-sm) var(--cds-gap-xl); grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); }
-.cc-ic-facts li { display: grid; gap: 2px; padding-left: var(--cds-pad-sm); border-left: 2px solid var(--color-border-line); }
-.cc-ic-facts b { font-size: 20px; font-variant-numeric: tabular-nums; font-weight: var(--cds-font-weight-medium); }
-.cc-ic-facts span { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); line-height: 1.4; }
 .cc-ic-steps { margin: 0; padding: 0; list-style: none; counter-reset: icstep; display: grid; }
 .cc-ic-step { counter-increment: icstep; display: grid; grid-template-columns: 1.75rem minmax(0, 1fr); gap: 2px var(--cds-gap-sm); padding: var(--cds-pad-sm) var(--cds-pad-xs); border-bottom: 1px solid var(--color-border-line); }
 .cc-ic-step:last-child { border-bottom: 0; }
@@ -826,10 +820,6 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
     <article class="cc-card cc-backlog" id="backlog-icp">
       <div class="cc-card-head"><h3>Backlog</h3><p>Where ICP Prospecting is behind, counted live from Zoho. Red means lapsed or overdue, amber means waiting on us. Select any item to list the records behind it; names open the record in Zoho CRM.</p></div>
       <ul class="cc-bl dash-skeleton" data-source="backlog" data-campaign="icp"></ul>
-    </article>
-    <article class="cc-card cc-ic-verdict" id="ic-verdict">
-      <p class="cc-ic-headline dash-skeleton" id="ic-headline" data-source="icp_backlog_people"></p>
-      <ul class="cc-ic-facts" id="ic-facts"></ul>
     </article>
     <div class="cc-grid cc-ic-pair">
       <article class="cc-card" id="ic-steps">
@@ -4648,21 +4638,6 @@ dash.calc('attention', {
     const needReqPerDay = rate && needPerDay != null ? needPerDay / rate : null;
     return { answered, rate, daysLeft, elapsed, target, left, wholeList, needRate, perDay, atPace, needPerDay, needReqPerDay };
   };
-  const drawIcpVerdict = (d) => {
-    const h = root.querySelector('#ic-headline');
-    if (!icReady(h, d)) return;
-    const m = icMath(d);
-    h.textContent = d.connected
-      ? (d.met ? intF(d.connected) + ' executives accepted; ' + intF(d.met) + ' have met us so far.' : intF(d.connected) + ' executives accepted. None has a meeting yet.')
-      : 'No executive has accepted a request yet.';
-    const facts = [
-      [icPct(m.rate), 'of LinkedIn requests sent so far have been accepted (' + intF(d.connected) + ' of ' + intF(m.answered) + '; the rest are still pending)'],
-      [intF(d.never), 'of ' + intF(d.total) + ' executives in the campaign have never been sent a request'],
-      ['≈ ' + intF(m.wholeList), 'connections if every remaining executive is requested at today’s rate, against a target of ' + intF(m.target)],
-      [intF(d.asks.length), 'connected executives ready for a meeting ask right now'],
-    ];
-    root.querySelector('#ic-facts').replaceChildren(...facts.map(([b, s]) => { const li = el('li'); li.append(el('b', null, b), el('span', null, s)); return li; }));
-  };
   const drawIcpSteps = (d) => {
     const box = root.querySelector('#ic-steps-list');
     if (!icReady(box, d)) return;
@@ -4902,7 +4877,6 @@ dash.calc('attention', {
   };
   const drawIcp = () => {
     const d = icData();
-    drawIcpVerdict(d);
     drawIcpSteps(d);
     drawIcpMath(d);
     drawIcpAsks(d);
