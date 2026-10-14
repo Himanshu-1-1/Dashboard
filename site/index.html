@@ -320,6 +320,59 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
 .cc-tone-clear .cc-bl-n { color: var(--color-ok); font-size: 15px; font-family: var(--font-anthropic-sans); font-weight: var(--cds-font-weight-medium); }
 .cc-bl-label { font-weight: var(--cds-font-weight-medium); line-height: 1.3; }
 .cc-bl-hint { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); line-height: 1.35; }
+.cc-dkpis { display: grid; gap: var(--cds-gap-sm); grid-template-columns: repeat(auto-fit, minmax(min(100%, 11.5rem), 1fr)); }
+.cc-dkpi { display: grid; gap: 2px; align-content: start; padding: var(--cds-pad-sm) var(--cds-pad-md); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-panel); }
+.cc-dkpi-v { font-family: var(--font-anthropic-serif); font-size: 28px; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.cc-dkpi-l { font-weight: var(--cds-font-weight-medium); }
+.cc-dkpi-s { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.cc-board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(10.5rem, 1fr); gap: var(--cds-gap-sm); overflow-x: auto; padding-bottom: 6px; }
+.cc-bcol { display: grid; grid-template-rows: auto 1fr; gap: var(--cds-gap-sm); align-content: start; min-width: 0; padding: var(--cds-pad-sm); border-radius: var(--cds-radius); background: color-mix(in oklab, var(--color-fg) 4%, var(--color-bg)); }
+.cc-bcol-split { margin-left: var(--cds-gap-md); }
+.cc-bcol-head { display: grid; gap: 2px; }
+.cc-bcol-top { display: flex; justify-content: space-between; align-items: baseline; gap: var(--cds-gap-sm); }
+.cc-bcol-top h4 { margin: 0; font-size: var(--cds-font-size-body); font-weight: var(--cds-font-weight-medium); }
+.cc-bcol-n { font-variant-numeric: tabular-nums; font-weight: var(--cds-font-weight-medium); }
+.cc-bcol-sub { margin: 0; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.cc-bgroup { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); text-transform: uppercase; letter-spacing: .04em; }
+.cc-bcards { list-style: none; margin: 0; padding: 0 2px 0 0; display: grid; gap: 6px; align-content: start; max-height: 34rem; overflow-y: auto; }
+.cc-bcard { display: grid; gap: 4px; padding: 8px 10px; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-panel); font-size: 13px; line-height: 1.35; }
+.cc-bcard-name { color: var(--color-fg); font-weight: var(--cds-font-weight-medium); text-decoration: none; overflow-wrap: anywhere; }
+.cc-bcard-name:hover, .cc-bcard-name:focus-visible { text-decoration: underline; }
+.cc-bcard-acc { color: var(--color-fg-muted); font-size: 12px; overflow-wrap: anywhere; }
+.cc-bcard-meta, .cc-bcard-foot { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--color-fg-muted); }
+.cc-bcard-kind { display: inline-flex; align-items: center; gap: 5px; }
+.cc-bcard-amt { color: var(--color-fg); font-variant-numeric: tabular-nums; font-weight: var(--cds-font-weight-medium); }
+.cc-bcard-stale { color: var(--color-warn); font-weight: var(--cds-font-weight-medium); }
+.cc-bcard-reason { border: 1px solid var(--color-border-line); border-radius: 999px; padding: 1px 8px; color: var(--color-fg); }
+.cc-bcard-next { margin: 0; font-size: 12px; color: var(--color-fg-muted); overflow-wrap: anywhere; }
+.cc-bempty { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); padding: 6px 2px; }
+.cc-subhead { margin: var(--cds-gap-sm) 0 0; font-size: var(--cds-font-size-caption); font-weight: var(--cds-font-weight-medium); color: var(--color-fg-muted); }
+.cc-srows { display: grid; gap: 10px; }
+.cc-srow { display: grid; grid-template-columns: minmax(6rem, 9rem) minmax(0, 1fr) 2.75rem; align-items: center; gap: var(--cds-gap-sm); font-size: var(--cds-font-size-caption); }
+.cc-srow-l { display: grid; gap: 1px; }
+.cc-srow-l small { color: var(--color-fg-muted); font-size: 11px; }
+.cc-srow-t { display: flex; gap: 2px; height: 18px; align-items: stretch; }
+.cc-seg { height: 100%; min-width: 4px; border-radius: 3px; }
+.cc-srow-t .cc-seg:last-child { border-radius: 3px 4px 4px 3px; }
+.cc-seg.cc-clickable:hover { filter: brightness(1.08); }
+.cc-seg.cc-picked { box-shadow: 0 0 0 2px var(--color-fg); }
+.cc-srow-n { text-align: right; font-variant-numeric: tabular-nums; font-weight: var(--cds-font-weight-medium); }
+.cc-dl-sum { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.cc-vbars { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; align-items: end; min-height: 210px; }
+.cc-vcol { display: grid; grid-template-rows: auto 160px auto; gap: 4px; text-align: center; font-size: 12px; min-width: 0; }
+.cc-vcol-n { font-variant-numeric: tabular-nums; font-weight: var(--cds-font-weight-medium); align-self: end; }
+.cc-vstack { display: flex; flex-direction: column-reverse; gap: 2px; justify-content: flex-start; align-self: stretch; }
+.cc-vstack .cc-seg { width: 100%; min-height: 3px; height: auto; border-radius: 3px; }
+.cc-vstack .cc-seg:last-child { border-radius: 4px 4px 3px 3px; }
+.cc-vcol-l { color: var(--color-fg-muted); }
+.cc-dq { list-style: none; margin: 0; padding: 0; display: grid; }
+.cc-dq-item { display: grid; grid-template-columns: 3.25rem minmax(0, 1fr); gap: 2px var(--cds-gap-sm); align-items: baseline; padding: var(--cds-pad-xs) var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); }
+.cc-dq-item:last-child { border-bottom: 0; }
+.cc-dq-n { grid-row: span 2; font-family: var(--font-anthropic-serif); font-size: 22px; text-align: right; font-variant-numeric: tabular-nums; }
+.cc-dq-l { font-weight: var(--cds-font-weight-medium); }
+.cc-dq-h { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.cc-dq-item.cc-dq-clear .cc-dq-n { color: var(--color-ok); font-size: 15px; font-family: inherit; font-weight: var(--cds-font-weight-medium); }
+@media (max-width: 640px) { .cc-srow { grid-template-columns: 5.5rem minmax(0, 1fr) 2.25rem; } .cc-vbars { gap: 4px; } .cc-vcol-l { font-size: 11px; } }
 .cc-zlink { color: inherit; text-decoration: underline; text-decoration-color: var(--color-border-line); text-underline-offset: 3px; }
 .cc-zlink:hover, .cc-zlink:focus-visible { text-decoration-color: currentColor; }
 .cc-blall { display: grid; gap: var(--cds-gap-md) var(--cds-gap-lg); grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); align-items: start; }
@@ -440,6 +493,7 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
     <button type="button" class="cc-tab" role="tab" id="tab-fn" data-tab="fn" aria-controls="fn"><i class="cc-dot" data-hue="fn"></i>Founder Network</button>
     <button type="button" class="cc-tab" role="tab" id="tab-mc" data-tab="mc" aria-controls="mc"><i class="cc-dot" data-hue="mc"></i>Medical Courier</button>
     <button type="button" class="cc-tab" role="tab" id="tab-bb" data-tab="bb" aria-controls="bb"><i class="cc-dot" data-hue="bb"></i>Box Byte</button>
+    <button type="button" class="cc-tab" role="tab" id="tab-deals" data-tab="deals" aria-controls="deals">Deals</button>
     <button type="button" class="cc-tab" role="tab" id="tab-pipeline" data-tab="pipeline" aria-controls="pipeline">Pipeline</button>
   </nav>
 
@@ -951,6 +1005,58 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
       </div>
       <p class="cc-empty" hidden>No messages match.</p>
     </article>
+  </section>
+
+  <section class="cc-page" id="deals" role="tabpanel" aria-labelledby="tab-deals" hidden>
+    <div class="cc-tools" style="justify-content: space-between">
+      <p class="cc-intro">Every deal in Zoho as a board, with the numbers behind it. Amounts appear only where the deal has one in Zoho. Ages count days since the deal was last updated, in Central time.</p>
+      <div class="cc-tools" role="group" aria-label="Deal Type">
+        <button type="button" class="cc-chip" data-dl-kind="All" aria-pressed="true">All</button>
+        <button type="button" class="cc-chip" data-dl-kind="Client" aria-pressed="false">Client</button>
+        <button type="button" class="cc-chip" data-dl-kind="Partnership" aria-pressed="false">Partnership</button>
+        <button type="button" class="cc-chip" data-dl-kind="Platform provider" aria-pressed="false">Platform</button>
+      </div>
+    </div>
+    <article class="cc-card" id="dl-kpis">
+      <div class="cc-card-head"><h3>Deals at a glance</h3><p>Select a number to list the deals behind it.</p></div>
+      <div class="cc-dkpis dash-skeleton" id="dl-kpi-row" data-source="deals_tagged"></div>
+    </article>
+    <article class="cc-card" id="dl-board-card">
+      <div class="cc-card-head"><h3>Deals board</h3><p>Open stages from closest to signing, then won and lost. Each column shows its deals, the known value and how many have an amount. Select a deal to open it in Zoho.</p></div>
+      <div class="cc-board dash-skeleton" id="dl-board" data-source="deals_tagged"></div>
+      <p class="cc-insight" id="ins-dl-board"></p>
+    </article>
+    <div class="cc-grid">
+      <article class="cc-card" id="dl-stage">
+        <div class="cc-card-head"><h3>Open stages</h3><p>Each open stage by Deal Type, then by days since its deals were last updated. Select a segment to list its deals.</p></div>
+        <h4 class="cc-subhead">By Deal Type</h4>
+        <div class="cc-legend" id="leg-dl-kind"></div>
+        <div class="cc-srows dash-skeleton" id="dl-stage-kind" data-source="deals_tagged"></div>
+        <h4 class="cc-subhead">By days since last update</h4>
+        <div class="cc-legend" id="leg-dl-age"></div>
+        <div class="cc-srows dash-skeleton" id="dl-stage-age" data-source="deals_tagged"></div>
+        <p class="cc-insight" id="ins-dl-stage"></p>
+      </article>
+      <article class="cc-card" id="dl-loss">
+        <div class="cc-card-head"><h3>Why deals were lost</h3><p>Closed Lost and Closed Lost to Competition by the reason recorded in Zoho. Select a reason to list its deals.</p></div>
+        <p class="cc-dl-sum" id="dl-loss-sum"></p>
+        <div class="cc-srows dash-skeleton" id="dl-loss-rows" data-source="deals_tagged"></div>
+        <p class="cc-insight" id="ins-dl-loss"></p>
+      </article>
+    </div>
+    <div class="cc-grid">
+      <article class="cc-card" id="dl-trend">
+        <div class="cc-card-head"><h3>Deals by month created</h3><p>Deals created each month, split by where they are now: still open, won or lost. Select a segment to list its deals.</p></div>
+        <div class="cc-legend" id="leg-dl-trend"></div>
+        <div class="cc-vbars dash-skeleton" id="dl-trend-bars" data-source="deals_tagged"></div>
+        <p class="cc-insight" id="ins-dl-trend"></p>
+      </article>
+      <article class="cc-card" id="dl-dq">
+        <div class="cc-card-head"><h3>Data quality</h3><p>Gaps in Zoho that limit what this page can measure. Select an item to list the deals to fix.</p></div>
+        <ul class="cc-dq dash-skeleton" id="dl-dq-list" data-source="deals_tagged"></ul>
+        <p class="cc-insight" id="ins-dl-dq"></p>
+      </article>
+    </div>
   </section>
 
   <section class="cc-page" id="pipeline" role="tabpanel" aria-labelledby="tab-pipeline" hidden>
@@ -1509,6 +1615,8 @@ dash.calc('deals_tagged', {
         account_id: d.Account_Name_id ?? null, referred: d.Lead_Source === 'External Referral',
         next_action: kind === 'Partnership' ? (nextFor[d.Stage] || '') : '',
         created: d.Created_Time, updated: d.Modified_Time,
+        loss_reason: d.Reason_For_Loss__s || null, next_step: d.Next_Step || null, priority: d.Priority || null,
+        last_activity: d.Last_Activity_Time || null, closing: d.Completion_Date || null,
       };
     });
   },
@@ -3915,6 +4023,312 @@ dash.calc('attention', {
     clickable(g, 'ov-' + f.dataset.campaign, f.dataset.step, 'Show details');
   });
 
+  /* Deals tab */
+  const DL_STALE = 14;
+  const DL_KIND_ORDER = ['Client', 'Partnership', 'Platform provider', 'No Deal Type'];
+  const DL_KIND_COLOR = { Client: dash.colors[4], Partnership: dash.colors[3], 'Platform provider': dash.colors[7], 'No Deal Type': 'var(--cds-chart-muted)' };
+  const DL_KIND_NAME = { Client: 'Client', Partnership: 'Partnership', 'Platform provider': 'Platform', 'No Deal Type': 'No Deal Type' };
+  const DL_OPEN = ['Proposals', 'Discovery', 'Hold', 'Identify'];
+  const DL_CLOSED = [['Closed', 'Closed Won'], ['Closed Lost', 'Closed Lost'], ['Closed Lost to Competition', 'Lost to Competition']];
+  const DL_AGES = [
+    ['lt14', 'Under 14 days', 'color-mix(in oklab, var(--color-fg) 16%, var(--color-panel))'],
+    ['14-30', '14–30 days', 'color-mix(in oklab, var(--color-fg) 36%, var(--color-panel))'],
+    ['31-60', '31–60 days', 'color-mix(in oklab, var(--color-fg) 58%, var(--color-panel))'],
+    ['gt60', 'Over 60 days', 'color-mix(in oklab, var(--color-fg) 82%, var(--color-panel))'],
+  ];
+  const DL_OUTCOMES = [
+    ['open', 'Still open', 'color-mix(in oklab, var(--color-fg) 22%, var(--color-panel))'],
+    ['won', 'Won', 'var(--color-ok)'],
+    ['lost', 'Lost', 'color-mix(in oklab, var(--color-fg) 64%, var(--color-panel))'],
+  ];
+  const DL_KEYS = ['dl-kpi', 'dl-stage', 'dl-loss', 'dl-trend', 'dl-dq'];
+  const dlMonthF = d3.utcFormat('%b');
+  const dlMonthLongF = d3.utcFormat('%B %Y');
+  let dlKind = 'All';
+  const dlToday = () => parseDay(todayCT).getTime();
+  const dlBucket = (age) => (age == null ? null : age < DL_STALE ? 'lt14' : age <= 30 ? '14-30' : age <= 60 ? '31-60' : 'gt60');
+  const dlOutcome = (d) => (d.stage === 'Closed' ? 'won' : LOST.includes(d.stage) ? 'lost' : 'open');
+  const dlAll = () => {
+    const t0 = dlToday();
+    return (rowsOf('deals_tagged') || []).map((d) => {
+      const age = d.updated ? Math.max(0, Math.round((t0 - parseDay(d.updated).getTime()) / 864e5)) : null;
+      return {
+        ...d, age, kind_label: DL_KIND_NAME[d.kind] || d.kind, stage_label: d.stage === 'Closed' ? 'Closed Won' : d.stage,
+        amount_known: d.amount > 0 ? d.amount : null, reason: LOST.includes(d.stage) ? (d.loss_reason || 'Not recorded') : null,
+        month: d.created ? String(d.created).slice(0, 7) : null,
+      };
+    });
+  };
+  const dlRows = () => dlAll().filter((d) => dlKind === 'All' || d.kind === dlKind);
+  const dlSum = (list) => list.reduce((n, d) => n + (d.amount > 0 ? d.amount : 0), 0);
+  const DL_COLS = [['deal', 'Deal', null, false, false, ['Potentials', 'id']], ['account', 'Account', null, true, false, ['Accounts', 'account_id']], ['kind_label', 'Deal Type', null, true], ['stage_label', 'Stage'], ['amount_known', 'Amount', 'money', false, true], ['age', 'Days since update', 'int', true, true]];
+  const DL_COLS_LOST = [...DL_COLS.slice(0, 4), ['reason', 'Loss reason'], ['amount_known', 'Amount', 'money', false, true]];
+  const dlScope = () => (dlKind === 'All' ? '' : ' · ' + DL_KIND_NAME[dlKind]);
+  const dlSpec = (title, keep, opts = {}) => ({
+    title: 'Deals' + dlScope() + ' · ' + title, swatch: opts.swatch || null, source: 'deals_tagged', rowKey: 'id',
+    cols: opts.lost ? DL_COLS_LOST : DL_COLS, note: opts.note || 'Select a deal, account or contact to open it in Zoho CRM.', empty: 'No deals match.',
+    rows: dlRows().filter(keep).sort(opts.sort || ((a, b) => (b.age ?? -1) - (a.age ?? -1) || String(a.deal).localeCompare(String(b.deal)))),
+  });
+  const dlReady = (box) => {
+    if (!box || status('deals_tagged') === 'loading') return false;
+    box.classList.remove('dash-skeleton');
+    if (!rowsOf('deals_tagged')) { box.replaceChildren(failNode()); return false; }
+    return true;
+  };
+  const dlTip = (node, cardSel, head, rows) => {
+    node.addEventListener('mousemove', (e) => showTip(root.querySelector(cardSel), e.clientX, e.clientY, head, rows));
+    node.addEventListener('mouseleave', () => hideTip(root.querySelector(cardSel)));
+  };
+  const dlLegend = (id, items) => {
+    const box = root.querySelector('#' + id);
+    if (!box) return;
+    box.replaceChildren(...items.map(([color, label]) => { const s = el('span'); const sw = el('i', 'cc-sw'); sw.style.background = color; s.append(sw, document.createTextNode(label)); return s; }));
+  };
+  const dlInsight = (id, text) => { const p = root.querySelector('#' + id); if (p) p.textContent = text; };
+  const dlCard = (x) => {
+    const li = el('li', 'cc-bcard');
+    const href = zohoUrl(['Potentials', 'id'], x);
+    const name = el(href ? 'a' : 'span', 'cc-bcard-name', x.deal || 'Untitled deal');
+    if (href) { name.href = href; name.target = '_blank'; name.rel = 'noopener'; name.title = 'Open in Zoho CRM'; }
+    li.append(name);
+    if (x.account) li.append(el('span', 'cc-bcard-acc', x.account));
+    const meta = el('div', 'cc-bcard-meta');
+    const kind = el('span', 'cc-bcard-kind');
+    const dot = el('i', 'cc-dot');
+    dot.style.background = DL_KIND_COLOR[x.kind] || 'var(--cds-chart-muted)';
+    kind.append(dot, document.createTextNode(x.kind_label));
+    meta.append(kind);
+    if (x.amount_known) meta.append(el('b', 'cc-bcard-amt', moneyF(x.amount_known)));
+    li.append(meta);
+    if (x.next_step && CC_RULES.isOpen(x)) li.append(el('p', 'cc-bcard-next', 'Next step: ' + x.next_step));
+    const foot = el('div', 'cc-bcard-foot');
+    if (CC_RULES.isOpen(x) && x.age != null) {
+      const stale = x.age >= DL_STALE;
+      foot.append(el('span', stale ? 'cc-bcard-stale' : null, (x.age === 0 ? 'Updated today' : 'Updated ' + intF(x.age) + (x.age === 1 ? ' day ago' : ' days ago')) + (stale ? ' · stale' : '')));
+    } else if (x.updated) foot.append(el('span', null, 'Last updated ' + day(x.updated)));
+    if (x.reason) foot.append(el('span', 'cc-bcard-reason', x.reason));
+    if (foot.childNodes.length) li.append(foot);
+    return li;
+  };
+  const drawDealKpis = (rows) => {
+    const box = root.querySelector('#dl-kpi-row');
+    if (!dlReady(box)) return;
+    const open = rows.filter(CC_RULES.isOpen);
+    const withAmt = open.filter((d) => d.amount_known);
+    const won = rows.filter((d) => d.stage === 'Closed');
+    const lost = rows.filter((d) => LOST.includes(d.stage));
+    const ages = open.map((d) => d.age).filter((a) => a != null).sort((a, b) => a - b);
+    const mid = ages.length ? (ages.length % 2 ? ages[(ages.length - 1) / 2] : Math.round((ages[ages.length / 2 - 1] + ages[ages.length / 2]) / 2)) : null;
+    const stale = open.filter((d) => d.age != null && d.age >= DL_STALE);
+    const decided = won.length + lost.length;
+    const tiles = [
+      ['open', intF(open.length), 'Open deals', DL_OPEN.map((s) => s + ' ' + rows.filter((d) => d.stage === s).length).join(' · ')],
+      ['amount', intF(withAmt.length) + ' of ' + intF(open.length), 'Open deals with an amount', withAmt.length ? moneyF(dlSum(withAmt)) + ' known value' : 'No open deal has an amount'],
+      ['winrate', decided ? pctF(won.length / decided) : '—', 'Win rate', intF(won.length) + ' won · ' + intF(lost.length) + ' lost' + (won.length ? ' · ' + moneyF(dlSum(won)) + ' won' : '')],
+      ['age', mid == null ? '—' : intF(mid) + (mid === 1 ? ' day' : ' days'), 'Median time since last update', 'Across open deals'],
+      ['stale', intF(stale.length), 'Open deals not updated in ' + DL_STALE + '+ days', open.length ? pctF(stale.length / open.length) + ' of open deals' : 'No open deals'],
+    ];
+    box.replaceChildren(...tiles.map(([key, value, label, sub]) => {
+      const tile = el('div', 'cc-dkpi');
+      tile.append(el('span', 'cc-dkpi-v', value), el('span', 'cc-dkpi-l', label), el('span', 'cc-dkpi-s', sub));
+      clickable(tile, 'dl-kpi', key, 'Show ' + label.toLowerCase());
+      return tile;
+    }));
+  };
+  const drawDealBoard = (rows) => {
+    const box = root.querySelector('#dl-board');
+    if (!dlReady(box)) return;
+    const cols = [];
+    [...DL_OPEN.map((s) => [s, s]), ...DL_CLOSED].forEach(([stage, label], i) => {
+      const list = rows.filter((d) => d.stage === stage)
+        .sort((a, b) => (b.amount_known || 0) - (a.amount_known || 0) || (a.age ?? 1e9) - (b.age ?? 1e9) || String(a.deal).localeCompare(String(b.deal)));
+      const known = list.filter((d) => d.amount_known);
+      const col = el('section', 'cc-bcol' + (i === DL_OPEN.length ? ' cc-bcol-split' : ''));
+      col.setAttribute('aria-label', label + ': ' + list.length + ' deals');
+      const head = el('header', 'cc-bcol-head');
+      if (i === 0 || i === DL_OPEN.length) head.append(el('span', 'cc-bgroup', i === 0 ? 'Open pipeline' : 'Closed'));
+      else head.append(el('span', 'cc-bgroup', ' '));
+      const top = el('div', 'cc-bcol-top');
+      top.append(el('h4', null, label), el('span', 'cc-bcol-n', intF(list.length)));
+      head.append(top, el('p', 'cc-bcol-sub', known.length ? moneyF(dlSum(known)) + ' · ' + known.length + ' of ' + list.length + ' with an amount' : (list.length ? 'No amounts set' : ' ')));
+      const ul = el('ul', 'cc-bcards');
+      if (list.length) ul.append(...list.map(dlCard)); else ul.append(el('li', 'cc-bempty', 'No deals'));
+      col.append(head, ul);
+      cols.push(col);
+    });
+    box.replaceChildren(...cols);
+    const open = rows.filter(CC_RULES.isOpen);
+    const biggest = DL_OPEN.map((s) => [s, rows.filter((d) => d.stage === s).length]).sort((a, b) => b[1] - a[1])[0];
+    dlInsight('ins-dl-board', open.length
+      ? intF(open.length) + ' open deals, the most in ' + biggest[0] + ' (' + biggest[1] + '). ' + intF(open.filter((d) => d.amount_known).length) + ' of them have an amount, so the open pipeline value is only partly known.'
+      : 'No open deals for this Deal Type.');
+  };
+  const dlStackRows = (box, rows, drillKey, cardSel) => {
+    const max = Math.max(1, ...rows.map((r) => r.total));
+    box.replaceChildren(...rows.map((r) => {
+      const row = el('div', 'cc-srow');
+      const l = el('span', 'cc-srow-l');
+      l.append(el('span', null, r.label));
+      if (r.sub) l.append(el('small', null, r.sub));
+      const track = el('div', 'cc-srow-t');
+      r.segs.filter((s) => s.value > 0).forEach((s) => {
+        const seg = el('span', 'cc-seg');
+        seg.style.width = (s.value / max * 100) + '%';
+        seg.style.background = s.color;
+        clickable(seg, drillKey, s.key, r.label + ', ' + s.label + ': ' + s.value + ' deals');
+        dlTip(seg, cardSel, r.label, [[s.color, s.label, intF(s.value)]].concat(s.extra || []));
+        track.append(seg);
+      });
+      row.append(l, track, el('b', 'cc-srow-n', intF(r.total)));
+      return row;
+    }));
+  };
+  const drawDealStages = (rows) => {
+    const kindBox = root.querySelector('#dl-stage-kind');
+    const ageBox = root.querySelector('#dl-stage-age');
+    if (!dlReady(kindBox) || !dlReady(ageBox)) return;
+    const kinds = DL_KIND_ORDER.filter((k) => rows.some((d) => d.kind === k && CC_RULES.isOpen(d)));
+    dlLegend('leg-dl-kind', kinds.map((k) => [DL_KIND_COLOR[k], DL_KIND_NAME[k]]));
+    dlLegend('leg-dl-age', DL_AGES.map(([, label, color]) => [color, label]));
+    dlStackRows(kindBox, DL_OPEN.map((stage) => {
+      const list = rows.filter((d) => d.stage === stage);
+      return { label: stage, total: list.length, segs: kinds.map((k) => ({ key: 'kind|' + stage + '|' + k, label: DL_KIND_NAME[k], color: DL_KIND_COLOR[k], value: list.filter((d) => d.kind === k).length })) };
+    }), 'dl-stage', '#dl-stage');
+    dlStackRows(ageBox, DL_OPEN.map((stage) => {
+      const list = rows.filter((d) => d.stage === stage);
+      return { label: stage, total: list.length, segs: DL_AGES.map(([b, label, color]) => ({ key: 'age|' + stage + '|' + b, label, color, value: list.filter((d) => dlBucket(d.age) === b).length })) };
+    }), 'dl-stage', '#dl-stage');
+    const open = rows.filter(CC_RULES.isOpen);
+    const old = open.filter((d) => dlBucket(d.age) === 'gt60');
+    const hold = rows.filter((d) => d.stage === 'Hold').length;
+    dlInsight('ins-dl-stage', open.length
+      ? intF(old.length) + ' of ' + intF(open.length) + ' open deals (' + pctF(old.length / open.length) + ') were last updated over 60 days ago; Hold holds ' + intF(hold) + ' deals (' + pctF(hold / open.length) + ' of open).'
+      : 'No open deals for this Deal Type.');
+  };
+  const drawDealLoss = (rows) => {
+    const box = root.querySelector('#dl-loss-rows');
+    if (!dlReady(box)) return;
+    const lost = rows.filter((d) => LOST.includes(d.stage));
+    const comp = lost.filter((d) => d.stage === 'Closed Lost to Competition');
+    const sum = root.querySelector('#dl-loss-sum');
+    if (sum) sum.textContent = lost.length ? intF(lost.length) + ' lost deals · ' + intF(comp.length) + ' to competition · ' + moneyF(dlSum(lost)) + ' known value lost' : '';
+    if (!lost.length) { box.replaceChildren(el('p', 'cc-empty', 'No lost deals for this Deal Type.')); dlInsight('ins-dl-loss', 'No lost deals for this Deal Type.'); return; }
+    const by = new Map();
+    lost.forEach((d) => { if (!by.has(d.reason)) by.set(d.reason, []); by.get(d.reason).push(d); });
+    const groups = [...by.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
+    const color = 'color-mix(in oklab, var(--color-fg) 58%, var(--color-panel))';
+    dlStackRows(box, groups.map(([reason, list]) => {
+      const c = list.filter((d) => d.stage === 'Closed Lost to Competition').length;
+      const v = dlSum(list);
+      return {
+        label: reason, total: list.length, sub: [c ? c + ' to competition' : null, v ? moneyF(v) : null].filter(Boolean).join(' · ') || null,
+        segs: [{ key: reason, label: 'Lost deals', color, value: list.length, extra: v ? [[null, 'Known value', moneyF(v)]] : [] }],
+      };
+    }), 'dl-loss', '#dl-loss');
+    const top = groups[0];
+    dlInsight('ins-dl-loss', top[0] + ' is the most common loss reason: ' + intF(top[1].length) + ' of ' + intF(lost.length) + ' lost deals (' + pctF(top[1].length / lost.length) + ').');
+  };
+  const drawDealTrend = (rows) => {
+    const box = root.querySelector('#dl-trend-bars');
+    if (!dlReady(box)) return;
+    dlLegend('leg-dl-trend', DL_OUTCOMES.map(([, label, color]) => [color, label]));
+    const dated = rows.filter((d) => d.month);
+    if (!dated.length) { box.replaceChildren(el('p', 'cc-empty', 'No deals for this Deal Type.')); dlInsight('ins-dl-trend', ''); return; }
+    const first = dated.map((d) => d.month).sort()[0];
+    const last = todayCT.slice(0, 7);
+    const months = [];
+    for (let m = new Date(first + '-01T00:00:00Z'); m.toISOString().slice(0, 7) <= last; m.setUTCMonth(m.getUTCMonth() + 1)) months.push(m.toISOString().slice(0, 7));
+    const counts = months.map((mo) => { const list = dated.filter((d) => d.month === mo); return { mo, list, parts: DL_OUTCOMES.map(([o]) => list.filter((d) => dlOutcome(d) === o).length) }; });
+    const max = Math.max(1, ...counts.map((c) => c.list.length));
+    box.replaceChildren(...counts.map(({ mo, list, parts }) => {
+      const col = el('div', 'cc-vcol');
+      const label = dlMonthLongF(parseDay(mo + '-01'));
+      col.append(el('span', 'cc-vcol-n', list.length ? intF(list.length) : ''));
+      const stack = el('div', 'cc-vstack');
+      DL_OUTCOMES.forEach(([o, name, color], i) => {
+        if (!parts[i]) return;
+        const seg = el('span', 'cc-seg');
+        seg.style.height = (parts[i] / max * 160) + 'px';
+        seg.style.flex = 'none';
+        seg.style.background = color;
+        clickable(seg, 'dl-trend', mo + '|' + o, label + ', ' + name.toLowerCase() + ': ' + parts[i] + ' deals');
+        dlTip(seg, '#dl-trend', label, DL_OUTCOMES.map(([, n, c], j) => [c, n, intF(parts[j])]));
+        stack.append(seg);
+      });
+      col.append(stack, el('span', 'cc-vcol-l', dlMonthF(parseDay(mo + '-01'))));
+      return col;
+    }));
+    const busiest = counts.slice().sort((a, b) => b.list.length - a.list.length)[0];
+    const decided = dated.filter((d) => dlOutcome(d) !== 'open');
+    const won = dated.filter((d) => dlOutcome(d) === 'won');
+    dlInsight('ins-dl-trend', dlMonthLongF(parseDay(busiest.mo + '-01')) + ' added the most deals (' + intF(busiest.list.length) + '). ' + intF(decided.length) + ' of ' + intF(dated.length) + ' deals created since ' + dlMonthLongF(parseDay(first + '-01')) + ' are decided, and ' + intF(won.length) + ' of those were won.');
+  };
+  const DL_DQ = [
+    ['open_no_amount', 'Open deals with no amount', 'Add an estimated value in Zoho so the pipeline can be totaled', (d) => CC_RULES.isOpen(d) && !d.amount_known],
+    ['tiny_amount', 'Amounts under $100', 'Probably a typo; check the Amount field', (d) => d.amount > 0 && d.amount < 100],
+    ['open_no_next', 'Open deals with no next step', 'Fill in Next Step so everyone knows the plan', (d) => CC_RULES.isOpen(d) && !d.next_step],
+    ['won_no_amount', 'Won deals with no amount', 'Record the contract value so wins can be totaled', (d) => d.stage === 'Closed' && !d.amount_known],
+    ['lost_no_reason', 'Lost deals with no reason', 'Set Reason for Loss so losses can be analyzed', (d) => LOST.includes(d.stage) && !d.loss_reason],
+    ['no_type', 'Deals with no Deal Type', 'Set Deal Type so the deal counts in a campaign', (d) => d.kind === 'No Deal Type'],
+  ];
+  const drawDealQuality = (rows) => {
+    const box = root.querySelector('#dl-dq-list');
+    if (!dlReady(box)) return;
+    box.replaceChildren(...DL_DQ.map(([key, label, hint, keep]) => {
+      const n = rows.filter(keep).length;
+      const li = el('li', 'cc-dq-item' + (n ? '' : ' cc-dq-clear'));
+      li.append(el('span', 'cc-dq-n', n ? intF(n) : 'Clear'), el('span', 'cc-dq-l', label), el('span', 'cc-dq-h', n ? hint : 'Nothing to fix'));
+      clickable(li, 'dl-dq', key, (n ? 'Show ' : 'Check ') + label.toLowerCase());
+      return li;
+    }));
+    const open = rows.filter(CC_RULES.isOpen);
+    const noAmt = open.filter((d) => !d.amount_known).length;
+    dlInsight('ins-dl-dq', open.length ? intF(noAmt) + ' of ' + intF(open.length) + ' open deals (' + pctF(noAmt / open.length) + ') have no amount, so any pipeline value on this page is a floor, not a total.' : 'No open deals for this Deal Type.');
+  };
+  const drawDeals = () => {
+    root.querySelectorAll('[data-dl-kind]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.dlKind === dlKind)));
+    if (status('deals_tagged') === 'loading') return;
+    const rows = rowsOf('deals_tagged') ? dlRows() : [];
+    drawDealKpis(rows);
+    drawDealBoard(rows);
+    drawDealStages(rows);
+    drawDealLoss(rows);
+    drawDealTrend(rows);
+    drawDealQuality(rows);
+  };
+  root.querySelectorAll('[data-dl-kind]').forEach((b) => b.addEventListener('click', () => {
+    dlKind = b.dataset.dlKind;
+    DL_KEYS.forEach((k) => { picked[k] = null; });
+    redrawAll();
+  }));
+  const DL_AGE_NAME = Object.fromEntries(DL_AGES.map(([k, l]) => [k, l]));
+  const DL_OUT_NAME = Object.fromEntries(DL_OUTCOMES.map(([k, l]) => [k, l]));
+  Object.assign(DRILLS, {
+    'dl-kpi': { card: '#dl-kpis', build: (k) => {
+      if (k === 'open') return dlSpec('Open deals', CC_RULES.isOpen);
+      if (k === 'amount') return dlSpec('Open deals with an amount', (d) => CC_RULES.isOpen(d) && d.amount_known, { sort: (a, b) => b.amount - a.amount });
+      if (k === 'winrate') return dlSpec('Won and lost deals', (d) => d.stage === 'Closed' || LOST.includes(d.stage), { lost: true, sort: (a, b) => String(a.stage_label).localeCompare(String(b.stage_label)) || (b.amount || 0) - (a.amount || 0) });
+      if (k === 'age') return dlSpec('Open deals by days since last update', CC_RULES.isOpen, { note: 'Oldest update first. Select a deal to open it in Zoho CRM.' });
+      if (k === 'stale') return dlSpec('Open deals not updated in ' + DL_STALE + '+ days', (d) => CC_RULES.isOpen(d) && d.age != null && d.age >= DL_STALE);
+      return null;
+    } },
+    'dl-stage': { card: '#dl-stage', build: (v) => {
+      const [what, stage, part] = String(v).split('|');
+      if (what === 'kind') return dlSpec(stage + ' · ' + DL_KIND_NAME[part], (d) => d.stage === stage && d.kind === part, { swatch: DL_KIND_COLOR[part] });
+      const color = (DL_AGES.find(([b]) => b === part) || [])[2];
+      return dlSpec(stage + ' · ' + DL_AGE_NAME[part], (d) => d.stage === stage && dlBucket(d.age) === part, { swatch: color });
+    } },
+    'dl-loss': { card: '#dl-loss', build: (reason) => dlSpec('Lost · ' + reason, (d) => d.reason === reason, { lost: true, sort: (a, b) => (b.amount || 0) - (a.amount || 0) || String(a.deal).localeCompare(String(b.deal)) }) },
+    'dl-trend': { card: '#dl-trend', build: (v) => {
+      const [mo, o] = String(v).split('|');
+      return dlSpec('Created in ' + dlMonthLongF(parseDay(mo + '-01')) + ' · ' + DL_OUT_NAME[o], (d) => d.month === mo && dlOutcome(d) === o, { lost: o === 'lost', swatch: (DL_OUTCOMES.find(([k]) => k === o) || [])[2] });
+    } },
+    'dl-dq': { card: '#dl-dq', build: (key) => {
+      const item = DL_DQ.find(([k]) => k === key);
+      return item ? dlSpec(item[1], item[3], { lost: key === 'lost_no_reason', note: item[2] + '. Select a deal to open it in Zoho CRM.' }) : null;
+    } },
+  });
+
   function redrawAll() {
     fillMarks();
     drawRings();
@@ -3926,6 +4340,7 @@ dash.calc('attention', {
     drawBoxByte();
     drawCourier();
     drawBacklog();
+    drawDeals();
     drawSized();
     Object.keys(DRILLS).forEach(drawDrill);
     drawTables();
