@@ -1169,10 +1169,10 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
     <div class="cc-tools" style="justify-content: space-between">
       <p class="cc-intro">Every deal in Zoho as a board, with the numbers behind it. Amounts appear only where the deal has one in Zoho. Ages count days since the deal was last updated, in Central time.</p>
       <div class="cc-tools" role="group" aria-label="Deal Type">
-        <button type="button" class="cc-chip" data-dl-kind="All" aria-pressed="true">All</button>
+        <button type="button" class="cc-chip" data-dl-kind="All" aria-pressed="false">All</button>
         <button type="button" class="cc-chip" data-dl-kind="Client" aria-pressed="false">Client</button>
         <button type="button" class="cc-chip" data-dl-kind="Partnership" aria-pressed="false">Partnership</button>
-        <button type="button" class="cc-chip" data-dl-kind="Platform provider" aria-pressed="false">Platform</button>
+        <button type="button" class="cc-chip" data-dl-kind="Platform provider" aria-pressed="true">Platform</button>
       </div>
     </div>
     <article class="cc-card" id="dl-kpis">
@@ -4556,7 +4556,7 @@ dash.calc('attention', {
   const DL_KEYS = ['dl-kpi', 'dl-stage', 'dl-loss', 'dl-trend', 'dl-dq'];
   const dlMonthF = d3.utcFormat('%b');
   const dlMonthLongF = d3.utcFormat('%B %Y');
-  let dlKind = 'All';
+  let dlKind = 'Platform provider';
   const dlToday = () => parseDay(todayCT).getTime();
   const dlBucket = (age) => (age == null ? null : age < DL_STALE ? 'lt14' : age <= 30 ? '14-30' : age <= 60 ? '31-60' : 'gt60');
   const dlOutcome = (d) => (d.stage === 'Closed' ? 'won' : LOST.includes(d.stage) ? 'lost' : 'open');
