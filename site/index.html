@@ -433,6 +433,9 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
 .cc-ic-flag.cc-ic-ok, .cc-ic-flag.cc-ic-warn, .cc-ic-flag.cc-ic-bad { border-color: currentColor; }
 @media (max-width: 760px) { .cc-ic-ask { grid-template-columns: 1.75rem minmax(0, 1fr); } .cc-ic-msg { grid-column: 2; } .cc-ic-srow { grid-template-columns: 6rem minmax(0, 1fr) 5.5rem; } }
 .cc-wi-head { display: grid; gap: var(--cds-gap-sm); }
+.cc-wi-title { display: grid; gap: 6px; padding: var(--cds-pad-xs) 0 var(--cds-pad-sm) var(--cds-pad-md); border-left: 4px solid var(--color-fg); }
+.cc-wi-title h2 { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: clamp(30px, 3.6vw, 40px); line-height: 1.1; letter-spacing: -0.01em; }
+.cc-wi-title p { margin: 0; font-size: 17px; line-height: 1.45; max-width: 60ch; }
 #wi .cc-card > * { min-width: 0; }
 .cc-wi-how { font-size: var(--cds-font-size-caption); max-width: 92ch; }
 .cc-wi-how summary { cursor: pointer; color: var(--color-fg); width: max-content; max-width: 100%; }
@@ -1219,7 +1222,11 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
 
   <section class="cc-page" id="wi" role="tabpanel" aria-labelledby="tab-wi" hidden>
     <div class="cc-wi-head">
-      <p class="cc-intro">Who can get us into each target account, why that path is credible, what is still uncertain and what to do next. Every path comes from Zoho records: company links, LinkedIn status, logged meetings, signed agreements, won deals and referred deals. Zoho holds no LinkedIn mutual connections, past employers or company locations, so none are used. Nothing here writes to Zoho. <span id="wi-stamp"></span></p>
+      <div class="cc-wi-title">
+        <h2>Warm Intros</h2>
+        <p>Who can get us into each target account, why that path is credible, what is still uncertain and what to do next.</p>
+      </div>
+      <p class="cc-intro">Every path comes from Zoho records: company links, LinkedIn status, logged meetings, signed agreements, won deals and referred deals. Zoho holds no LinkedIn mutual connections, past employers or company locations, so none are used. Nothing here writes to Zoho. <span id="wi-stamp"></span></p>
       <details class="cc-wi-how">
         <summary>How paths and confidence are worked out</summary>
         <div class="cc-wi-howbody">
