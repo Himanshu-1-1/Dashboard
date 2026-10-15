@@ -5,3 +5,4 @@ __pycache__/
 .env
 site/boxbyte.js
 site/courier.js
+site/research.js

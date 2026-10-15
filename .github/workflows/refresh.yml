@@ -65,6 +65,16 @@ jobs:
             echo "::warning::No courier-snapshot branch, so the Medical Courier tab can't show email outreach."
           fi
 
+      - name: Add the web-research people
+        run: |
+          # Decision makers found by web research for target accounts with no one else in Zoho: name, title,
+          # company, public LinkedIn profile and source only. Kept on its own branch; Zoho records replace them once imported.
+          if git fetch --depth=1 origin research-snapshot 2>/dev/null; then
+            git show FETCH_HEAD:research.js > site/research.js
+          else
+            echo "::warning::No research-snapshot branch, so Warm Intros shows only people in Zoho."
+          fi
+
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
