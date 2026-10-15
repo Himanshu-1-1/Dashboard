@@ -432,6 +432,69 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
 .cc-ic-flag { display: inline-block; font-size: 11px; border-radius: 999px; padding: 1px 7px; margin: 1px 3px 1px 0; border: 1px solid var(--color-border-line); white-space: nowrap; }
 .cc-ic-flag.cc-ic-ok, .cc-ic-flag.cc-ic-warn, .cc-ic-flag.cc-ic-bad { border-color: currentColor; }
 @media (max-width: 760px) { .cc-ic-ask { grid-template-columns: 1.75rem minmax(0, 1fr); } .cc-ic-msg { grid-column: 2; } .cc-ic-srow { grid-template-columns: 6rem minmax(0, 1fr) 5.5rem; } }
+.cc-wi-head { display: grid; gap: var(--cds-gap-sm); }
+#wi .cc-card > * { min-width: 0; }
+.cc-wi-how { font-size: var(--cds-font-size-caption); max-width: 92ch; }
+.cc-wi-how summary { cursor: pointer; color: var(--color-fg); width: max-content; max-width: 100%; }
+.cc-wi-how summary:focus-visible, .cc-wi-tog:focus-visible, .cc-wi-find:focus-visible, .cc-wi-badge:focus-visible, .cc-wi-kpi:focus-visible, .cc-wi-filters :is(select, input, textarea):focus-visible, .cc-wi-compose :is(select, input, textarea):focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+.cc-wi-howbody { display: grid; gap: var(--cds-gap-xs); padding: var(--cds-pad-sm) 0 0; line-height: 1.55; color: var(--color-fg-muted); }
+.cc-wi-howbody b { color: var(--color-fg); font-weight: var(--cds-font-weight-medium); }
+.cc-wi-scope { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm) var(--cds-gap-xl); }
+.cc-wi-scope > div { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cds-gap-xs) var(--cds-gap-sm); }
+.cc-wi-lab { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+button.cc-wi-kpi { font: inherit; color: inherit; text-align: left; cursor: pointer; }
+button.cc-wi-kpi:hover, button.cc-wi-kpi[aria-pressed="true"] { border-color: var(--color-fg); }
+.cc-wi-finds { list-style: none; margin: 0; padding: 0; display: grid; }
+.cc-wi-finds li { border-bottom: 1px solid var(--color-border-line); }
+.cc-wi-finds li:last-child { border-bottom: 0; }
+.cc-wi-find { appearance: none; background: none; border: 0; font: inherit; color: inherit; text-align: left; line-height: 1.5; padding: var(--cds-pad-sm) 0; cursor: pointer; width: 100%; }
+.cc-wi-find:hover { text-decoration: underline; text-decoration-color: var(--color-border-line); text-underline-offset: 3px; }
+.cc-wi-filters { display: flex; flex-wrap: wrap; align-items: end; gap: var(--cds-gap-sm); }
+.cc-wi-filters label, .cc-wi-compose > label { display: grid; gap: 2px; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.cc-wi-filters :is(select, input[type="search"], input[type="text"]), .cc-wi-compose textarea { font: inherit; font-size: var(--cds-font-size-caption); color: var(--color-fg); background: var(--color-bg); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: 5px 8px; min-height: 30px; }
+.cc-wi-filters input[type="search"] { min-width: min(16rem, 100%); }
+.cc-wi-filters label.cc-wi-check { display: flex; align-items: center; gap: 6px; color: var(--color-fg); min-height: 30px; }
+.cc-wi-filters .cc-go[disabled] { opacity: .5; cursor: default; }
+.cc-wi-count { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin: 0; }
+.cc-wi-wrap { overflow-x: auto; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); }
+.cc-wi-acccell { display: flex; gap: var(--cds-gap-sm); align-items: flex-start; min-width: 13rem; }
+.cc-wi-tog { flex: none; width: 22px; height: 22px; border: 1px solid var(--color-border-line); border-radius: 4px; background: var(--color-bg); color: var(--color-fg); font: inherit; line-height: 1; cursor: pointer; }
+.cc-wi-acc, .cc-wi-tbl td { line-height: 1.4; }
+.cc-wi-acc { display: grid; gap: 2px; }
+.cc-wi-acc small, .cc-wi-sub { display: block; color: var(--color-fg-muted); font-size: 12px; line-height: 1.4; }
+.cc-wi-row.is-open td { border-bottom-color: transparent; }
+.cc-wi-detail > td { background: color-mix(in oklab, var(--color-fg) 3%, var(--color-panel)); padding: var(--cds-pad-md); }
+.cc-wi-lvl { display: inline-block; font-weight: var(--cds-font-weight-medium); margin-right: 6px; }
+.cc-wi-conf, .cc-wi-st, .cc-wi-best { display: inline-block; font-size: 11px; line-height: 1.5; border-radius: 999px; padding: 0 7px; border: 1px solid var(--color-border-line); white-space: nowrap; }
+.cc-wi-verified, .cc-wi-ok { color: var(--color-ok); border-color: currentColor; }
+.cc-wi-supported { color: var(--color-fg); }
+.cc-wi-unverified, .cc-wi-warn.cc-wi-st { color: var(--color-warn); border-color: currentColor; }
+.cc-wi-none.cc-wi-st { color: var(--color-fg-muted); }
+.cc-wi-best { background: var(--color-fg); color: var(--color-bg); border-color: var(--color-fg); }
+.cc-wi-dgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: var(--cds-gap-lg); }
+.cc-wi-dcol { display: grid; gap: var(--cds-gap-sm); align-content: start; min-width: 0; }
+.cc-wi-dcol h5 { margin: 0; font-size: var(--cds-font-size-caption); font-weight: var(--cds-font-weight-medium); color: var(--color-fg-muted); }
+.cc-wi-dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px var(--cds-gap-sm); margin: 0; }
+.cc-wi-dl dt { color: var(--color-fg-muted); }
+.cc-wi-dl dd { margin: 0; }
+.cc-wi-path { display: grid; gap: 4px; padding: var(--cds-pad-sm) 0; border-top: 1px solid var(--color-border-line); }
+.cc-wi-ptop { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.cc-wi-pn { font-weight: var(--cds-font-weight-medium); }
+.cc-wi-facts, .cc-wi-qs { margin: 0; padding-left: 1.1em; display: grid; gap: 2px; }
+.cc-wi-qs { color: var(--color-warn); }
+.cc-wi-qs li::marker { content: "? "; }
+.cc-wi-warn:not(.cc-wi-st):not(.cc-wi-badge) { color: var(--color-warn); margin: 0; }
+.cc-wi-compose { display: grid; gap: var(--cds-gap-sm); border-top: 1px solid var(--color-border-line); padding-top: var(--cds-pad-sm); }
+.cc-wi-compose textarea { width: 100%; min-height: 10rem; resize: vertical; line-height: 1.5; }
+.cc-wi-note { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.cc-wi-fixes { margin: 0; padding-left: 1.25em; display: grid; gap: var(--cds-gap-xs); font-size: var(--cds-font-size-caption); line-height: 1.5; }
+.cc-wi-ready { margin: 0; font-size: var(--cds-font-size-caption); }
+.cc-wi-badge { appearance: none; font: inherit; font-size: 11px; line-height: 1.5; border-radius: 999px; padding: 0 8px; border: 1px solid var(--color-border-line); background: var(--color-bg); color: var(--color-fg-muted); cursor: pointer; white-space: nowrap; margin: 2px 4px 2px 0; justify-self: start; }
+.cc-wi-badge.cc-wi-ok, .cc-wi-badge.cc-wi-warn { border-color: currentColor; }
+.cc-wi-badge.cc-wi-ok { color: var(--color-ok); }
+.cc-wi-badge.cc-wi-warn { color: var(--color-warn); }
+.cc-wi-badge.cc-wi-in { color: var(--color-fg); }
+@media (max-width: 760px) { .cc-wi-dgrid { grid-template-columns: minmax(0, 1fr); position: sticky; left: 0; width: calc(100vw - 6.5rem); } .cc-wi-filters label { flex: 1 1 10rem; } .cc-wi-filters input[type="search"] { min-width: 0; } }
 .cc-zlink { color: inherit; text-decoration: underline; text-decoration-color: var(--color-border-line); text-underline-offset: 3px; }
 .cc-zlink:hover, .cc-zlink:focus-visible { text-decoration-color: currentColor; }
 .cc-blall { display: grid; gap: var(--cds-gap-md) var(--cds-gap-lg); grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); align-items: start; }
@@ -553,6 +616,7 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
     <button type="button" class="cc-tab" role="tab" id="tab-mc" data-tab="mc" aria-controls="mc"><i class="cc-dot" data-hue="mc"></i>Medical Courier</button>
     <button type="button" class="cc-tab" role="tab" id="tab-bb" data-tab="bb" aria-controls="bb"><i class="cc-dot" data-hue="bb"></i>Box Byte</button>
     <button type="button" class="cc-tab" role="tab" id="tab-deals" data-tab="deals" aria-controls="deals">Deals</button>
+    <button type="button" class="cc-tab" role="tab" id="tab-wi" data-tab="wi" aria-controls="wi">Warm Intros</button>
     <button type="button" class="cc-tab" role="tab" id="tab-pipeline" data-tab="pipeline" aria-controls="pipeline">Pipeline</button>
   </nav>
 
@@ -1153,6 +1217,75 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
     </div>
   </section>
 
+  <section class="cc-page" id="wi" role="tabpanel" aria-labelledby="tab-wi" hidden>
+    <div class="cc-wi-head">
+      <p class="cc-intro">Who can get us into each target account, why that path is credible, what is still uncertain and what to do next. Every path comes from Zoho records: company links, LinkedIn status, logged meetings, signed agreements, won deals and referred deals. Zoho holds no LinkedIn mutual connections, past employers or company locations, so none are used. Nothing here writes to Zoho. <span id="wi-stamp"></span></p>
+      <details class="cc-wi-how">
+        <summary>How paths and confidence are worked out</summary>
+        <div class="cc-wi-howbody">
+          <p><b>Ways in, strongest first.</b> 1 Same company: a Founder Network, referral partner, platform, client or personal contact linked to the target account. 2 Already in: a campaign contact at the account who accepted our LinkedIn request or has met us, who can point us to colleagues. 3 Industry peer: a relationship contact whose company is in the same ICP industry group; this says nothing about whether they know anyone there. 4 Recorded introduction: a deal at the account with Referred By filled in.</p>
+          <p><b>Confidence, kept separate from the way in.</b> Verified: a meeting, accepted connection, signed agreement, won client deal or referral is recorded with that person. Supported: the company link exists but no interaction is recorded. Unverified: the path rests on a Client label with no won deal behind it, a same-name account on another Zoho record, or industry alone. A usable (verified or supported) path ranks above an unverified one; otherwise the order above holds.</p>
+          <p><b>What is not shown.</b> Requests sent and introductions accepted aren’t recorded in Zoho, so this page can’t track them. Account ownership isn’t used: records are owned by the shared login. Same-name accounts are flagged, never merged.</p>
+        </div>
+      </details>
+      <div class="cc-wi-scope" role="group" aria-label="Scope">
+        <div><span class="cc-wi-lab" id="wi-lab-camp">Target campaigns</span><span class="cc-tools" id="wi-camps" role="group" aria-labelledby="wi-lab-camp"></span></div>
+        <div><span class="cc-wi-lab" id="wi-lab-src">Introducers</span><span class="cc-tools" id="wi-srcs" role="group" aria-labelledby="wi-lab-src"></span></div>
+      </div>
+    </div>
+    <article class="cc-card" id="wi-kpis">
+      <div class="cc-card-head"><h3>Warm paths at a glance</h3><p>Unique target accounts in scope; an account in both campaigns counts once. Select a number to filter the account list.</p></div>
+      <div class="cc-dkpis dash-skeleton" id="wi-kpi-row" data-source="warm_paths"></div>
+    </article>
+    <div class="cc-grid">
+      <article class="cc-card" id="wi-funnel">
+        <div class="cc-card-head"><h3>From target to meeting</h3><p>Each stage keeps only the accounts that pass it. Hover or focus a stage for its definition.</p></div>
+        <div class="cc-wi-stages dash-skeleton" id="wi-funnel-rows" data-source="warm_paths"></div>
+        <p class="cc-insight" id="ins-wi-funnel"></p>
+      </article>
+      <article class="cc-card" id="wi-ins">
+        <div class="cc-card-head"><h3>What the data says</h3><p>Worked out from today’s Zoho data. Select a finding to list the accounts or people behind it.</p></div>
+        <ul class="cc-wi-finds dash-skeleton" id="wi-finds" data-source="warm_paths"></ul>
+      </article>
+    </div>
+    <article class="cc-card" id="wi-list">
+      <div class="cc-card-head"><h3>Target accounts and the best way in</h3><p>One row per account. Open a row to compare every path, see the evidence and open questions, and copy an introduction request. Names open the record in Zoho CRM.</p></div>
+      <div class="cc-tools" role="group" aria-label="View" id="wi-views"></div>
+      <div class="cc-wi-filters" id="wi-filters"></div>
+      <p class="cc-wi-count" id="wi-count" aria-live="polite"></p>
+      <div class="cc-wi-wrap dash-skeleton" id="wi-table-wrap" data-source="warm_paths"><table class="cc-tbl cc-wi-tbl" id="wi-table"><thead></thead><tbody></tbody></table></div>
+      <div class="cc-tools" id="wi-more"></div>
+    </article>
+    <div class="cc-grid">
+      <article class="cc-card" id="wi-conc">
+        <div class="cc-card-head"><h3>Who opens the most doors</h3><p>Introducers by the target accounts they reach directly (same company or a recorded referral), and the paths each relationship type supplies. Being linked to many accounts doesn’t make someone influential or responsive.</p></div>
+        <div class="dash-skeleton" id="wi-conc-body" data-source="warm_paths"></div>
+        <p class="cc-insight" id="ins-wi-conc"></p>
+      </article>
+      <article class="cc-card" id="wi-dq">
+        <div class="cc-card-head"><h3>Data quality</h3><p>What limits these recommendations, counted from the records checked. Select a line to list the records to fix.</p></div>
+        <ul class="cc-dq dash-skeleton" id="wi-dq-list" data-source="warm_people"></ul>
+        <h4 class="cc-subhead">Fixes that unlock the most</h4>
+        <ol class="cc-wi-fixes" id="wi-fixes"></ol>
+        <p class="cc-insight" id="ins-wi-dq"></p>
+      </article>
+    </div>
+    <article class="cc-card" id="wi-schema">
+      <div class="cc-card-head"><h3>Recording introductions in Zoho</h3><p>Zoho has no field for who can introduce us to whom, so Recorded introduction runs only on the deal’s Referred By fields. The smallest addition that closes the gap is below. This page stays read-only: someone with Zoho admin rights adds the fields, then the daily refresh gets one more query.</p></div>
+      <p class="cc-wi-ready" id="wi-schema-state"></p>
+      <div class="cc-wi-wrap"><table class="cc-tbl" id="wi-schema-table"><thead><tr><th scope="col">Field</th><th scope="col">Type</th><th scope="col">Where</th><th scope="col">Why it’s needed and what it unlocks</th><th scope="col">When</th></tr></thead><tbody>
+        <tr><td>Introducer</td><td>Lookup to Contacts</td><td>New module “Introductions”, one record per introducer and target</td><td>Names the person who can introduce us, by record, not free text. Unlocks Recorded introduction for any account, not only referred deals.</td><td>First release</td></tr>
+        <tr><td>Target account</td><td>Lookup to Accounts</td><td>Introductions</td><td>Ties the path to the exact account record, so same-name duplicates can’t confuse it.</td><td>First release</td></tr>
+        <tr><td>Target contact</td><td>Lookup to Contacts, optional</td><td>Introductions</td><td>The person we want to meet, when known. Lets the request name them.</td><td>First release</td></tr>
+        <tr><td>Direction</td><td>Picklist: Can introduce, Introduced us</td><td>Introductions</td><td>Keeps “could introduce us” apart from “did introduce us”; they are different facts.</td><td>First release</td></tr>
+        <tr><td>Status</td><td>Picklist: Candidate, Verified, Request sent, Introduced, Declined, Meeting booked, Not proceeding</td><td>Introductions</td><td>Turns on the request-sent, accepted and meeting stages this page can’t show today.</td><td>First release</td></tr>
+        <tr><td>Evidence</td><td>Multi-line text</td><td>Introductions</td><td>How we know: “worked together at X”, “LinkedIn mutual, confirmed by phone”. Shown beside the path.</td><td>First release</td></tr>
+        <tr><td>Verified on, verified by</td><td>Date; picklist of team members</td><td>Introductions</td><td>When and who confirmed it. Records use a shared login, so the person has to be picked, not taken from the owner.</td><td>Later</td></tr>
+        <tr><td>Client relationship</td><td>Picklist: Past client, Prospect, Unknown</td><td>Contacts</td><td>Says what the Client label means. Unverified Client paths become Verified or drop out.</td><td>First release</td></tr>
+      </tbody></table></div>
+    </article>
+  </section>
+
   <section class="cc-page" id="pipeline" role="tabpanel" aria-labelledby="tab-pipeline" hidden>
     <div class="cc-tools" style="justify-content: space-between">
       <p class="cc-intro">Every deal in Zoho, by stage, by campaign, by Deal Type and by when it was created. Stages match your deals board.</p>
@@ -1404,6 +1537,30 @@ dash.loader('fn_backlog_people', {
   },
 });
 dash.loader('mc_account_list', {
+  description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text, counts and amounts become numbers.',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? (answer.trim() ? JSON.parse(answer) : {}) : (answer || {});
+    if (a.status === 'error' || (a.code && !a.data)) throw new Error(a.message || a.code || 'Zoho CRM refused the query');
+    const body = a.data && !Array.isArray(a.data) ? a.data : a;
+    const list = Array.isArray(body.data) ? body.data : [];
+    const rename = { 'COUNT(id)': 'count', 'SUM(Amount)': 'amount_sum' };
+    const numeric = ['count', 'amount_sum', 'Amount', 'Total_Meetings_Created', 'Count_of_associated_Contacts'];
+    const rows = list.map((r) => {
+      const o = {};
+      for (const [k, v] of Object.entries(r)) {
+        const key = rename[k] || k;
+        if (Array.isArray(v)) o[key] = v.map((x) => (x && typeof x === 'object' ? x.name : x)).filter((x) => x != null && x !== '').join(', ');
+        else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
+        else o[key] = v;
+      }
+      for (const n of numeric) if (o[n] != null && o[n] !== '') o[n] = Number(o[n]);
+      return o;
+    });
+    return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
+  },
+});
+
+dash.loader('wi_introducers', {
   description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text, counts and amounts become numbers.',
   fn: ({ answer }) => {
     const a = typeof answer === 'string' ? (answer.trim() ? JSON.parse(answer) : {}) : (answer || {});
@@ -1683,6 +1840,237 @@ CC_RULES.lostStages = ['Closed Lost', 'Closed Lost to Competition'];
 CC_RULES.isOpen = (d) => CC_RULES.openStages.includes(d.stage);
 CC_RULES.notLost = (d) => !CC_RULES.lostStages.includes(d.stage);
 const CC_NAMES = { rp: 'B2B Campaign', icp: 'ICP Prospecting', fn: 'Founder Network', mc: 'Medical Courier' };
+/* Industry groups, shared by the ICP analysis and Warm Intros. Consulting and IT firms are partners or competitors, not buyers. */
+const CC_IND = {
+  partner: /business consulting|it services|consulting|software|technology, information|outsourcing|strategic management/i,
+  groups: [
+    ['Healthcare', /health|medical|\bhospitals?\b|physician|clinic|dental|hospice|physical therapy|optometr|behavioral|mental/i],
+    ['Financial services & insurance', /financial|bank|insurance|investment|capital|private equity|wealth|asset management|fintech|blockchain|credit/i],
+    ['Logistics & aviation', /logistic|transport|truck|freight|warehous|aviation|aerospace|airline|shipping|supply chain|courier|parcel|3pl/i],
+    ['Staffing & HR', /staffing|recruit|human resources|employment/i],
+    ['Hospitality & entertainment', /hospitality|hotel|restaurant|food and beverage services|entertainment|recreation|leisure|travel|casino|sport/i],
+    ['Retail & eCommerce', /retail|e-?commerce|apparel|fashion|wholesale/i],
+    ['Legal', /\blaw\b|legal/i],
+    ['Tax & accounting', /accounting|\btax\b|\bcpa\b/i],
+    ['Automotive', /automotive|collision|motor vehicle/i],
+    ['Self-storage', /self-storage/i],
+    ['Social media', /social media/i],
+  ],
+  classify: (ind) => {
+    const s = String(ind || '').trim();
+    if (!s) return { fit: 'unknown', group: 'Industry not set' };
+    if (CC_IND.partner.test(s)) return { fit: 'partner', group: 'Consulting & IT' };
+    const hit = CC_IND.groups.find(([, re]) => re.test(s));
+    return hit ? { fit: 'icp', group: hit[0] } : { fit: 'outside', group: 'Outside ICP list' };
+  },
+};
+/* A company-name key for spotting one company held on two Zoho records. It flags a possible match; it never joins records. */
+const CC_NAMEKEY = (s) => String(s || '').toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ')
+  .replace(/\b(inc|llc|ltd|corp|corporation|co|company|group|holdings|the|lp|llp|plc|pllc|pc)\b/g, ' ').replace(/\s+/g, ' ').trim();
+
+/* Warm Intros: who can get us into each target account, from Zoho records only. */
+const WI = {
+  ORDER: ['Founder Network', 'Referral Partner', 'Platform Provider', 'Client', 'Personal'],
+  LEVELS: { 1: 'Same company', 2: 'Already in', 3: 'Industry peer', 4: 'Recorded introduction' },
+  CONF: { verified: 'Verified', supported: 'Supported', unverified: 'Unverified' },
+  CONF_RANK: { verified: 0, supported: 1, unverified: 2 },
+  usable: (p) => p.conf !== 'unverified',
+  source: (p) => (p.level === 2 ? 'Campaign contact' : p.level === 4 ? 'Referrer' : p.rel),
+  /* Usable paths before unverified ones; then the path hierarchy; then evidence. */
+  rank: (paths) => [...paths].sort((a, b) => Number(WI.usable(b)) - Number(WI.usable(a)) || a.level - b.level
+    || WI.CONF_RANK[a.conf] - WI.CONF_RANK[b.conf] || b.facts.length - a.facts.length || String(a.name).localeCompare(String(b.name))),
+  first: (full) => {
+    const w = String(full || '').trim().split(/\s+/)[0] || '';
+    if (w.replace(/[^\p{L}]/gu, '').length < 2) return 'there';
+    return w === w.toUpperCase() || w === w.toLowerCase() ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : w;
+  },
+  /* Where the account stands and the next step, in proportion to the evidence. */
+  status: (t, best) => {
+    const nm = best ? best.name : '';
+    if (t.met) return { key: 'met', label: 'Meeting logged here', tone: 'ok', action: 'Someone here has met us. Ask them who else should be in the conversation.' };
+    if (!best) return t.industry
+      ? { key: 'none', label: 'No path found', tone: 'none', action: 'No warm path in Zoho. Use cold outreach, or record who knows them.' }
+      : { key: 'none', label: 'No path found', tone: 'none', action: 'Set the industry in Zoho so peers can be matched; otherwise use cold outreach.' };
+    if (best.level === 4) return { key: 'ready', label: 'Introduction recorded', tone: 'ok', action: 'Follow up on the referred deal with ' + nm + '.' };
+    if (WI.usable(best)) {
+      if (best.level === 1) return { key: 'ready', label: 'Approach ready', tone: 'ok', action: 'Ask ' + nm + ' for an introduction.' };
+      return { key: 'ready', label: 'Approach ready', tone: 'ok', action: best.conf === 'verified' ? 'Ask ' + nm + ' to bring in the right colleague.' : 'Ask ' + nm + ' who owns this area at ' + t.account + '.' };
+    }
+    if (best.fuzzy) return { key: 'verify', label: 'Needs verification', tone: 'warn', action: 'Confirm the two ' + t.account + ' records are one company, then link ' + nm + '.' };
+    if (best.level === 1) return { key: 'verify', label: 'Needs verification', tone: 'warn', action: 'Confirm ' + nm + '’s Client relationship before asking.' };
+    return { key: 'verify', label: 'Needs verification', tone: 'warn', action: 'Check whether ' + nm + ' knows anyone at ' + t.account + '.' };
+  },
+  /* An introduction request built only from what Zoho records. */
+  message: (t, p, sender, reach) => {
+    const hi = 'Hi ' + WI.first(p.name) + ',';
+    const sign = String(sender || '').trim();
+    const topic = 'how the team runs its operations and internal systems';
+    let body;
+    if (p.level === 4) body = 'Thank you again for the introduction to ' + t.account + '. Is there anything I should know before I follow up?';
+    else if (p.level === 3) body = 'You know the ' + String(t.group).toLowerCase() + ' world well, so I wanted to ask: do you know anyone at ' + t.account + '? I’d value an introduction if you think it makes sense. No worries if not.';
+    else if (p.level === 2) body = p.conf === 'verified'
+      ? 'Thanks again for your time. Who else at ' + t.account + ' should be part of the conversation about ' + topic + '?'
+      : 'Thanks for connecting. Who at ' + t.account + ' is the right person to talk to about ' + topic + '? Happy to keep it to a short call.';
+    else {
+      const lead = p.won ? 'Given our work together on ' + p.won.deal + ', I thought you might know the best person to approach at ' + t.account + '.'
+        : 'I believe you’re with ' + t.account + ', and I’m trying to reach the right person there to talk about ' + topic + '.';
+      body = lead + ' Would you be comfortable pointing me to them, or making an introduction if it feels right?'
+        + (reach && reach.id !== p.who ? ' If ' + reach.name + ' is the right person, an introduction to them would be ideal.' : '') + ' No worries if not.';
+    }
+    return hi + '\n\n' + body + (sign ? '\n\n' + sign : '');
+  },
+  cache: null,
+  build(intro, icpAcc, mcAcc, icpPeople, mcContacts, deals, refLinks, agreements) {
+    const args = [intro, icpAcc, mcAcc, icpPeople, mcContacts, deals, refLinks, agreements];
+    if (WI.cache && WI.cache.args.every((a, i) => a === args[i])) return WI.cache.out;
+    const push = (m, k, v) => { if (!m.has(k)) m.set(k, []); m.get(k).push(v); };
+    const targets = new Map();
+    const addT = (a, camp) => {
+      if (!a || !a.id || CC_RULES.excluded(a.Priority)) return;
+      let t = targets.get(a.id);
+      if (!t) {
+        t = { id: a.id, account: a.Account_Name || '—', key: CC_NAMEKEY(a.Account_Name), campaigns: [], industry: null, group: 'Industry not set', fit: 'unknown',
+          size: a.No_Of_employees || null, contacts: a.Count_of_associated_Contacts || 0, priority: a.Priority || null, inside: [], paths: [], dupes: [], met: false };
+        targets.set(a.id, t);
+      }
+      if (!t.campaigns.includes(camp)) t.campaigns.push(camp);
+      if (!t.industry && a.Industries) { const c = CC_IND.classify(a.Industries); t.industry = a.Industries; t.group = c.group; t.fit = c.fit; }
+    };
+    icpAcc.forEach((a) => addT(a, 'icp'));
+    mcAcc.forEach((a) => addT(a, 'mc'));
+    const byKey = new Map();
+    for (const t of targets.values()) if (t.key) push(byKey, t.key, t);
+    for (const list of byKey.values()) if (list.length > 1) list.forEach((t) => { t.dupes = list.filter((x) => x !== t).map((x) => ({ id: x.id, account: x.account })); });
+
+    const signed = new Map();
+    agreements.forEach((a) => { if (a.state === 'Signed' && a.contact_id) signed.set(a.contact_id, a.kind); });
+    const won = new Map();
+    deals.forEach((d) => { if (d.kind === 'Client' && d.stage === 'Closed' && d.contact_id) push(won, d.contact_id, d); });
+    const referred = new Map();
+    refLinks.forEach((l) => { if (l.Referred_By_Contact_id) push(referred, l.Referred_By_Contact_id, l); });
+
+    const people = intro.map((r) => {
+      const types = String(r.Relationship_Type || '').split(', ').filter(Boolean);
+      const primary = WI.ORDER.find((x) => types.includes(x)) || types[0] || 'Not set';
+      const partnerish = ['Founder Network', 'Referral Partner', 'Platform Provider'].some((x) => types.includes(x));
+      const atT = r.Account_Name_id ? targets.get(r.Account_Name_id) : null;
+      const campaignSide = !partnerish && !types.includes('Personal') && (CC_RULES.hasTag(r.Tag, CC_RULES.tags.icp) || Boolean(atT && atT.campaigns.includes('mc')));
+      const ind = r['Account_Name.Industries'] || r.Industry || null;
+      const cls = CC_IND.classify(ind);
+      const meetings = r.Total_Meetings_Created || 0;
+      const ev = [];
+      if (meetings) ev.push(meetings === 1 ? 'A meeting with us is logged' : meetings + ' meetings with us are logged');
+      if (r.LI_Connect === 'Connected') ev.push('Accepted our LinkedIn request');
+      if (signed.has(r.id)) ev.push('Signed our ' + (signed.get(r.id) === 'MNDA' ? 'MNDA' : 'referral agreement'));
+      const refs = referred.get(r.id) || [];
+      if (refs.length) ev.push('Referred ' + (refs.length === 1 ? 'a deal' : refs.length + ' deals') + ' to us');
+      const wins = won.get(r.id) || [];
+      if (wins.length) ev.push('Client deal won: ' + wins[0].deal);
+      return {
+        id: r.id, name: r.Full_Name || '—', title: r.Title || null, account: r.Account_Name || null, account_id: r.Account_Name_id || null,
+        industry: ind, ind_source: r['Account_Name.Industries'] ? 'company' : r.Industry ? 'contact' : null, group: cls.group, fit: cls.fit,
+        types, primary, rel: types.join(', ') || 'Not set', li: r.LI_Connect || 'Not sent', meetings, evidence: ev, won: wins[0] || null,
+        client_only: primary === 'Client', state_set: Boolean(r['Account_Name.Billing_State']),
+        excluded: r.DO_NOT_CONTACT ? 'Marked Do Not Contact' : campaignSide ? 'Campaign contact' : null,
+        at_target: Boolean(atT), direct: 0, peer: 0,
+      };
+    });
+
+    const addIn = (t, x) => { if (t && !t.inside.some((y) => y.id === x.id)) t.inside.push(x); };
+    icpPeople.forEach((p) => addIn(targets.get(p.Account_Name_id), { id: p.id, name: p.Full_Name || '—', title: p.Title || null, li: p.LI_Connect || 'Not sent', meetings: p.Total_Meetings_Created || 0, priority: p.Priority || null, rel: null }));
+    mcContacts.forEach((c) => {
+      if (CC_RULES.excluded(c.Priority) || CC_RULES.isFN(c.Relationship_Type)) return;
+      addIn(targets.get(c.Account_Name_id), { id: c.id, name: c.Full_Name || '—', title: null, li: c.LI_Connect || 'Not sent', meetings: c.Total_Meetings_Created || 0, priority: c.Priority || null, rel: c.Relationship_Type || null });
+    });
+    people.forEach((p) => {
+      if (p.excluded === 'Campaign contact' && p.at_target) addIn(targets.get(p.account_id), { id: p.id, name: p.name, title: p.title, li: p.li, meetings: p.meetings, priority: null, rel: p.rel });
+    });
+
+    for (const p of people) {
+      if (p.excluded) continue;
+      const t = p.account_id ? targets.get(p.account_id) : null;
+      const base = { who: p.id, name: p.name, title: p.title, rel: p.primary, rels: p.rel, li: p.li, meetings: p.meetings };
+      if (t) {
+        const conf = p.client_only ? (p.won ? 'verified' : 'unverified') : p.evidence.length ? 'verified' : 'supported';
+        const q = [];
+        if (p.client_only && !p.won) q.push('Zoho labels ' + p.name + ' a Client, but no won client deal is linked. Confirm whether this is a past client contact and whether an introduction request is appropriate.');
+        else if (conf === 'supported') q.push('No meeting, accepted connection, signed agreement or referral is recorded with ' + p.name + '. Confirm the relationship is current before asking.');
+        if (!p.title) q.push('Title isn’t in Zoho, so their role at ' + t.account + ' is unknown.');
+        t.paths.push({ ...base, level: 1, conf, won: p.won, facts: ['Linked to ' + t.account + ' in Zoho', 'Relationship Type: ' + p.rel, ...p.evidence], questions: q });
+        if (p.meetings) t.met = true;
+        p.direct += 1;
+        continue;
+      }
+      const twins = p.account ? (byKey.get(CC_NAMEKEY(p.account)) || []) : [];
+      twins.forEach((t2) => {
+        t2.paths.push({ ...base, level: 1, conf: 'unverified', fuzzy: true, won: null,
+          facts: ['Linked to a different Zoho account with the same name (' + p.account + ')', 'Relationship Type: ' + p.rel, ...p.evidence],
+          questions: ['Two Zoho accounts share this name. Confirm they are the same company, then link ' + p.name + ' to the target account.'] });
+        p.direct += 1;
+      });
+    }
+
+    for (const t of targets.values()) {
+      for (const x of t.inside) {
+        if (x.meetings > 0) t.met = true;
+        if (!(x.li === 'Connected' || x.meetings > 0)) continue;
+        const facts = ['Works at ' + t.account + ' (Zoho)'];
+        if (x.li === 'Connected') facts.push('Accepted our LinkedIn request');
+        if (x.meetings) facts.push(x.meetings === 1 ? 'A meeting with us is logged' : x.meetings + ' meetings with us are logged');
+        const q = [];
+        if (!x.meetings) q.push('Connected only; no conversation is recorded. Ask who owns the area rather than for a favor.');
+        if (String(x.rel || '').includes('Client')) q.push('Zoho also labels them Client; what that label means isn’t recorded.');
+        t.paths.push({ who: x.id, name: x.name, title: x.title, rel: 'Campaign contact', rels: x.rel || 'Campaign contact', li: x.li, meetings: x.meetings, level: 2, conf: x.meetings ? 'verified' : 'supported', facts, questions: q });
+      }
+    }
+
+    const dealById = new Map(deals.map((d) => [d.id, d]));
+    refLinks.forEach((l) => {
+      const d = dealById.get(l.id);
+      const t = d && d.account_id ? targets.get(d.account_id) : null;
+      if (!t) return;
+      t.paths.push({ who: l.Referred_By_Contact_id || null, who_account: l.Referred_By_Account_id || null, name: l.Referred_By_Contact || l.Referred_By_Account || 'Referrer',
+        title: l.Referred_By_Contact ? l.Referred_By_Account || null : null, rel: 'Referrer', rels: 'Referred By on a deal', level: 4, conf: 'verified',
+        facts: ['Recorded as Referred By on the deal ' + d.deal + ' (' + d.stage + ')'], questions: [], deal: d });
+      const pp = people.find((p) => p.id === l.Referred_By_Contact_id);
+      if (pp) pp.direct += 1;
+    });
+
+    const peersBy = new Map();
+    people.forEach((p) => { if (!p.excluded && p.fit === 'icp') push(peersBy, p.group, p); });
+    for (const t of targets.values()) {
+      if (t.fit !== 'icp') continue;
+      const have = new Set(t.paths.map((x) => x.who));
+      for (const p of peersBy.get(t.group) || []) {
+        if (p.account_id === t.id || have.has(p.id)) continue;
+        t.paths.push({ who: p.id, name: p.name, title: p.title, rel: p.primary, rels: p.rel, li: p.li, meetings: p.meetings, level: 3, conf: 'unverified',
+          facts: [(p.account ? p.account + '’s' : 'Their') + ' industry: ' + p.industry + (p.ind_source === 'contact' ? ' (from the contact record)' : ''), t.account + '’s industry: ' + t.industry, 'Relationship Type: ' + p.rel, ...p.evidence],
+          questions: ['Same industry only. Zoho doesn’t show that ' + p.name + ' knows anyone at ' + t.account + '.'] });
+        p.peer += 1;
+      }
+    }
+    for (const t of targets.values()) t.paths = WI.rank(t.paths);
+    const out = { accounts: [...targets.values()].sort((a, b) => a.account.localeCompare(b.account)), people };
+    WI.cache = { args, out };
+    return out;
+  },
+};
+const WI_INPUTS = ['wi_introducers', 'icp_account_list', 'mc_account_list', 'icp_backlog_people', 'mc_contacts', 'deals_tagged', 'referral_links', 'agreements'];
+
+dash.calc('warm_paths', {
+  title: 'Warm introduction paths',
+  description: 'One row per target account (tagged 2026ICP or 2026MedicalCourier, Priority 9 and 11 left out; an account in both counts once) with every way in that Zoho records. Same company: a Founder Network, referral partner, platform, client or personal contact linked to the account. Already in: a campaign contact at the account who accepted our LinkedIn request or has met us. Industry peer: a relationship contact whose company is in the same ICP industry group. Recorded introduction: a deal at the account with Referred By filled in. Each path lists its evidence and open questions and carries a confidence: Verified when a meeting, accepted connection, signed agreement, won deal or referral is recorded; Supported when the link exists with no recorded interaction; Unverified when it rests on an unconfirmed Client label, a same-name account on another record, or industry alone. Same-name accounts are flagged, never joined.',
+  inputs: WI_INPUTS,
+  fn: (...a) => WI.build(...a).accounts,
+});
+
+dash.calc('warm_people', {
+  title: 'Relationship contacts checked for warm paths',
+  description: 'Every contact with a Relationship Type (Priority 9 and 11 left out): their company link, industry, the evidence of our relationship, how many target accounts they reach directly or as an industry peer, and why any were left out (Do Not Contact, or a campaign contact who is a target rather than an introducer).',
+  inputs: WI_INPUTS,
+  fn: (...a) => WI.build(...a).people,
+});
+
 
 dash.calc('deals_tagged', {
   title: 'Deals by campaign',
@@ -4462,20 +4850,8 @@ dash.calc('attention', {
   });
 
   /* ICP analysis */
-  const IC_PARTNER = /business consulting|it services|consulting|software|technology, information|outsourcing|strategic management/i;
-  const IC_IND = [
-    ['Healthcare', /health|medical|\bhospitals?\b|physician|clinic|dental|hospice|physical therapy|optometr|behavioral|mental/i],
-    ['Financial services & insurance', /financial|bank|insurance|investment|capital|private equity|wealth|asset management|fintech|blockchain|credit/i],
-    ['Logistics & aviation', /logistic|transport|truck|freight|warehous|aviation|aerospace|airline|shipping|supply chain|courier|parcel|3pl/i],
-    ['Staffing & HR', /staffing|recruit|human resources|employment/i],
-    ['Hospitality & entertainment', /hospitality|hotel|restaurant|food and beverage services|entertainment|recreation|leisure|travel|casino|sport/i],
-    ['Retail & eCommerce', /retail|e-?commerce|apparel|fashion|wholesale/i],
-    ['Legal', /\blaw\b|legal/i],
-    ['Tax & accounting', /accounting|\btax\b|\bcpa\b/i],
-    ['Automotive', /automotive|collision|motor vehicle/i],
-    ['Self-storage', /self-storage/i],
-    ['Social media', /social media/i],
-  ];
+  const IC_PARTNER = CC_IND.partner;
+  const IC_IND = CC_IND.groups;
   const IC_FIT = {
     icp: ['ICP industry', 'var(--color-ok)'],
     partner: ['Consulting & IT (partner or competitor)', 'color-mix(in oklab, var(--color-fg) 58%, var(--color-panel))'],
@@ -4501,13 +4877,7 @@ dash.calc('attention', {
   let icAskAll = false;
   let icCov = 'all';
   let icCovAll = false;
-  const icClass = (ind) => {
-    const s = String(ind || '').trim();
-    if (!s) return { fit: 'unknown', group: 'Industry not set' };
-    if (IC_PARTNER.test(s)) return { fit: 'partner', group: 'Consulting & IT' };
-    const hit = IC_IND.find(([, re]) => re.test(s));
-    return hit ? { fit: 'icp', group: hit[0] } : { fit: 'outside', group: 'Outside ICP list' };
-  };
+  const icClass = CC_IND.classify;
   const icFirst = (full) => {
     const w = String(full || '').trim().split(/\s+/)[0] || '';
     if (w.replace(/[^\p{L}]/gu, '').length < 2) return 'Hi';
@@ -4721,6 +5091,8 @@ dash.calc('attention', {
       const why = el('div', 'cc-ic-why');
       p.why.forEach(([w, neg]) => why.append(el('span', neg ? 'cc-ic-neg' : null, w)));
       who.append(why, el('span', 'cc-ic-score', 'Score ' + p.score));
+      const wb = wiBadge(p.account_id, p.id);
+      if (wb) who.append(wb);
       const msg = el('div', 'cc-ic-msg');
       const text = p.opener + ' ' + IC_ASK;
       msg.append(el('p', null, text));
@@ -4859,8 +5231,10 @@ dash.calc('attention', {
           if (href) { n.href = href; n.target = '_blank'; n.rel = 'noopener'; n.title = 'Open in Zoho CRM'; }
           td.append(n);
         } else if (f === 'flags') {
+          const wb = wiBadge(a.id, null);
+          if (wb) td.append(wb);
           a.flags.forEach((k) => { const s = el('span', 'cc-ic-flag' + (IC_FLAGS[k][1] ? ' ' + IC_FLAGS[k][1] : ''), IC_FLAGS[k][0]); s.title = IC_FLAGS[k][2]; td.append(s); });
-          if (!a.flags.length) td.textContent = '—';
+          if (!a.flags.length && !wb) td.textContent = '—';
         } else if (f === 'accept') td.textContent = a.accept == null ? '—' : pctF(a.accept);
         else td.textContent = fmt(a[f], num ? 'int' : null);
         tr.append(td);
@@ -4909,6 +5283,647 @@ dash.calc('attention', {
     } },
   });
 
+  /* Warm Intros tab */
+  const WI_CAMPS = [['icp', 'ICP'], ['mc', 'Medical Courier']];
+  const WI_SRCS = [['Founder Network', 'Founder Network'], ['Referral Partner', 'Referral partners'], ['Client', 'Client label'], ['Platform Provider', 'Platform providers'], ['Personal', 'Personal'], ['Campaign contact', 'Connected campaign contacts']];
+  const WI_VIEWS = [['all', 'All target accounts'], ['best', 'Best opportunities'], ['verify', 'Needs verification'], ['none', 'No warm path']];
+  const WI_PAGE = 25;
+  const WI_VIEW_NOTE = { best: 'ready to ask', verify: 'need verification', none: 'no warm path', direct: 'someone we know inside', single: 'one usable path only', inonly: 'only a connected contact inside', dupes: 'same-name accounts', clientq: 'Client label to confirm' };
+  const wi = {
+    camps: new Set(['icp', 'mc']), srcs: new Set(['Founder Network', 'Referral Partner', 'Client', 'Platform Provider', 'Campaign contact', 'Referrer']),
+    view: 'all', q: '', camp: '', level: '', conf: '', group: '', alt: false, noind: false, sort: 'path', open: new Set(), all: false,
+    choice: {}, drafts: {}, sender: '', built: false,
+  };
+  try { wi.sender = localStorage.getItem('cc-wi-sender') || ''; } catch (e) { wi.sender = ''; }
+  const wiCampLabel = (t) => t.campaigns.map((c) => (c === 'icp' ? 'ICP' : 'Medical Courier')).join(' + ');
+  const wiTier = (title) => ['C-suite / Founder', 'VP', 'Director / Head', 'Other'].indexOf(icTier(title));
+  const wiReach = (t, exclude) => t.inside.filter((x) => x.id !== exclude && x.meetings === 0 && x.li !== 'Connected')
+    .sort((a, b) => wiTier(a.title) - wiTier(b.title) || Number(b.li === 'Connected') - Number(a.li === 'Connected') || String(a.priority || '9').localeCompare(String(b.priority || '9')) || String(a.name).localeCompare(String(b.name)))[0] || null;
+  /* The accounts in scope, each with its paths limited to the chosen introducer sources, its best path and status. */
+  const wiModel = () => {
+    const rows = rowsOf('warm_paths');
+    if (!rows) return null;
+    return rows.filter((t) => t.campaigns.some((c) => wi.camps.has(c))).map((t) => {
+      const paths = t.paths.filter((p) => wi.srcs.has(WI.source(p)));
+      const best = paths[0] || null;
+      const st = WI.status(t, best);
+      const reach = wiReach(t, best && best.who);
+      const usable = paths.filter(WI.usable);
+      return { ...t, vpaths: paths, best, st, reach, usable: usable.length, direct: paths.some((p) => p.level === 1 && !p.fuzzy),
+        best_label: best ? WI.LEVELS[best.level] + ' · ' + WI.CONF[best.conf] : 'No path found', introducer: best ? best.name : '—', best_who: best && best.level !== 4 ? best.who : null,
+        camp_label: wiCampLabel(t), status_label: st.label, n_paths: paths.length };
+    });
+  };
+  const wiStatusRank = { ready: 0, met: 1, verify: 2, none: 3 };
+  const wiSortRows = (rows) => {
+    const by = {
+      path: (a, b) => wiStatusRank[a.st.key] - wiStatusRank[b.st.key] || (a.best ? a.best.level : 9) - (b.best ? b.best.level : 9)
+        || (a.best ? WI.CONF_RANK[a.best.conf] : 9) - (b.best ? WI.CONF_RANK[b.best.conf] : 9) || b.usable - a.usable || a.account.localeCompare(b.account),
+      name: (a, b) => a.account.localeCompare(b.account),
+      paths: (a, b) => b.n_paths - a.n_paths || b.usable - a.usable || a.account.localeCompare(b.account),
+      verified: (a, b) => b.vpaths.filter((p) => p.conf === 'verified').length - a.vpaths.filter((p) => p.conf === 'verified').length || a.account.localeCompare(b.account),
+    };
+    return [...rows].sort(by[wi.sort] || by.path);
+  };
+  const wiFilter = (rows) => {
+    const q = wi.q.trim().toLowerCase();
+    return rows.filter((t) => {
+      if (wi.view === 'best' && t.st.key !== 'ready') return false;
+      if (wi.view === 'verify' && t.st.key !== 'verify') return false;
+      if (wi.view === 'none' && t.st.key !== 'none') return false;
+      if (wi.view === 'direct' && !t.direct) return false;
+      if (wi.view === 'single' && t.usable !== 1) return false;
+      if (wi.view === 'inonly' && !(t.best && t.best.level === 2 && !t.vpaths.some((p) => p.level === 1 || p.level === 4))) return false;
+      if (wi.view === 'dupes' && !t.dupes.length) return false;
+      if (wi.view === 'clientq' && !t.vpaths.some((p) => p.level === 1 && p.rel === 'Client' && p.conf === 'unverified')) return false;
+      if (wi.camp && !t.campaigns.includes(wi.camp)) return false;
+      if (wi.level && !t.vpaths.some((p) => String(p.level) === wi.level)) return false;
+      if (wi.conf && !(t.best && t.best.conf === wi.conf)) return false;
+      if (wi.group && t.group !== wi.group) return false;
+      if (wi.alt && t.n_paths < 2) return false;
+      if (wi.noind && t.industry) return false;
+      if (q && !(t.account.toLowerCase().includes(q) || t.vpaths.some((p) => String(p.name).toLowerCase().includes(q)) || t.inside.some((x) => String(x.name).toLowerCase().includes(q)))) return false;
+      return true;
+    });
+  };
+  const wiActive = () => wi.view !== 'all' || wi.q || wi.camp || wi.level || wi.conf || wi.group || wi.alt || wi.noind;
+  const wiReset = () => { Object.assign(wi, { view: 'all', q: '', camp: '', level: '', conf: '', group: '', alt: false, noind: false, all: false }); wiSyncControls(); };
+  const wiSet = (patch, scroll) => {
+    Object.assign(wi, patch, { all: false });
+    wiSyncControls();
+    drawWiTable(wiModel());
+    if (scroll) { const c = root.querySelector('#wi-list'); if (c) c.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+  };
+  const wiReady = (box) => {
+    if (!box) return false;
+    if (status('warm_paths') === 'loading') return false;
+    box.classList.remove('dash-skeleton');
+    if (status('warm_paths') !== 'ok') {
+      const failed = WI_INPUTS.filter((id) => status(id) === 'error');
+      const p = el('p', 'cc-fail', 'Warm paths couldn’t be worked out' + (failed.length ? ': ' + failed.join(', ') + (failed.length === 1 ? ' is' : ' are') + ' missing from today’s data or failed to load. The next refresh at 6:00 PM IST rebuilds them; if this stays, check the refresh run on GitHub.' : '.'));
+      p.setAttribute('role', 'alert');
+      box.replaceChildren(p);
+      return false;
+    }
+    return true;
+  };
+  const wiLink = (module, id, text, cls) => {
+    const href = id && /^\d+$/.test(String(id)) ? ZOHO_ORG + module + '/' + id : null;
+    const n = el(href ? 'a' : 'span', (cls || '') + (href ? ' cc-zlink' : ''), text);
+    if (href) { n.href = href; n.target = '_blank'; n.rel = 'noopener'; n.title = 'Open in Zoho CRM'; }
+    return n;
+  };
+  const wiConf = (conf) => el('span', 'cc-wi-conf cc-wi-' + conf, WI.CONF[conf]);
+  const wiChip = (label, pressed, onClick) => {
+    const b = el('button', 'cc-chip', label);
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String(pressed));
+    b.addEventListener('click', onClick);
+    return b;
+  };
+  const wiField = (label, control) => { const l = el('label'); l.append(el('span', null, label), control); return l; };
+  const wiSelect = (key, opts) => {
+    const s = el('select');
+    s.dataset.wi = key;
+    opts.forEach(([v, t]) => { const o = el('option', null, t); o.value = v; s.append(o); });
+    s.addEventListener('change', () => wiSet({ [key]: s.value }));
+    return s;
+  };
+  const wiCheck = (key, label) => {
+    const l = el('label', 'cc-wi-check');
+    const c = el('input');
+    c.type = 'checkbox';
+    c.dataset.wi = key;
+    c.addEventListener('change', () => wiSet({ [key]: c.checked }));
+    l.append(c, el('span', null, label));
+    return l;
+  };
+  const wiBuildControls = (groups) => {
+    const f = root.querySelector('#wi-filters');
+    if (!f) return;
+    const search = el('input', 'cc-search');
+    search.type = 'search';
+    search.dataset.wi = 'q';
+    search.placeholder = 'Company or person';
+    search.setAttribute('aria-label', 'Search by company, introducer or contact');
+    let timer;
+    search.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => wiSet({ q: search.value }), 150); });
+    const reset = el('button', 'cc-go', 'Reset filters');
+    reset.type = 'button';
+    reset.id = 'wi-reset';
+    reset.addEventListener('click', () => { wiReset(); drawWiTable(wiModel()); });
+    f.replaceChildren(
+      wiField('Search', search),
+      wiField('Campaign', wiSelect('camp', [['', 'Any'], ...WI_CAMPS])),
+      wiField('Has a path that is', wiSelect('level', [['', 'Any'], ['1', 'Same company'], ['2', 'Already in'], ['3', 'Industry peer'], ['4', 'Recorded introduction']])),
+      wiField('Best path confidence', wiSelect('conf', [['', 'Any'], ['verified', 'Verified'], ['supported', 'Supported'], ['unverified', 'Unverified']])),
+      wiField('Industry group', wiSelect('group', [['', 'Any'], ...groups.map((g) => [g, g])])),
+      wiField('Sort by', wiSelect('sort', [['path', 'Best way in'], ['verified', 'Verified paths'], ['paths', 'Number of paths'], ['name', 'Account name']])),
+      wiCheck('alt', 'More than one way in'),
+      wiCheck('noind', 'Industry missing'),
+      reset,
+    );
+    wi.built = true;
+  };
+  const wiSyncControls = () => {
+    root.querySelectorAll('#wi-filters [data-wi]').forEach((c) => {
+      const v = wi[c.dataset.wi];
+      if (c.type === 'checkbox') c.checked = Boolean(v);
+      else if (c.value !== String(v ?? '')) c.value = String(v ?? '');
+    });
+    const views = root.querySelector('#wi-views');
+    if (views) views.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === wi.view)));
+  };
+  const wiDraw = () => {
+    const sec = root.querySelector('#wi');
+    if (sec && sec.hidden) { wi.dirty = true; return; }
+    wi.dirty = false;
+    const camps = root.querySelector('#wi-camps');
+    const srcs = root.querySelector('#wi-srcs');
+    if (camps) camps.replaceChildren(...WI_CAMPS.map(([k, lab]) => wiChip(lab, wi.camps.has(k), () => { if (wi.camps.has(k) && wi.camps.size === 1) return; wi.camps.has(k) ? wi.camps.delete(k) : wi.camps.add(k); wiDraw(); })));
+    if (srcs) srcs.replaceChildren(...WI_SRCS.map(([k, lab]) => wiChip(lab, wi.srcs.has(k), () => { wi.srcs.has(k) ? wi.srcs.delete(k) : wi.srcs.add(k); wiDraw(); })));
+    const stamp = root.querySelector('#wi-stamp');
+    if (stamp) {
+      const gen = window.__DASH_DATA__ && window.__DASH_DATA__.generated_at;
+      const d = gen ? new Date(gen) : null;
+      const f = (tz) => d.toLocaleString('en-US', { timeZone: tz, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+      const ref = document.getElementById('cc-refreshed');
+      stamp.textContent = d && !Number.isNaN(d.getTime()) ? 'Zoho data as of ' + f('Asia/Kolkata') + ' IST (' + f('America/Chicago') + ' CT).' : ref && !/loading/i.test(ref.textContent) ? ref.textContent : '';
+    }
+    const views = root.querySelector('#wi-views');
+    if (views && !views.childElementCount) views.append(...WI_VIEWS.map(([k, lab]) => { const b = wiChip(lab, wi.view === k, () => wiSet({ view: k })); b.dataset.view = k; return b; }));
+    const m = wiModel();
+    if (m && !wi.built) wiBuildControls([...new Set(m.filter((t) => t.fit === 'icp').map((t) => t.group))].sort());
+    wiSyncControls();
+    drawWiKpis(m);
+    drawWiFunnel(m);
+    drawWiFinds(m);
+    drawWiTable(m);
+    drawWiConc(m);
+    drawWiDq(m);
+    drawWiSchema(m);
+  };
+  const drawWiKpis = (m) => {
+    const box = root.querySelector('#wi-kpi-row');
+    if (!wiReady(box) || !m) return;
+    const n = m.length;
+    const k = (key) => m.filter((t) => t.st.key === key).length;
+    const any = m.filter((t) => t.best).length;
+    const direct = m.filter((t) => t.direct);
+    const both = m.filter((t) => t.campaigns.length > 1).length;
+    const tiles = [
+      ['all', intF(n), 'Target accounts', WI_CAMPS.filter(([c]) => wi.camps.has(c)).map(([c, lab]) => lab + ' ' + intF(m.filter((t) => t.campaigns.includes(c)).length)).join(' · ') + (both ? ' · ' + intF(both) + ' in both' : '')],
+      ['any', intF(any), 'With a warm path', 'of ' + intF(n) + ' accounts have at least one way in'],
+      ['direct', intF(direct.length), 'Someone we know inside', intF(direct.filter((t) => t.vpaths.some((p) => p.level === 1 && !p.fuzzy && WI.usable(p))).length) + ' of them usable now; the rest need checking'],
+      ['best', intF(k('ready')), 'Ready to ask', 'of ' + intF(n) + ': a usable path and nobody met yet'],
+      ['verify', intF(k('verify')), 'Need verification', 'of ' + intF(n) + ': the best path rests on an unconfirmed fact'],
+      ['none', intF(k('none')), 'No path found', 'of ' + intF(n) + ' accounts: cold outreach for now'],
+    ];
+    box.replaceChildren(...tiles.map(([view, v, label, sub]) => {
+      const b = el('button', 'cc-dkpi cc-wi-kpi');
+      b.type = 'button';
+      const target = view === 'any' ? 'all' : view;
+      b.setAttribute('aria-pressed', String(wi.view === target && view !== 'any' && view !== 'all'));
+      b.append(el('span', 'cc-dkpi-v', v), el('span', 'cc-dkpi-l', label), el('span', 'cc-dkpi-s', sub));
+      b.addEventListener('click', () => wiSet(view === 'any' ? { view: 'all', level: '' } : { view: target }, true));
+      return b;
+    }));
+  };
+  const drawWiFunnel = (m) => {
+    const box = root.querySelector('#wi-funnel-rows');
+    if (!wiReady(box) || !m) return;
+    const n = Math.max(1, m.length);
+    const stages = [
+      ['all', 'Target accounts', m, 'Accounts tagged with an in-scope campaign, Priority 9 and 11 left out.'],
+      ['known', 'With a known contact', m.filter((t) => t.contacts > 0 || t.inside.length || t.vpaths.some((p) => p.level === 1)), 'Zoho holds at least one contact at the account.'],
+      ['path', 'With any way in', m.filter((t) => t.best), 'At least one path of any level, verified or not.'],
+      ['usable', 'With a usable way in', m.filter((t) => t.vpaths.some(WI.usable)), 'A verified or supported path: the link exists in Zoho.'],
+      ['verified', 'With a verified way in', m.filter((t) => t.vpaths.some((p) => p.conf === 'verified')), 'A meeting, accepted connection, signed agreement, won deal or referral is recorded with the introducer.'],
+      ['met', 'Meeting logged at the account', m.filter((t) => t.met), 'Someone at the account has a meeting logged in Zoho.'],
+    ];
+    box.replaceChildren(...stages.map(([key, label, rows, def]) => {
+      const r = el('div', 'cc-ic-srow');
+      const tr = el('div', 'cc-ic-track');
+      const fill = el('span', 'cc-ic-fill');
+      fill.style.width = (rows.length / n * 100) + '%';
+      tr.append(fill);
+      const b = el('b', null, intF(rows.length) + ' ');
+      b.append(el('small', null, pctF(rows.length / n)));
+      r.append(el('span', null, label), tr, b);
+      r.title = def;
+      clickable(r, 'wi-funnel', key, label + ': ' + intF(rows.length) + ' accounts. ' + def);
+      dlTip(r, '#wi-funnel', label, [[null, 'Accounts', intF(rows.length)], [null, 'Of targets', pctF(rows.length / n)], [null, 'Means', def]]);
+      return r;
+    }));
+    dlInsight('ins-wi-funnel', 'Requests sent and introductions accepted aren’t recorded in Zoho, so those stages can’t be shown. ' + intF(stages[3][2].length) + ' of ' + intF(m.length) + ' accounts have a usable way in today.');
+  };
+  const drawWiFinds = (m) => {
+    const box = root.querySelector('#wi-finds');
+    if (!wiReady(box) || !m) return;
+    const ppl = rowsOf('warm_people') || [];
+    const names = (rows) => rows.slice(0, 3).map((t) => t.account).join(', ') + (rows.length > 3 ? ' and ' + intF(rows.length - 3) + ' more' : '');
+    const direct = m.filter((t) => t.vpaths.some((p) => p.level === 1 && !p.fuzzy && WI.usable(p)));
+    const clientQ = m.filter((t) => t.vpaths.some((p) => p.level === 1 && p.rel === 'Client' && p.conf === 'unverified'));
+    const alt = m.filter((t) => t.usable >= 2);
+    const single = m.filter((t) => t.usable === 1);
+    const inOnly = m.filter((t) => t.best && t.best.level === 2 && !t.vpaths.some((p) => p.level === 1 || p.level === 4));
+    const none = m.filter((t) => !t.best);
+    const noneNoInd = none.filter((t) => !t.industry);
+    const dupes = m.filter((t) => t.dupes.length);
+    const unlinked = ppl.filter((p) => !p.account_id && !p.excluded);
+    const finds = [
+      [direct.length, 'view|direct', intF(direct.length) + ' target ' + (direct.length === 1 ? 'account has' : 'accounts have') + ' someone we already know inside with a usable link: ' + names(direct) + '.'],
+      [clientQ.length, 'view|clientq', intF(clientQ.length) + ' ' + (clientQ.length === 1 ? 'account has' : 'accounts have') + ' a same-company contact labeled Client with no won deal behind it. Confirm what the label means before asking.'],
+      [alt.length, 'alt', intF(alt.length) + ' ' + (alt.length === 1 ? 'account has' : 'accounts have') + ' more than one usable way in, so there is a fallback if the first person can’t help.'],
+      [single.length, 'view|single', intF(single.length) + ' ' + (single.length === 1 ? 'account depends' : 'accounts depend') + ' on a single usable path.'],
+      [inOnly.length, 'view|inonly', intF(inOnly.length) + ' ' + (inOnly.length === 1 ? 'account has' : 'accounts have') + ' no outside introducer, only a connected executive inside who can point us to the right colleague.'],
+      [none.length, 'view|none', intF(none.length) + ' of ' + intF(m.length) + ' accounts have no way in recorded' + (noneNoInd.length ? '; ' + intF(noneNoInd.length) + ' of them have no industry set, so peers can’t be matched.' : '.')],
+      [dupes.length, 'view|dupes', intF(dupes.length) + ' target ' + (dupes.length === 1 ? 'account shares' : 'accounts share') + ' a name with another target account in Zoho. Check whether they are duplicates.'],
+      [unlinked.length, 'dq|unlinked', intF(unlinked.length) + ' of ' + intF(ppl.length) + ' relationship contacts aren’t linked to any company in Zoho, so they can’t be matched to a target at all.'],
+    ].filter(([n]) => n > 0);
+    if (!finds.length) { box.replaceChildren(el('li', 'cc-empty', 'Nothing stands out in today’s data.')); return; }
+    box.replaceChildren(...finds.map(([, key, text]) => {
+      const li = el('li');
+      const b = el('button', 'cc-wi-find', text);
+      b.type = 'button';
+      b.addEventListener('click', () => {
+        const [kind, val] = key.split('|');
+        if (kind === 'dq') { show('wi'); pick('wi-dq', val); return; }
+        if (kind === 'alt') { wiReset(); wiSet({ alt: true }, true); return; }
+        wiReset();
+        wiSet({ view: val }, true);
+      });
+      li.append(b);
+      return li;
+    }));
+  };
+  const wiPathBlock = (t, p, i) => {
+    const d = el('div', 'cc-wi-path');
+    const top = el('div', 'cc-wi-ptop');
+    top.append(el('span', 'cc-wi-lvl', WI.LEVELS[p.level]));
+    if (p.level === 4 && !p.who) top.append(wiLink('Accounts', p.who_account, p.name, 'cc-wi-pn'));
+    else top.append(wiLink('Contacts', p.who, p.name, 'cc-wi-pn'));
+    top.append(wiConf(p.conf));
+    if (i === 0) top.append(el('span', 'cc-wi-best', 'Best'));
+    d.append(top);
+    const sub = [p.title, p.rels].filter(Boolean).join(' · ');
+    if (sub) d.append(el('small', 'cc-wi-sub', sub));
+    const ul = el('ul', 'cc-wi-facts');
+    p.facts.forEach((f) => ul.append(el('li', null, f)));
+    d.append(ul);
+    if (p.questions.length) {
+      const q = el('ul', 'cc-wi-qs');
+      p.questions.forEach((x) => q.append(el('li', null, x)));
+      d.append(q);
+    }
+    return d;
+  };
+  const wiDetail = (t) => {
+    const wrap = el('div', 'cc-wi-dgrid');
+    const left = el('div', 'cc-wi-dcol');
+    const facts = el('dl', 'cc-wi-dl');
+    const add = (k, v) => { if (v == null || v === '') return; facts.append(el('dt', null, k)); const dd = el('dd'); if (v instanceof Node) dd.append(v); else dd.textContent = v; facts.append(dd); };
+    add('Account', wiLink('Accounts', t.id, t.account));
+    add('Campaigns', t.camp_label);
+    add('Industry', t.industry ? t.industry + (t.fit === 'icp' ? ' (' + t.group + ')' : '') : 'Not set in Zoho');
+    add('Size', t.size);
+    add('Contacts in Zoho', t.contacts ? intF(t.contacts) : null);
+    add('Priority', t.priority ? 'P' + t.priority : null);
+    add('Where it stands', t.st.label + '. ' + t.st.action);
+    if (t.reach) add('Person to reach', [t.reach.name, t.reach.title].filter(Boolean).join(', '));
+    left.append(facts);
+    if (t.dupes.length) {
+      const p = el('p', 'cc-wi-warn');
+      p.append(document.createTextNode('Same name as another target account: '));
+      t.dupes.forEach((x, i) => { if (i) p.append(document.createTextNode(', ')); p.append(wiLink('Accounts', x.id, x.account)); });
+      p.append(document.createTextNode('. Check whether they are one company.'));
+      left.append(p);
+    }
+    const inside = t.inside.filter((x) => x.li === 'Connected' || x.meetings);
+    if (inside.length) {
+      left.append(el('h5', null, 'Connected or met inside'));
+      const ul = el('ul', 'cc-wi-facts');
+      inside.slice(0, 8).forEach((x) => { const li = el('li'); li.append(wiLink('Contacts', x.id, x.name), document.createTextNode([x.title, x.meetings ? 'met' : 'connected'].filter(Boolean).map((s) => ' · ' + s).join(''))); ul.append(li); });
+      if (inside.length > 8) ul.append(el('li', 'cc-empty', 'and ' + intF(inside.length - 8) + ' more'));
+      left.append(ul);
+    }
+    const right = el('div', 'cc-wi-dcol');
+    right.append(el('h5', null, t.vpaths.length ? 'Ways in, best first (' + intF(t.vpaths.length) + ')' : 'Ways in'));
+    if (!t.vpaths.length) {
+      right.append(el('p', 'cc-empty', !t.paths.length
+        ? (t.industry ? 'Zoho has no contact we know at this account and no peer in its industry group. Use cold outreach, or record who knows them.' : 'Zoho has no contact we know at this account, and its industry isn’t set, so peers can’t be matched.')
+        : 'Paths exist but come only from introducer types switched off above.'));
+    } else {
+      const shown = t.vpaths.filter((p, i) => i < 4 || p.level !== 3);
+      shown.slice(0, 12).forEach((p, i) => right.append(wiPathBlock(t, p, i)));
+      const hidden = t.vpaths.length - Math.min(12, shown.length);
+      if (hidden > 0) right.append(el('p', 'cc-empty', intF(hidden) + ' more industry peers. Same industry alone is the weakest signal.'));
+      const choices = t.vpaths.filter((p) => p.level !== 4 || p.who);
+      if (choices.length) right.append(wiComposer(t, choices));
+    }
+    wrap.append(left, right);
+    return wrap;
+  };
+  const wiComposer = (t, choices) => {
+    const box = el('div', 'cc-wi-compose');
+    box.append(el('h5', null, 'Introduction request'));
+    const idx = Math.min(wi.choice[t.id] || 0, choices.length - 1);
+    const p = choices[idx];
+    const key = t.id + '|' + p.level + '|' + (p.who || p.name);
+    const sel = el('select');
+    choices.slice(0, 20).forEach((c, i) => { const o = el('option', null, c.name + ' · ' + WI.LEVELS[c.level] + ' · ' + WI.CONF[c.conf]); o.value = String(i); sel.append(o); });
+    sel.value = String(idx);
+    sel.addEventListener('change', () => { wi.choice[t.id] = Number(sel.value); drawWiTable(wiModel()); });
+    const sender = el('input');
+    sender.type = 'text';
+    sender.value = wi.sender;
+    sender.placeholder = 'Your name';
+    sender.autocomplete = 'name';
+    const area = el('textarea');
+    area.rows = 8;
+    const fresh = () => WI.message(t, p, wi.sender, t.reach);
+    area.value = wi.drafts[key] != null ? wi.drafts[key] : fresh();
+    area.addEventListener('input', () => { wi.drafts[key] = area.value; });
+    sender.addEventListener('change', () => {
+      wi.sender = sender.value.trim();
+      try { localStorage.setItem('cc-wi-sender', wi.sender); } catch (e) { /* stays for this visit */ }
+      if (wi.drafts[key] == null) area.value = fresh();
+    });
+    const fields = el('div', 'cc-wi-filters');
+    fields.append(wiField('Ask', sel), wiField('Sign as', sender));
+    box.append(fields);
+    if (!WI.usable(p)) box.append(el('p', 'cc-wi-warn', 'This path is unverified. Resolve the open question above before sending.'));
+    box.append(wiField('Message, edit before copying', area));
+    const row = el('div', 'cc-tools');
+    const copy = el('button', 'cc-go', 'Copy message');
+    copy.type = 'button';
+    const again = el('button', 'cc-go', 'Start over');
+    again.type = 'button';
+    const note = el('span', 'cc-wi-note');
+    note.setAttribute('role', 'status');
+    copy.addEventListener('click', async () => {
+      try {
+        if (!navigator.clipboard || !navigator.clipboard.writeText) throw new Error('no clipboard');
+        await navigator.clipboard.writeText(area.value);
+        note.textContent = 'Copied. Nothing was sent.';
+      } catch (e) {
+        area.focus();
+        area.select();
+        note.textContent = 'Copy was blocked by the browser. The text is selected; press Ctrl+C or ⌘C.';
+      }
+    });
+    again.addEventListener('click', () => { delete wi.drafts[key]; area.value = fresh(); note.textContent = ''; });
+    row.append(copy, again, note);
+    box.append(row);
+    return box;
+  };
+  const WI_COLS = [['account', 'Account'], ['best', 'Best way in'], ['who', 'Introducer'], ['reach', 'Person to reach', true], ['next', 'Next step'], ['n', 'Paths', true, true]];
+  const drawWiTable = (m) => {
+    const wrapBox = root.querySelector('#wi-table-wrap');
+    if (!wiReady(wrapBox) || !m) { const c = root.querySelector('#wi-count'); if (c) c.textContent = ''; return; }
+    const table = root.querySelector('#wi-table');
+    if (!table) return;
+    const rows = wiSortRows(wiFilter(m));
+    const shown = wi.all ? rows : rows.slice(0, WI_PAGE);
+    const count = root.querySelector('#wi-count');
+    count.replaceChildren(document.createTextNode('Showing ' + intF(shown.length) + ' of ' + intF(rows.length) + ' matching accounts (' + intF(m.length) + ' in scope)' + (WI_VIEW_NOTE[wi.view] ? ' · ' + WI_VIEW_NOTE[wi.view] : '') + (wi.q ? ' · search “' + wi.q + '”' : '') + '.'));
+    const resetBtn = root.querySelector('#wi-reset');
+    if (resetBtn) resetBtn.disabled = !wiActive();
+    const hr = el('tr');
+    WI_COLS.forEach(([, label, narrow, num]) => { const th = el('th', [num ? 'cc-num' : '', narrow ? 'cc-hide-narrow' : ''].filter(Boolean).join(' ') || null, label); th.scope = 'col'; hr.append(th); });
+    table.querySelector('thead').replaceChildren(hr);
+    const body = [];
+    if (!rows.length) {
+      const tr = el('tr');
+      const td = el('td', 'cc-empty');
+      td.colSpan = WI_COLS.length;
+      td.append(document.createTextNode('No accounts match these filters. '));
+      const b = el('button', 'cc-go', 'Reset filters');
+      b.type = 'button';
+      b.addEventListener('click', () => { wiReset(); drawWiTable(wiModel()); });
+      td.append(b);
+      tr.append(td);
+      body.push(tr);
+    }
+    shown.forEach((t) => {
+      const tr = el('tr', 'cc-wi-row' + (wi.open.has(t.id) ? ' is-open' : ''));
+      tr.dataset.key = t.id;
+      const open = wi.open.has(t.id);
+      const toggle = () => { wi.open.has(t.id) ? wi.open.delete(t.id) : wi.open.add(t.id); drawWiTable(wiModel()); const b = root.querySelector('#wi-table tr[data-key="' + t.id + '"] .cc-wi-tog'); if (b) b.focus(); };
+      WI_COLS.forEach(([f, , narrow, num]) => {
+        const td = el('td', [num ? 'cc-num' : '', narrow ? 'cc-hide-narrow' : ''].filter(Boolean).join(' ') || null);
+        if (f === 'account') {
+          const b = el('button', 'cc-wi-tog');
+          b.type = 'button';
+          b.setAttribute('aria-expanded', String(open));
+          b.setAttribute('aria-label', (open ? 'Hide' : 'Show') + ' paths for ' + t.account);
+          b.textContent = open ? '−' : '+';
+          b.addEventListener('click', toggle);
+          const nm = el('div', 'cc-wi-acc');
+          nm.append(wiLink('Accounts', t.id, t.account), el('small', null, t.camp_label + (t.industry ? ' · ' + (t.fit === 'icp' ? t.group : t.industry) : ' · Industry not set')));
+          const cell = el('div', 'cc-wi-acccell');
+          cell.append(b, nm);
+          td.append(cell);
+        } else if (f === 'best') {
+          if (t.best) { td.append(el('span', 'cc-wi-lvl', WI.LEVELS[t.best.level]), wiConf(t.best.conf)); } else td.append(el('span', 'cc-empty', 'None found'));
+        } else if (f === 'who') {
+          if (t.best) {
+            td.append(t.best.level === 4 && !t.best.who ? wiLink('Accounts', t.best.who_account, t.best.name) : wiLink('Contacts', t.best.who, t.best.name));
+            td.append(el('small', 'cc-wi-sub', [t.best.title, t.best.level === 2 ? 'Connected campaign contact' : t.best.rels].filter(Boolean).join(' · ')));
+          } else td.textContent = '—';
+        } else if (f === 'reach') {
+          if (t.reach) { td.append(wiLink('Contacts', t.reach.id, t.reach.name)); if (t.reach.title) td.append(el('small', 'cc-wi-sub', t.reach.title)); } else td.textContent = '—';
+        } else if (f === 'next') {
+          td.append(el('span', 'cc-wi-st cc-wi-' + t.st.tone, t.st.label), el('small', 'cc-wi-sub', t.st.action));
+        } else td.textContent = intF(t.n_paths);
+        tr.append(td);
+      });
+      body.push(tr);
+      if (open) {
+        const dr = el('tr', 'cc-wi-detail');
+        const td = el('td');
+        td.colSpan = WI_COLS.length;
+        td.append(wiDetail(t));
+        dr.append(td);
+        body.push(dr);
+      }
+    });
+    table.querySelector('tbody').replaceChildren(...body);
+    const more = root.querySelector('#wi-more');
+    if (rows.length > WI_PAGE) {
+      const b = el('button', 'cc-go', wi.all ? 'Show the first ' + WI_PAGE : 'Show all ' + intF(rows.length));
+      b.type = 'button';
+      b.addEventListener('click', () => { wi.all = !wi.all; drawWiTable(wiModel()); });
+      more.replaceChildren(b);
+    } else more.replaceChildren();
+  };
+  const WI_TYPES = ['Founder Network', 'Referral Partner', 'Client', 'Platform Provider', 'Personal', 'Campaign contact', 'Referrer'];
+  const drawWiConc = (m) => {
+    const box = root.querySelector('#wi-conc-body');
+    if (!wiReady(box) || !m) return;
+    const reach = new Map();
+    m.forEach((t) => t.vpaths.forEach((p) => {
+      if (!(p.level === 1 || p.level === 4) || !p.who) return;
+      if (!reach.has(p.who)) reach.set(p.who, { id: p.who, name: p.name, rel: p.rels, accounts: new Set(), usable: 0 });
+      const r = reach.get(p.who);
+      if (!r.accounts.has(t.id)) { r.accounts.add(t.id); if (WI.usable(p)) r.usable += 1; }
+    }));
+    const top = [...reach.values()].sort((a, b) => b.accounts.size - a.accounts.size || b.usable - a.usable || a.name.localeCompare(b.name)).slice(0, 8);
+    const parts = [el('h4', 'cc-subhead', 'Introducers who reach target accounts directly')];
+    if (!top.length) parts.push(el('p', 'cc-empty', 'Nobody we know is linked to a target account yet.'));
+    else {
+      const ul = el('ul', 'cc-dq');
+      top.forEach((r) => {
+        const li = el('li', 'cc-dq-item');
+        li.append(el('span', 'cc-dq-n', intF(r.accounts.size)), el('span', 'cc-dq-l', r.name), el('span', 'cc-dq-h', r.rel + ' · ' + (r.usable === r.accounts.size ? 'usable' : intF(r.usable) + ' of ' + intF(r.accounts.size) + ' usable')));
+        clickable(li, 'wi-conc', 'who|' + r.id, 'List the accounts ' + r.name + ' reaches');
+        ul.append(li);
+      });
+      parts.push(ul);
+    }
+    const table = el('table', 'cc-tbl');
+    const hr = el('tr');
+    ['Relationship type', 'Same company', 'Already in', 'Industry peer', 'Recorded', 'Verified', 'Unverified'].forEach((h, i) => { const th = el('th', i ? 'cc-num' : null, h); th.scope = 'col'; hr.append(th); });
+    const thead = el('thead'); thead.append(hr);
+    const tbody = el('tbody');
+    WI_TYPES.forEach((type) => {
+      const ps = m.flatMap((t) => t.vpaths.filter((p) => WI.source(p) === type).map((p) => ({ p, t })));
+      if (!ps.length) return;
+      const acc = (keep) => new Set(ps.filter(keep).map((x) => x.t.id)).size;
+      const tr = el('tr');
+      tr.append(el('td', null, type));
+      [acc((x) => x.p.level === 1), acc((x) => x.p.level === 2), acc((x) => x.p.level === 3), acc((x) => x.p.level === 4), acc((x) => x.p.conf === 'verified'), acc((x) => x.p.conf === 'unverified')]
+        .forEach((v) => tr.append(el('td', 'cc-num', v ? intF(v) : '—')));
+      tbody.append(tr);
+    });
+    table.append(thead, tbody);
+    const wrap = el('div', 'cc-wi-wrap');
+    wrap.append(table);
+    parts.push(el('h4', 'cc-subhead', 'Target accounts each relationship type reaches, by way in'), wrap);
+    box.replaceChildren(...parts);
+    const single = m.filter((t) => t.usable === 1).length;
+    const peers = (rowsOf('warm_people') || []).filter((p) => p.peer > 0);
+    const most = top[0] ? top[0].accounts.size : 0;
+    dlInsight('ins-wi-conc', (!top.length ? 'Nobody we know reaches a target account directly yet. ' : most === 1 ? 'No bottleneck: each of the ' + intF(reach.size) + ' introducers reaches one target account. ' : top[0].name + ' reaches the most target accounts directly (' + intF(most) + '); losing that relationship would close several doors. ') + intF(single) + ' accounts depend on one usable path. ' + intF(peers.length) + ' people match accounts by industry alone; none of those paths is verified.');
+  };
+  const WI_DQ = [
+    ['linked', 'Relationship contacts linked to a company', 'Needed to find anyone inside a target account', (ppl) => [ppl.filter((p) => p.account_id).length, ppl.length], 'unlinked'],
+    ['industry', 'With an industry on the company or contact', 'Needed for industry-peer matching', (ppl) => [ppl.filter((p) => p.industry).length, ppl.length], 'noindustry'],
+    ['title', 'With a title', 'Tells us their role before we ask', (ppl) => [ppl.filter((p) => p.title).length, ppl.length], 'notitle'],
+    ['location', 'Linked companies with a state set', 'Zoho has no location for these companies, so location isn’t matched', (ppl) => [ppl.filter((p) => p.state_set).length, ppl.filter((p) => p.account_id).length], null],
+    ['tind', 'Target accounts with an industry', 'Without it, peers can’t be matched to the account', (ppl, m) => [m.filter((t) => t.industry).length, m.length], 'tnoind'],
+    ['client', 'Client labels confirmed by a won deal', 'Same-company contacts labeled Client', (ppl) => { const c = ppl.filter((p) => p.client_only && p.at_target && !p.excluded); return [c.filter((p) => p.won).length, c.length]; }, 'clientq'],
+    ['dupes', 'Target accounts with no same-name twin', 'Twins may be one company on two records', (ppl, m) => [m.filter((t) => !t.dupes.length).length, m.length], 'dupes'],
+  ];
+  const drawWiDq = (m) => {
+    const box = root.querySelector('#wi-dq-list');
+    if (!wiReady(box) || !m) return;
+    const ppl = rowsOf('warm_people') || [];
+    box.replaceChildren(...WI_DQ.map(([key, label, hint, calc, drill]) => {
+      const [have, of] = calc(ppl, m);
+      const li = el('li', 'cc-dq-item' + (of && have === of ? ' cc-dq-clear' : ''));
+      li.append(el('span', 'cc-dq-n', of ? pctF(have / of) : '—'), el('span', 'cc-dq-l', label + ': ' + intF(have) + ' of ' + intF(of)), el('span', 'cc-dq-h', hint));
+      if (drill && have < of) clickable(li, 'wi-dq', drill, 'List the records missing: ' + label.toLowerCase());
+      return li;
+    }));
+    const excl = ppl.filter((p) => p.excluded);
+    const dnc = excl.filter((p) => p.excluded === 'Marked Do Not Contact').length;
+    const camp = excl.filter((p) => p.excluded === 'Campaign contact').length;
+    const off = ppl.filter((p) => !p.excluded && !wi.srcs.has(p.primary)).length;
+    const clientQ = m.filter((t) => !t.vpaths.some(WI.usable) && t.vpaths.some((p) => p.level === 1 && p.rel === 'Client' && p.conf === 'unverified'));
+    const unlinked = ppl.filter((p) => !p.account_id && !p.excluded).length;
+    const tnoind = m.filter((t) => !t.industry).length;
+    const dupes = m.filter((t) => t.dupes.length).length;
+    const fixes = [
+      [clientQ.length, 'Confirm the Client label at ' + intF(clientQ.length) + ' ' + (clientQ.length === 1 ? 'account' : 'accounts') + ' whose only same-company path is a Client contact. Each confirmed one becomes ready to ask.', 'clientq'],
+      [dupes, 'Check ' + intF(dupes) + ' same-name target ' + (dupes === 1 ? 'account' : 'accounts') + ' and merge true duplicates in Zoho, so contacts and counts sit on one record.', 'dupes'],
+      [unlinked, 'Link ' + intF(unlinked) + ' relationship contacts to their company. Until then they can’t be matched to any target.', 'unlinked'],
+      [tnoind, 'Set the industry on ' + intF(tnoind) + ' target accounts so industry peers can be matched to them.', 'tnoind'],
+    ].filter(([n]) => n > 0);
+    const ol = root.querySelector('#wi-fixes');
+    ol.replaceChildren(...fixes.map(([, text, drill]) => { const li = el('li', null, text); clickable(li, 'wi-dq', drill, text); return li; }));
+    dlInsight('ins-wi-dq', intF(ppl.length) + ' relationship contacts checked, as of the refresh above. Left out: ' + intF(camp) + ' who are campaign contacts at a target (they count under Already in)' + (dnc ? ', ' + intF(dnc) + ' marked Do Not Contact' : '') + (off ? ', and ' + intF(off) + ' whose type is switched off above' : '') + '.');
+  };
+  const drawWiSchema = (m) => {
+    const p = root.querySelector('#wi-schema-state');
+    if (!p || !m) return;
+    const rec = m.filter((t) => t.vpaths.some((x) => x.level === 4)).length;
+    p.textContent = 'Today: no introduction fields in Zoho. Referred By is recorded on ' + intF((rowsOf('referral_links') || []).length) + ' deal' + ((rowsOf('referral_links') || []).length === 1 ? '' : 's') + ', ' + intF(rec) + ' of them at a target account.';
+  };
+  const wiAccSpec = (title, rows, note) => ({
+    title, swatch: hueOf('icp'), source: 'warm_paths', rowKey: 'id', note: note || 'Select an account or person to open it in Zoho CRM. Open the account in the list below to see every path.',
+    cols: [['account', 'Account', null, false, false, ['Accounts', 'id']], ['camp_label', 'Campaign', null, true], ['best_label', 'Best way in'], ['introducer', 'Introducer', null, false, false, ['Contacts', 'best_who']], ['status_label', 'Where it stands', null, true]],
+    rows: wiSortRows(rows), empty: 'No accounts here.',
+  });
+  const wiPeopleSpec = (title, rows, note) => ({
+    title, swatch: hueOf('fn'), source: 'warm_people', rowKey: 'id', note,
+    cols: [['name', 'Name', null, false, false, ['Contacts', 'id']], ['rel', 'Relationship Type'], ['title', 'Title', null, true], ['account', 'Company', null, true, false, ['Accounts', 'account_id']], ['li', 'LinkedIn', null, true]],
+    rows: [...rows].sort((a, b) => String(a.name).localeCompare(String(b.name))), empty: 'Nobody here.',
+  });
+  Object.assign(DRILLS, {
+    'wi-funnel': { card: '#wi-funnel', build: (k) => {
+      const m = wiModel(); if (!m) return null;
+      const keep = { all: () => true, known: (t) => t.contacts > 0 || t.inside.length || t.vpaths.some((p) => p.level === 1), path: (t) => t.best, usable: (t) => t.vpaths.some(WI.usable), verified: (t) => t.vpaths.some((p) => p.conf === 'verified'), met: (t) => t.met }[k];
+      return keep ? wiAccSpec({ all: 'Target accounts', known: 'Accounts with a known contact', path: 'Accounts with any way in', usable: 'Accounts with a usable way in', verified: 'Accounts with a verified way in', met: 'Accounts with a meeting logged' }[k], m.filter(keep)) : null;
+    } },
+    'wi-conc': { card: '#wi-conc', build: (v) => {
+      const m = wiModel(); if (!m) return null;
+      const id = String(v).split('|')[1];
+      const rows = m.filter((t) => t.vpaths.some((p) => p.who === id && (p.level === 1 || p.level === 4)));
+      const nm = rows.length ? rows[0].vpaths.find((p) => p.who === id).name : 'Introducer';
+      return wiAccSpec('Target accounts ' + nm + ' reaches directly', rows);
+    } },
+    'wi-dq': { card: '#wi-dq', build: (k) => {
+      const m = wiModel(); const ppl = rowsOf('warm_people');
+      if (!m || !ppl) return null;
+      if (k === 'unlinked') return wiPeopleSpec('Relationship contacts with no company linked', ppl.filter((p) => !p.account_id && !p.excluded), 'Open each in Zoho and set Account Name. Then they can be matched to targets.');
+      if (k === 'noindustry') return wiPeopleSpec('Relationship contacts with no industry', ppl.filter((p) => !p.industry && !p.excluded), 'Set the industry on their company account, or on the contact.');
+      if (k === 'notitle') return wiPeopleSpec('Relationship contacts with no title', ppl.filter((p) => !p.title && !p.excluded));
+      if (k === 'clientq') return wiPeopleSpec('Client-labeled contacts at target accounts, no won deal linked', ppl.filter((p) => p.client_only && p.at_target && !p.excluded && !p.won), 'Confirm whether each is a past client contact and whether asking for an introduction is appropriate.');
+      if (k === 'tnoind') return wiAccSpec('Target accounts with no industry', m.filter((t) => !t.industry), 'Open each account in Zoho and set Industry.');
+      if (k === 'dupes') return wiAccSpec('Target accounts that share a name with another', m.filter((t) => t.dupes.length), 'Open both records in Zoho; merge them if they are one company.');
+      return null;
+    } },
+  });
+  { const sec = root.querySelector('#wi'); if (sec) new MutationObserver(() => { if (!sec.hidden && wi.dirty) wiDraw(); }).observe(sec, { attributes: true, attributeFilter: ['hidden'] }); }
+  /* Open one account's paths from elsewhere on the page. */
+  const wiOpen = (id) => {
+    const rows = rowsOf('warm_paths') || [];
+    const t = rows.find((x) => x.id === id);
+    if (!t) return;
+    t.campaigns.forEach((c) => wi.camps.add(c));
+    wiReset();
+    wi.q = t.account;
+    wi.open.add(id);
+    show('wi', true);
+    wiDraw();
+    requestAnimationFrame(() => {
+      const row = root.querySelector('#wi-table tr[data-key="' + id + '"]');
+      if (row) { row.scrollIntoView({ block: 'start' }); const b = row.querySelector('.cc-wi-tog'); if (b) b.focus({ preventScroll: true }); }
+    });
+  };
+  /* A Warm path badge for the ICP lists: the account's best path, leaving out the person on the card. */
+  const wiBadge = (accountId, personId) => {
+    if (status('warm_paths') !== 'ok' || !accountId) return null;
+    const t = (rowsOf('warm_paths') || []).find((x) => x.id === accountId);
+    if (!t) return null;
+    const paths = t.paths.filter((p) => p.who !== personId && wi.srcs.has(WI.source(p)));
+    const best = paths[0];
+    const b = el('button', 'cc-wi-badge');
+    b.type = 'button';
+    if (!best) { b.classList.add('cc-wi-none'); b.textContent = 'No warm path'; b.title = 'Zoho records no other way into ' + t.account + '. Select to see the account in Warm Intros.'; }
+    else {
+      const ok = WI.usable(best);
+      b.classList.add(ok ? (best.level === 2 ? 'cc-wi-in' : 'cc-wi-ok') : 'cc-wi-warn');
+      b.textContent = ok ? 'Warm path · ' + WI.LEVELS[best.level] : 'Warm path · needs check';
+      const st = WI.status(t, best);
+      b.title = 'Introducer: ' + best.name + ' (' + (best.level === 2 ? 'connected campaign contact' : best.rels) + '). Why: ' + best.facts.join('; ') + '. Confidence: ' + WI.CONF[best.conf] + '. Next: ' + st.action;
+    }
+    b.setAttribute('aria-label', b.textContent + '. ' + b.title);
+    b.addEventListener('click', (e) => { e.stopPropagation(); wiOpen(accountId); });
+    return b;
+  };
+
   function redrawAll() {
     fillMarks();
     drawRings();
@@ -4922,6 +5937,7 @@ dash.calc('attention', {
     drawBacklog();
     drawDeals();
     drawIcp();
+    wiDraw();
     drawSized();
     Object.keys(DRILLS).forEach(drawDrill);
     drawTables();
