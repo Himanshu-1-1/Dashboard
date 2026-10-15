@@ -1614,6 +1614,30 @@ dash.loader('wi_b2b_people', {
     return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
   },
 });
+
+dash.loader('wi_icp_people', {
+  description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text, counts and amounts become numbers.',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? (answer.trim() ? JSON.parse(answer) : {}) : (answer || {});
+    if (a.status === 'error' || (a.code && !a.data)) throw new Error(a.message || a.code || 'Zoho CRM refused the query');
+    const body = a.data && !Array.isArray(a.data) ? a.data : a;
+    const list = Array.isArray(body.data) ? body.data : [];
+    const rename = { 'COUNT(id)': 'count', 'SUM(Amount)': 'amount_sum' };
+    const numeric = ['count', 'amount_sum', 'Amount', 'Total_Meetings_Created', 'Count_of_associated_Contacts'];
+    const rows = list.map((r) => {
+      const o = {};
+      for (const [k, v] of Object.entries(r)) {
+        const key = rename[k] || k;
+        if (Array.isArray(v)) o[key] = v.map((x) => (x && typeof x === 'object' ? x.name : x)).filter((x) => x != null && x !== '').join(', ');
+        else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
+        else o[key] = v;
+      }
+      for (const n of numeric) if (o[n] != null && o[n] !== '') o[n] = Number(o[n]);
+      return o;
+    });
+    return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
+  },
+});
 dash.loader('mc_accounts', {
   description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text, counts and amounts become numbers.',
   fn: ({ answer }) => {
@@ -2110,7 +2134,7 @@ const WI = {
     return out;
   },
 };
-const WI_INPUTS = ['wi_introducers', 'icp_account_list', 'mc_account_list', 'icp_backlog_people', 'mc_contacts', 'deals_tagged', 'referral_links', 'agreements', 'wi_b2b_people'];
+const WI_INPUTS = ['wi_introducers', 'icp_account_list', 'mc_account_list', 'wi_icp_people', 'mc_contacts', 'deals_tagged', 'referral_links', 'agreements', 'wi_b2b_people'];
 
 dash.calc('warm_paths', {
   title: 'Warm introduction paths',
@@ -5352,8 +5376,12 @@ dash.calc('attention', {
   try { wi.sender = localStorage.getItem('cc-wi-sender') || ''; } catch (e) { wi.sender = ''; }
   const wiCampLabel = (t) => t.campaigns.map((c) => ({ icp: 'ICP', mc: 'Medical Courier', rp: 'B2B' }[c] || c)).join(' + ');
   const wiTier = (title) => ['C-suite / Founder', 'VP', 'Director / Head', 'Other'].indexOf(icTier(title));
-  const wiReach = (t, exclude) => t.inside.filter((x) => x.id !== exclude && x.meetings === 0 && x.li !== 'Connected')
-    .sort((a, b) => wiTier(a.title) - wiTier(b.title) || Number(b.li === 'Connected') - Number(a.li === 'Connected') || String(a.priority || '9').localeCompare(String(b.priority || '9')) || String(a.name).localeCompare(String(b.name)))[0] || null;
+  /* The person we want a meeting with: on a B2B-only account reached through a connected contact, that contact; otherwise the most senior contact there we haven't met, other than the introducer. */
+  const wiReach = (t, best) => {
+    if (best && best.level === 2 && t.campaigns.every((c) => c === 'rp')) return { id: best.who, name: best.name, title: best.title, self: true };
+    return t.inside.filter((x) => x.id !== (best && best.who) && x.meetings === 0)
+      .sort((a, b) => wiTier(a.title) - wiTier(b.title) || Number(a.li === 'Connected') - Number(b.li === 'Connected') || String(a.priority || '9').localeCompare(String(b.priority || '9')) || String(a.name).localeCompare(String(b.name)))[0] || null;
+  };
   /* The accounts in scope, each with its paths limited to the chosen introducer sources, its best path and status. */
   const wiModel = () => {
     const rows = rowsOf('warm_paths');
@@ -5362,7 +5390,7 @@ dash.calc('attention', {
       const paths = t.paths.filter((p) => wi.srcs.has(WI.source(p)));
       const best = paths[0] || null;
       const st = WI.status(t, best);
-      const reach = wiReach(t, best && best.who);
+      const reach = wiReach(t, best);
       const usable = paths.filter(WI.usable);
       return { ...t, vpaths: paths, best, st, reach, usable: usable.length, direct: paths.some((p) => p.level === 1 && !p.fuzzy),
         best_label: best ? WI.LEVELS[best.level] + ' · ' + WI.CONF[best.conf] : 'No path found', introducer: best ? best.name : '—', best_who: best && best.level !== 4 ? best.who : null,
@@ -5645,7 +5673,7 @@ dash.calc('attention', {
     add('Contacts in Zoho', t.contacts ? intF(t.contacts) : null);
     add('Priority', t.priority ? 'P' + t.priority : null);
     add('Where it stands', t.st.label + '. ' + t.st.action);
-    if (t.reach) add('Person to reach', [t.reach.name, t.reach.title].filter(Boolean).join(', '));
+    add('Person to reach', t.reach ? (t.reach.self ? t.reach.name + ', the connected contact: pitch them directly' : [t.reach.name, t.reach.title].filter(Boolean).join(', ')) : 'No other contact at this account in Zoho. Add the decision maker to Zoho to name them here.');
     left.append(facts);
     if (t.dupes.length) {
       const p = el('p', 'cc-wi-warn');
@@ -5787,7 +5815,7 @@ dash.calc('attention', {
             td.append(el('small', 'cc-wi-sub', [t.best.title, t.best.level === 2 ? 'Connected campaign contact' : t.best.rels].filter(Boolean).join(' · ')));
           } else td.textContent = '—';
         } else if (f === 'reach') {
-          if (t.reach) { td.append(wiLink('Contacts', t.reach.id, t.reach.name)); if (t.reach.title) td.append(el('small', 'cc-wi-sub', t.reach.title)); } else td.textContent = '—';
+          if (t.reach) { td.append(wiLink('Contacts', t.reach.id, t.reach.name)); const sub = t.reach.self ? 'Pitch them directly' : [t.reach.title, t.reach.li === 'Connected' ? 'connected' : null].filter(Boolean).join(' · '); if (sub) td.append(el('small', 'cc-wi-sub', sub)); } else td.append(el('span', 'cc-empty', 'No other contact in Zoho'));
         } else if (f === 'next') {
           td.append(el('span', 'cc-wi-st cc-wi-' + t.st.tone, t.st.label), el('small', 'cc-wi-sub', t.st.action));
         } else td.textContent = intF(t.n_paths);
