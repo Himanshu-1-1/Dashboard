@@ -158,7 +158,7 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
     const json = window.__DASH_DATA__;
     const extras = [window.__BOXBYTE__, window.__COURIER__, window.__RESEARCH__].filter((x) => x && x.datasets);
     if (json && json.datasets) {
-      raw = { ...json, datasets: Object.assign({ wi_research: [] }, json.datasets, ...extras.map((x) => x.datasets)) };
+      raw = { ...json, datasets: Object.assign({ wi_research: [], wi_mack: [] }, json.datasets, ...extras.map((x) => x.datasets)) };
       cache = {};
       runAll();
       stamp('Data from Zoho CRM as of ' + when(json.generated_at) + '.');
@@ -1231,7 +1231,7 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
         <summary>How paths and confidence are worked out</summary>
         <div class="cc-wi-howbody">
           <p><b>Target accounts.</b> ICP and Medical Courier accounts by their tag. B2B targets are the companies of B2B campaign contacts whose firm hasn’t signed our referral agreement; there the B2B contacts are the people we’re recruiting, so they count under Already in, not as introducers.</p>
-          <p><b>Ways in, strongest first.</b> 1 Same company: a Founder Network, referral partner, platform, client or personal contact linked to the target account. 2 Already in: a campaign contact at the account who accepted our LinkedIn request or has met us, who can point us to colleagues. 3 Industry peer: a relationship contact whose company is in the same ICP industry group; this says nothing about whether they know anyone there. 4 Recorded introduction: a deal at the account with Referred By filled in.</p>
+          <p><b>Ways in, strongest first.</b> 1 Same company: a Founder Network, referral partner, platform, client or personal contact linked to the target account, or someone there Mack has been connected to on LinkedIn since before 2026. 2 Already in: a campaign contact at the account who accepted our LinkedIn request or has met us, or a 2026 LinkedIn connection of Mack’s there, who can point us to colleagues. 3 Industry peer: a relationship contact whose company is in the same ICP industry group; this says nothing about whether they know anyone there. 4 Recorded introduction: a deal at the account with Referred By filled in.</p>
           <p><b>Confidence, kept separate from the way in.</b> Verified: a meeting, accepted connection, signed agreement, won client deal or referral is recorded with that person. Supported: the company link exists but no interaction is recorded. Unverified: the path rests on a Client label with no won deal behind it, a same-name account on another Zoho record, or industry alone. A usable (verified or supported) path ranks above an unverified one; otherwise the order above holds.</p>
           <p><b>What is not shown.</b> Requests sent and introductions accepted aren’t recorded in Zoho, so this page can’t track them. Account ownership isn’t used: records are owned by the shared login. Same-name accounts are flagged, never merged.</p>
         </div>
@@ -1931,10 +1931,12 @@ const WI = {
   CONF: { verified: 'Verified', supported: 'Supported', unverified: 'Unverified' },
   CONF_RANK: { verified: 0, supported: 1, unverified: 2 },
   usable: (p) => p.conf !== 'unverified',
-  source: (p) => (p.level === 2 ? 'Campaign contact' : p.level === 4 ? 'Referrer' : p.rel),
+  source: (p) => (p.mack ? 'Mack’s network' : p.level === 2 ? 'Campaign contact' : p.level === 4 ? 'Referrer' : p.rel),
   /* Usable paths before unverified ones; then the path hierarchy; then evidence. */
   rank: (paths) => [...paths].sort((a, b) => Number(WI.usable(b)) - Number(WI.usable(a)) || a.level - b.level
-    || WI.CONF_RANK[a.conf] - WI.CONF_RANK[b.conf] || b.facts.length - a.facts.length || String(a.name).localeCompare(String(b.name))),
+    || WI.CONF_RANK[a.conf] - WI.CONF_RANK[b.conf] || b.facts.length - a.facts.length || WI.tier(a.title) - WI.tier(b.title) || String(a.name).localeCompare(String(b.name))),
+  /* Seniority from a title: 0 C-suite or founder, 1 VP, 2 director or head, 3 other. */
+  tier: (title) => { const s = String(title || '').toLowerCase(); return /\b(vp|vice president|svp|evp)\b/.test(s) ? 1 : /\b(ceo|coo|cio|cto|cfo|cmo|chro|cro|cdo|ciso|chief|president|founder|owner|managing partner|operating partner|managing director)\b/.test(s) ? 0 : /\bdirector\b|\bhead of\b/.test(s) ? 2 : 3; },
   first: (full) => {
     const w = String(full || '').trim().split(/\s+/)[0] || '';
     if (w.replace(/[^\p{L}]/gu, '').length < 2) return 'there';
@@ -1949,6 +1951,7 @@ const WI = {
       : { key: 'none', label: 'No path found', tone: 'none', action: 'Set the industry in Zoho so peers can be matched; otherwise use cold outreach.' };
     if (best.level === 4) return { key: 'ready', label: 'Introduction recorded', tone: 'ok', action: 'Follow up on the referred deal with ' + nm + '.' };
     if (WI.usable(best)) {
+      if (best.level === 1 && best.mack) return { key: 'ready', label: 'Approach ready', tone: 'ok', action: 'Have Mack ask ' + nm + ' for an introduction.' };
       if (best.level === 1) return { key: 'ready', label: 'Approach ready', tone: 'ok', action: 'Ask ' + nm + ' for an introduction.' };
       if (t.campaigns.every((c) => c === 'rp')) return { key: 'ready', label: 'Approach ready', tone: 'ok', action: 'Ask ' + nm + ' for a short call about a referral partnership.' };
       return { key: 'ready', label: 'Approach ready', tone: 'ok', action: best.conf === 'verified' ? 'Ask ' + nm + ' to bring in the right colleague.' : 'Ask ' + nm + ' who owns this area at ' + t.account + '.' };
@@ -1971,6 +1974,8 @@ const WI = {
     else if (p.level === 2) body = p.conf === 'verified'
       ? 'Thanks again for your time. Who else at ' + t.account + ' should be part of the conversation about ' + topic + '?'
       : 'Thanks for connecting. Who at ' + t.account + ' is the right person to talk to about ' + topic + '? Happy to keep it to a short call.';
+    else if (p.mack) body = 'It’s been a while since we connected. I’m trying to reach the right person at ' + t.account + ' to talk about ' + topic + '. Would you be comfortable pointing me to them, or making an introduction if it feels right?'
+      + (reach && reach.id !== p.who && CC_NAMEKEY(reach.name) !== CC_NAMEKEY(p.name) ? ' If ' + reach.name + ' is the right person, an introduction to them would be ideal.' : '') + ' No worries if not.';
     else {
       const lead = p.won ? 'Given our work together on ' + p.won.deal + ', I thought you might know the best person to approach at ' + t.account + '.'
         : 'I believe you’re with ' + t.account + ', and I’m trying to reach the right person there to talk about ' + topic + '.';
@@ -1980,8 +1985,8 @@ const WI = {
     return hi + '\n\n' + body + (sign ? '\n\n' + sign : '');
   },
   cache: null,
-  build(intro, icpAcc, mcAcc, icpPeople, mcContacts, deals, refLinks, agreements, b2b = [], research = []) {
-    const args = [intro, icpAcc, mcAcc, icpPeople, mcContacts, deals, refLinks, agreements, b2b, research];
+  build(intro, icpAcc, mcAcc, icpPeople, mcContacts, deals, refLinks, agreements, b2b = [], research = [], mack = []) {
+    const args = [intro, icpAcc, mcAcc, icpPeople, mcContacts, deals, refLinks, agreements, b2b, research, mack];
     if (WI.cache && WI.cache.args.every((a, i) => a === args[i])) return WI.cache.out;
     const push = (m, k, v) => { if (!m.has(k)) m.set(k, []); m.get(k).push(v); };
     const targets = new Map();
@@ -2125,6 +2130,25 @@ const WI = {
       if (pp) pp.direct += 1;
     });
 
+    /* Mack's LinkedIn connections at target accounts. Connected before 2026: a standing relationship, so Same company and Verified, replacing an Already in path for the same person. Connected in 2026: usually an accepted outreach request, so Already in and Supported, and only for someone with no other path. */
+    mack.forEach((r) => {
+      const t = targets.get(r.Account_Name_id);
+      if (!t || !r.Full_Name) return;
+      const key = CC_NAMEKEY(r.Full_Name);
+      const same = (x) => (r.Zoho_Id && x.who === r.Zoho_Id) || CC_NAMEKEY(x.name) === key;
+      const day = String(r.Connected_On || '');
+      const old = /^\d{4}-\d{2}-\d{2}$/.test(day) && day < '2026-01-01';
+      const since = /^\d{4}-\d{2}-\d{2}$/.test(day) ? new Date(day + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' }) : null;
+      const l1 = t.paths.find((x) => x.level === 1 && same(x));
+      if (l1) { l1.facts.push('Mack’s LinkedIn connection' + (since ? ' since ' + since : '')); return; }
+      if (!old && t.paths.some(same)) return;
+      if (old) t.paths = t.paths.filter((x) => !(x.level === 2 && same(x)));
+      t.paths.push({ who: r.Zoho_Id || null, name: r.Full_Name, title: r.Position || null, rel: 'Mack’s network', rels: 'Mack’s LinkedIn connection' + (since ? ' since ' + since : ''), li: 'Connected', meetings: 0, mack: true,
+        linkedin: /^https:\/\/([a-z]+\.)?linkedin\.com\/in\//.test(r.LinkedIn || '') ? r.LinkedIn : null, level: old ? 1 : 2, conf: old ? 'verified' : 'supported',
+        facts: ['Mack’s 1st-degree LinkedIn connection' + (since ? ' since ' + since : ''), (r.Position ? r.Position + ' at ' : 'Works at ') + t.account + ' (per LinkedIn)'],
+        questions: old ? [] : ['Connected in 2026, probably through our outreach; Mack may not know them personally.'] });
+    });
+
     const peersBy = new Map();
     people.forEach((p) => { if (!p.excluded && p.fit === 'icp') push(peersBy, p.group, p); });
     for (const t of targets.values()) {
@@ -2144,7 +2168,7 @@ const WI = {
     return out;
   },
 };
-const WI_INPUTS = ['wi_introducers', 'icp_account_list', 'mc_account_list', 'wi_icp_people', 'mc_contacts', 'deals_tagged', 'referral_links', 'agreements', 'wi_b2b_people', 'wi_research'];
+const WI_INPUTS = ['wi_introducers', 'icp_account_list', 'mc_account_list', 'wi_icp_people', 'mc_contacts', 'deals_tagged', 'referral_links', 'agreements', 'wi_b2b_people', 'wi_research', 'wi_mack'];
 
 dash.calc('warm_paths', {
   title: 'Warm introduction paths',
@@ -5374,12 +5398,12 @@ dash.calc('attention', {
 
   /* Warm Intros tab */
   const WI_CAMPS = [['icp', 'ICP'], ['mc', 'Medical Courier'], ['rp', 'B2B']];
-  const WI_SRCS = [['Founder Network', 'Founder Network'], ['Referral Partner', 'Referral partners'], ['Client', 'Client label'], ['Platform Provider', 'Platform providers'], ['Personal', 'Personal'], ['Campaign contact', 'Connected campaign contacts']];
+  const WI_SRCS = [['Founder Network', 'Founder Network'], ['Referral Partner', 'Referral partners'], ['Client', 'Client label'], ['Platform Provider', 'Platform providers'], ['Personal', 'Personal'], ['Campaign contact', 'Connected campaign contacts'], ['Mack’s network', 'Mack’s network']];
   const WI_VIEWS = [['all', 'All target accounts'], ['best', 'Best opportunities'], ['verify', 'Needs verification'], ['none', 'No warm path']];
   const WI_PAGE = 25;
   const WI_VIEW_NOTE = { best: 'ready to ask', verify: 'need verification', none: 'no warm path', direct: 'someone we know inside', single: 'one usable path only', inonly: 'only a connected contact inside', dupes: 'same-name accounts', clientq: 'Client label to confirm' };
   const wi = {
-    camps: new Set(['icp', 'mc', 'rp']), srcs: new Set(['Founder Network', 'Referral Partner', 'Client', 'Platform Provider', 'Campaign contact', 'Referrer']),
+    camps: new Set(['icp', 'mc', 'rp']), srcs: new Set(['Founder Network', 'Referral Partner', 'Client', 'Platform Provider', 'Campaign contact', 'Referrer', 'Mack’s network']),
     view: 'all', q: '', camp: '', level: '', conf: '', group: '', alt: false, noind: false, sort: 'path', open: new Set(), all: false,
     choice: {}, drafts: {}, sender: '', built: false,
   };
@@ -5541,7 +5565,7 @@ dash.calc('attention', {
     const camps = root.querySelector('#wi-camps');
     const srcs = root.querySelector('#wi-srcs');
     if (camps) camps.replaceChildren(...WI_CAMPS.map(([k, lab]) => wiChip(lab, wi.camps.has(k), () => { if (wi.camps.has(k) && wi.camps.size === 1) return; wi.camps.has(k) ? wi.camps.delete(k) : wi.camps.add(k); wiDraw(); })));
-    if (srcs) srcs.replaceChildren(...WI_SRCS.map(([k, lab]) => wiChip(lab, wi.srcs.has(k), () => { wi.srcs.has(k) ? wi.srcs.delete(k) : wi.srcs.add(k); wiDraw(); })));
+    if (srcs) srcs.replaceChildren(...WI_SRCS.filter(([k]) => k !== 'Mack’s network' || (rowsOf('wi_mack') || []).length).map(([k, lab]) => wiChip(lab, wi.srcs.has(k), () => { wi.srcs.has(k) ? wi.srcs.delete(k) : wi.srcs.add(k); wiDraw(); })));
     const stamp = root.querySelector('#wi-stamp');
     if (stamp) {
       const gen = window.__DASH_DATA__ && window.__DASH_DATA__.generated_at;
@@ -5662,6 +5686,7 @@ dash.calc('attention', {
     const top = el('div', 'cc-wi-ptop');
     top.append(el('span', 'cc-wi-lvl', WI.LEVELS[p.level]));
     if (p.level === 4 && !p.who) top.append(wiLink('Accounts', p.who_account, p.name, 'cc-wi-pn'));
+    else if (!p.who && p.linkedin) { const a = wiWebName({ name: p.name, linkedin: p.linkedin }); a.classList.add('cc-wi-pn'); top.append(a); }
     else top.append(wiLink('Contacts', p.who, p.name, 'cc-wi-pn'));
     top.append(wiConf(p.conf));
     if (i === 0) top.append(el('span', 'cc-wi-best', 'Best'));
@@ -5833,7 +5858,7 @@ dash.calc('attention', {
           if (t.best) { td.append(el('span', 'cc-wi-lvl', WI.LEVELS[t.best.level]), wiConf(t.best.conf)); } else td.append(el('span', 'cc-empty', 'None found'));
         } else if (f === 'who') {
           if (t.best) {
-            td.append(t.best.level === 4 && !t.best.who ? wiLink('Accounts', t.best.who_account, t.best.name) : wiLink('Contacts', t.best.who, t.best.name));
+            td.append(t.best.level === 4 && !t.best.who ? wiLink('Accounts', t.best.who_account, t.best.name) : !t.best.who && t.best.linkedin ? wiWebName({ name: t.best.name, linkedin: t.best.linkedin }) : wiLink('Contacts', t.best.who, t.best.name));
             td.append(el('small', 'cc-wi-sub', [t.best.title, t.best.level === 2 ? 'Connected campaign contact' : t.best.rels].filter(Boolean).join(' · ')));
           } else td.textContent = '—';
         } else if (f === 'reach') {
@@ -5862,7 +5887,7 @@ dash.calc('attention', {
       more.replaceChildren(b);
     } else more.replaceChildren();
   };
-  const WI_TYPES = ['Founder Network', 'Referral Partner', 'Client', 'Platform Provider', 'Personal', 'Campaign contact', 'Referrer'];
+  const WI_TYPES = ['Mack’s network', 'Founder Network', 'Referral Partner', 'Client', 'Platform Provider', 'Personal', 'Campaign contact', 'Referrer'];
   const drawWiConc = (m) => {
     const box = root.querySelector('#wi-conc-body');
     if (!wiReady(box) || !m) return;
