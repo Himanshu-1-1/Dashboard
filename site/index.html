@@ -158,7 +158,7 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
     const json = window.__DASH_DATA__;
     const extras = [window.__BOXBYTE__, window.__COURIER__, window.__RESEARCH__].filter((x) => x && x.datasets);
     if (json && json.datasets) {
-      raw = { ...json, datasets: Object.assign({ wi_research: [], wi_mack: [] }, json.datasets, ...extras.map((x) => x.datasets)) };
+      raw = { ...json, datasets: Object.assign({ wi_research: [], wi_mack: [], li_sync: [] }, json.datasets, ...extras.map((x) => x.datasets)) };
       cache = {};
       runAll();
       stamp('Data from Zoho CRM as of ' + when(json.generated_at) + '.');
@@ -1926,6 +1926,56 @@ const CC_NAMEKEY = (s) => String(s || '').toLowerCase().replace(/&/g, ' and ').r
   .replace(/\b(inc|llc|ltd|corp|corporation|co|company|group|holdings|the|lp|llp|plc|pllc|pc)\b/g, ' ').replace(/\s+/g, ' ').trim();
 
 /* Warm Intros: who can get us into each target account, from Zoho records only. */
+/* LinkedIn connections from Mack's export (dataset li_sync, private dashboard only) that Zoho hasn't recorded. */
+const CC_LI = {
+  /* Zoho contact id → day connected. */
+  map: (li_sync) => {
+    const m = new Map();
+    for (const r of li_sync || []) if (r && r.Zoho_Id && r.Connected_On && !m.has(String(r.Zoho_Id))) m.set(String(r.Zoho_Id), String(r.Connected_On).slice(0, 10));
+    return m;
+  },
+  /* Campaign contacts the export shows as connected while Zoho says something else. prio: id → Priority, when the people rows lack it. */
+  fixes: (li_sync, people, prio) => {
+    const on = CC_LI.map(li_sync);
+    if (!on.size) return [];
+    const seen = new Set();
+    const out = [];
+    for (const r of people || []) {
+      const id = r && r.id != null ? String(r.id) : null;
+      if (!id || seen.has(id) || r.LI_Connect === 'Connected' || !on.has(id)) continue;
+      seen.add(id);
+      const known = prio && prio.has(id);
+      out.push({
+        id, Full_Name: r.Full_Name || null, Title: r.Title || null, Account_Name: r.Account_Name || null, Account_Name_id: r.Account_Name_id || null,
+        Priority: known ? prio.get(id) : Object.prototype.hasOwnProperty.call(r, 'Priority') ? r.Priority || null : undefined,
+        zoho_li: r.LI_Connect || null, Total_Meetings_Created: Number(r.Total_Meetings_Created || 0), Last_Activity_Time: r.Last_Activity_Time || null, connected_on: on.get(id),
+      });
+    }
+    return out;
+  },
+  /* Zoho's grouped counts (LinkedIn status, Priority, meetings) with each fixed person moved into a Connected group of its own. */
+  adjust: (groups, fixes) => {
+    if (!fixes || !fixes.length) return groups;
+    const out = groups.map((g) => ({ ...g }));
+    const norm = (v) => (v == null || v === '' ? null : String(v));
+    const meet = (v) => Number(v || 0);
+    for (const f of fixes) {
+      const same = out.filter((g) => !g.li_only && (g.count || 0) > 0 && norm(g.LI_Connect) === norm(f.zoho_li) && meet(g.Total_Meetings_Created) === meet(f.Total_Meetings_Created));
+      const fit = f.Priority !== undefined
+        ? same.filter((g) => norm(g.Priority) === norm(f.Priority))
+        : same.filter((g) => !(f.zoho_li == null && ['1', '3'].includes(norm(g.Priority)))).sort((a, b) => (b.count || 0) - (a.count || 0));
+      const from = fit[0];
+      if (!from) continue;
+      from.count -= 1;
+      const p = norm(from.Priority);
+      let to = out.find((g) => g.li_only && norm(g.Priority) === p && meet(g.Total_Meetings_Created) === meet(f.Total_Meetings_Created));
+      if (!to) { to = { LI_Connect: 'Connected', Priority: p, Total_Meetings_Created: meet(f.Total_Meetings_Created), count: 0, li_only: true }; out.push(to); }
+      to.count += 1;
+    }
+    return out;
+  },
+};
+
 const WI = {
   ORDER: ['Founder Network', 'Referral Partner', 'Platform Provider', 'Client', 'Personal'],
   LEVELS: { 1: 'Same company', 2: 'Already in', 3: 'Industry peer', 4: 'Recorded introduction' },
@@ -2516,17 +2566,62 @@ dash.calc('agreements', {
   },
 });
 
+dash.calc('li_fixes_rp', {
+  title: 'B2B contacts connected on LinkedIn, not in Zoho',
+  description: 'B2B campaign contacts that Mack’s LinkedIn export shows as connected while Zoho’s LI Connect says otherwise.',
+  inputs: ['li_sync', 'wi_b2b_people'],
+  fn: (li_sync, wi_b2b_people) => CC_LI.fixes(li_sync, wi_b2b_people),
+});
+
+dash.calc('li_fixes_fn', {
+  title: 'Founder Network contacts connected on LinkedIn, not in Zoho',
+  description: 'Founder Network contacts (leaving out Priority 9 and 11) that Mack’s LinkedIn export shows as connected while Zoho’s LI Connect says otherwise.',
+  inputs: ['li_sync', 'wi_introducers'],
+  fn: (li_sync, wi_introducers) => CC_LI.fixes(li_sync, wi_introducers.filter((r) => CC_RULES.isFN(r.Relationship_Type) && !CC_RULES.excluded(r.Priority))),
+});
+
+dash.calc('li_fixes_icp', {
+  title: 'ICP contacts connected on LinkedIn, not in Zoho',
+  description: 'ICP campaign contacts that Mack’s LinkedIn export shows as connected while Zoho’s LI Connect says otherwise; Priority comes from the ICP backlog list where the contact list lacks it.',
+  inputs: ['li_sync', 'wi_icp_people', 'icp_backlog_people'],
+  fn: (li_sync, wi_icp_people, icp_backlog_people) => CC_LI.fixes(li_sync, wi_icp_people, new Map(icp_backlog_people.map((r) => [String(r.id), r.Priority || null]))),
+});
+
+dash.calc('rp_contacts_li', {
+  title: 'B2B contacts by LinkedIn status, with LinkedIn-only connections',
+  description: 'Zoho’s B2B counts by LinkedIn status, Priority and meetings, with each contact connected on LinkedIn but not in Zoho moved to Connected.',
+  inputs: ['rp_contacts', 'li_fixes_rp'],
+  fn: (rp_contacts, li_fixes_rp) => CC_LI.adjust(rp_contacts, li_fixes_rp),
+});
+
+dash.calc('fn_contacts_li', {
+  title: 'Founder Network contacts by LinkedIn status, with LinkedIn-only connections',
+  description: 'Zoho’s Founder Network counts by LinkedIn status, Priority and meetings, with each contact connected on LinkedIn but not in Zoho moved to Connected.',
+  inputs: ['fn_contacts', 'li_fixes_fn'],
+  fn: (fn_contacts, li_fixes_fn) => CC_LI.adjust(fn_contacts, li_fixes_fn),
+});
+
+dash.calc('icp_contacts_li', {
+  title: 'ICP contacts by LinkedIn status, with LinkedIn-only connections',
+  description: 'Zoho’s ICP counts by LinkedIn status, Priority and meetings, with each contact connected on LinkedIn but not in Zoho moved to Connected.',
+  inputs: ['icp_contacts', 'li_fixes_icp'],
+  fn: (icp_contacts, li_fixes_icp) => CC_LI.adjust(icp_contacts, li_fixes_icp),
+});
+
 dash.calc('backlog', {
   title: 'Backlog by campaign',
-  description: 'What each campaign is behind on, counted live: lapsed or unsigned agreements, overdue tasks, open deals not updated for 14 days or more, people connected but never met, priority contacts with no next step or LinkedIn request, thin target accounts, courier accounts with no contact, and courier prospects not yet emailed or followed up (from the prospects sheet). Each count is the length of the list its item opens.',
-  inputs: ['agreements', 'tasks_tagged', 'deals_tagged', 'rp_backlog_people', 'icp_backlog_people', 'fn_backlog_people', 'fn_next', 'icp_account_list', 'mc_account_list', 'courier_sends'],
-  fn: (agreements, tasks_tagged, deals_tagged, rp_backlog_people, icp_backlog_people, fn_backlog_people, fn_next, icp_account_list, mc_account_list, courier_sends) => {
+  description: 'What each campaign is behind on, counted live: lapsed or unsigned agreements, overdue tasks, open deals not updated for 14 days or more, people connected but never met, priority contacts with no next step or LinkedIn request, thin target accounts, courier accounts with no contact, and courier prospects not yet emailed or followed up (from the prospects sheet). Where this dashboard has Mack’s LinkedIn export, people it shows as connected count as connected, and each campaign lists those Zoho hasn’t recorded. Each count is the length of the list its item opens.',
+  inputs: ['agreements', 'tasks_tagged', 'deals_tagged', 'rp_backlog_people', 'icp_backlog_people', 'fn_backlog_people', 'fn_next', 'icp_account_list', 'mc_account_list', 'courier_sends', 'li_sync', 'li_fixes_rp', 'li_fixes_icp', 'li_fixes_fn'],
+  fn: (agreements, tasks_tagged, deals_tagged, rp_backlog_people, icp_backlog_people, fn_backlog_people, fn_next, icp_account_list, mc_account_list, courier_sends, li_sync, li_fixes_rp, li_fixes_icp, li_fixes_fn) => {
     const STALE_DAYS = 14;
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
     const t0 = Date.parse(today + 'T00:00:00Z');
     const stale = (d) => CC_RULES.isOpen(d) && d.updated && (t0 - Date.parse(String(d.updated).slice(0, 10) + 'T00:00:00Z')) / 864e5 >= STALE_DAYS;
     const n = (rows, keep) => rows.filter(keep).length;
     const met = (r) => r.Total_Meetings_Created || 0;
+    const synced = li_sync.length > 0;
+    const icpFixed = new Set(li_fixes_icp.map((f) => f.id));
+    const unmetFix = (list) => list.filter((f) => !f.Total_Meetings_Created).length;
     const overdue = (c) => tasks_tagged.filter((x) => x.campaign_key === c && x.overdue).length;
     const client = (name) => deals_tagged.filter((d) => d.kind === 'Client' && d.campaign === name);
     const ref = agreements.filter((a) => a.kind === 'Referral agreement');
@@ -2540,19 +2635,22 @@ dash.calc('backlog', {
       row('rp', 'agreements_out', ref.filter((a) => a.state === 'Out for signature').length, 'warn'),
       row('rp', 'signed_deal_open', signedDealOpen.length, 'warn'),
       row('rp', 'stale_deals', deals_tagged.filter((d) => d.kind === 'Partnership' && stale(d)).length, 'warn'),
-      row('rp', 'connected_unmet', n(rp_backlog_people, (r) => r.LI_Connect === 'Connected' && !met(r)), 'warn'),
-      row('rp', 'connected_no_priority', n(rp_backlog_people, (r) => r.LI_Connect === 'Connected' && !r.Priority), 'warn'),
+      row('rp', 'connected_unmet', n(rp_backlog_people, (r) => r.LI_Connect === 'Connected' && !met(r)) + unmetFix(li_fixes_rp), 'warn'),
+      row('rp', 'connected_no_priority', n(rp_backlog_people, (r) => r.LI_Connect === 'Connected' && !r.Priority) + li_fixes_rp.filter((f) => !f.Priority).length, 'warn'),
+      ...(synced ? [row('rp', 'li_unrecorded', li_fixes_rp.length, 'warn')] : []),
       row('icp', 'tasks_overdue', overdue('icp'), 'bad'),
-      row('icp', 'connected_unmet', n(icp_backlog_people, (r) => r.LI_Connect === 'Connected' && !met(r)), 'warn'),
-      row('icp', 'p13_no_request', n(icp_backlog_people, (r) => ['1', '3'].includes(r.Priority) && !r.LI_Connect), 'warn'),
-      row('icp', 'requests_pending', n(icp_backlog_people, (r) => r.LI_Connect === 'Requested'), 'warn'),
+      row('icp', 'connected_unmet', n(icp_backlog_people, (r) => r.LI_Connect === 'Connected' && !met(r)) + unmetFix(li_fixes_icp), 'warn'),
+      ...(synced ? [row('icp', 'li_unrecorded', li_fixes_icp.length, 'warn')] : []),
+      row('icp', 'p13_no_request', n(icp_backlog_people, (r) => ['1', '3'].includes(r.Priority) && !r.LI_Connect && !icpFixed.has(String(r.id))), 'warn'),
+      row('icp', 'requests_pending', n(icp_backlog_people, (r) => r.LI_Connect === 'Requested' && !icpFixed.has(String(r.id))), 'warn'),
       row('icp', 'thin_accounts', icp_account_list.filter((a) => (a.Count_of_associated_Contacts || 0) < 5).length, 'warn'),
       row('icp', 'stale_deals', client('ICP Prospecting').filter(stale).length, 'warn'),
       row('fn', 'p1_no_step', fn_next.filter((p) => p.priority === '1' && p.open_tasks === 0).length, 'bad'),
       row('fn', 'tasks_overdue', overdue('fn'), 'bad'),
       row('fn', 'opps_on_hold', client('Founder Network').filter((d) => d.stage === 'Hold').length, 'warn'),
       row('fn', 'stale_deals', client('Founder Network').filter(stale).length, 'warn'),
-      row('fn', 'connected_unmet', n(fn_backlog_people, (r) => r.LI_Connect === 'Connected' && !met(r)), 'warn'),
+      row('fn', 'connected_unmet', n(fn_backlog_people, (r) => r.LI_Connect === 'Connected' && !met(r)) + unmetFix(li_fixes_fn), 'warn'),
+      ...(synced ? [row('fn', 'li_unrecorded', li_fixes_fn.length, 'warn')] : []),
       row('mc', 'not_emailed', courier_sends.filter((s) => s.emailed !== true).length, 'warn'),
       row('mc', 'emailed_once', courier_sends.filter((s) => s.emailed === true && s.followed_up !== true && s.replied !== true).length, 'bad'),
       row('mc', 'accounts_no_contact', n(mc_account_list, (a) => !(a.Count_of_associated_Contacts > 0)), 'warn'),
@@ -2566,9 +2664,9 @@ dash.calc('backlog', {
 
 dash.calc('funnel', {
   title: 'Campaign funnels',
-  description: 'Each campaign’s steps counted from its contacts, accounts and deals, beside the 2026 targets from the campaign tracking sheets. Client deal steps count the open pipeline only (Identify, Discovery, Proposals, Hold); partnership deals leave out lost agreements but keep signed ones. Referred deals are those in Referred deals, counted once each. Medical Courier email steps come from the prospects sheet.',
-  inputs: ['rp_contacts', 'fn_contacts', 'icp_contacts', 'icp_accounts', 'mc_accounts', 'mc_people', 'courier_sends', 'deals_tagged', 'referrals'],
-  fn: (rp_contacts, fn_contacts, icp_contacts, icp_accounts, mc_accounts, mc_people, courier_sends, deals_tagged, referrals) => {
+  description: 'Each campaign’s steps counted from its contacts, accounts and deals (LinkedIn connections also from Mack’s export where this dashboard has it), beside the 2026 targets from the campaign tracking sheets. Client deal steps count the open pipeline only (Identify, Discovery, Proposals, Hold); partnership deals leave out lost agreements but keep signed ones. Referred deals are those in Referred deals, counted once each. Medical Courier email steps come from the prospects sheet.',
+  inputs: ['rp_contacts_li', 'fn_contacts_li', 'icp_contacts_li', 'icp_accounts', 'mc_accounts', 'mc_people', 'courier_sends', 'deals_tagged', 'referrals'],
+  fn: (rp_contacts_li, fn_contacts_li, icp_contacts_li, icp_accounts, mc_accounts, mc_people, courier_sends, deals_tagged, referrals) => {
     const count = (rows, keep) => rows.filter(keep).reduce((t, r) => t + (r.count || 0), 0);
     const met = (r) => r.Total_Meetings_Created || 0;
     const reach = (rows) => ({
@@ -2579,9 +2677,9 @@ dash.calc('funnel', {
       met4: count(rows, (r) => met(r) >= 4),
       meetings: rows.reduce((t, r) => t + (r.count || 0) * met(r), 0),
     });
-    const rp = reach(rp_contacts);
-    const fn = reach(fn_contacts);
-    const icp = reach(icp_contacts);
+    const rp = reach(rp_contacts_li);
+    const fn = reach(fn_contacts_li);
+    const icp = reach(icp_contacts_li);
     const partner = deals_tagged.filter((d) => d.kind === 'Partnership');
     const client = (c) => deals_tagged.filter((d) => d.kind === 'Client' && d.campaign === c);
     const referred = [...new Map(referrals.map((r) => [r.deal_id, r])).values()];
@@ -2816,15 +2914,15 @@ dash.calc('meetings_tagged', {
 
 dash.calc('contact_breakdown', {
   title: 'Contacts by Priority and LinkedIn status',
-  description: 'Contacts in each campaign counted by their Priority and LinkedIn status.',
-  inputs: ['rp_contacts', 'fn_contacts', 'icp_contacts', 'mc_people'],
-  fn: (rp_contacts, fn_contacts, icp_contacts, mc_people) => {
+  description: 'Contacts in each campaign counted by their Priority and LinkedIn status; where this dashboard has Mack’s LinkedIn export, connections Zoho hasn’t recorded get a status of their own.',
+  inputs: ['rp_contacts_li', 'fn_contacts_li', 'icp_contacts_li', 'mc_people'],
+  fn: (rp_contacts_li, fn_contacts_li, icp_contacts_li, mc_people) => {
     const by = new Map();
     const mc = mc_people.map((p) => ({ Priority: p.priority === 'Not set' ? null : p.priority, LI_Connect: p.linkedin === 'Not sent' ? null : p.linkedin, count: 1 }));
-    for (const [campaign, rows] of [['rp', rp_contacts], ['fn', fn_contacts], ['icp', icp_contacts], ['mc', mc]]) {
+    for (const [campaign, rows] of [['rp', rp_contacts_li], ['fn', fn_contacts_li], ['icp', icp_contacts_li], ['mc', mc]]) {
       for (const r of rows) {
         const priority = r.Priority || 'Not set';
-        const linkedin = r.LI_Connect || 'Not sent';
+        const linkedin = r.li_only ? 'Connected on LinkedIn, not in Zoho' : r.LI_Connect || 'Not sent';
         const key = campaign + '|' + priority + '|' + linkedin;
         const cur = by.get(key) || { key, campaign, priority, linkedin, contacts: 0 };
         cur.contacts += r.count || 0;
@@ -2911,8 +3009,8 @@ dash.calc('fn_coverage', {
 dash.calc('attention', {
   title: 'Needs attention',
   description: 'Counts of open items: priority contacts without a task, agreements awaiting signature or on hold, connected executives never met, prospects with no Priority.',
-  inputs: ['fn_next', 'deals_tagged', 'rp_contacts', 'icp_contacts', 'referrals'],
-  fn: (fn_next, deals_tagged, rp_contacts, icp_contacts, referrals) => {
+  inputs: ['fn_next', 'deals_tagged', 'rp_contacts_li', 'icp_contacts_li', 'referrals'],
+  fn: (fn_next, deals_tagged, rp_contacts_li, icp_contacts_li, referrals) => {
     const partner = deals_tagged.filter((d) => d.kind === 'Partnership');
     const sum = (rows, keep) => rows.filter(keep).reduce((t, r) => t + (r.count || 0), 0);
     return [
@@ -2920,8 +3018,8 @@ dash.calc('attention', {
       { item: 'ref_unrecorded', value: referrals.filter((r) => !r.recorded).length },
       { item: 'partner_proposals', value: partner.filter((d) => d.stage === 'Proposals').length },
       { item: 'partner_hold', value: partner.filter((d) => d.stage === 'Hold').length },
-      { item: 'icp_connected_unmet', value: sum(icp_contacts, (r) => r.LI_Connect === 'Connected' && !r.Total_Meetings_Created) },
-      { item: 'rp_no_priority', value: sum(rp_contacts, (r) => !r.Priority) },
+      { item: 'icp_connected_unmet', value: sum(icp_contacts_li, (r) => r.LI_Connect === 'Connected' && !r.Total_Meetings_Created) },
+      { item: 'rp_no_priority', value: sum(rp_contacts_li, (r) => !r.Priority) },
     ];
   },
 });
@@ -3856,9 +3954,9 @@ dash.calc('attention', {
 
   /* Backlog */
   const BL_ORDER = {
-    rp: ['agreements_expired', 'tasks_overdue', 'agreements_out', 'signed_deal_open', 'stale_deals', 'connected_unmet', 'connected_no_priority'],
-    icp: ['tasks_overdue', 'connected_unmet', 'p13_no_request', 'requests_pending', 'thin_accounts', 'stale_deals'],
-    fn: ['p1_no_step', 'tasks_overdue', 'opps_on_hold', 'stale_deals', 'connected_unmet'],
+    rp: ['agreements_expired', 'tasks_overdue', 'agreements_out', 'signed_deal_open', 'stale_deals', 'connected_unmet', 'connected_no_priority', 'li_unrecorded'],
+    icp: ['tasks_overdue', 'connected_unmet', 'li_unrecorded', 'p13_no_request', 'requests_pending', 'thin_accounts', 'stale_deals'],
+    fn: ['p1_no_step', 'tasks_overdue', 'opps_on_hold', 'stale_deals', 'connected_unmet', 'li_unrecorded'],
     mc: ['emailed_once', 'not_emailed', 'accounts_no_contact', 'tasks_overdue', 'stale_deals'],
     all: ['mnda_out', 'tasks_unlinked'],
   };
@@ -3882,6 +3980,7 @@ dash.calc('attention', {
     'all|tasks_unlinked': ['Overdue tasks with no campaign contact', 'Link a contact, then do or close the task'],
     tasks_overdue: ['Overdue tasks', 'Do, reschedule or close them in Zoho'],
     stale_deals: ['Open deals not updated in 14+ days', 'Update the stage or log the next step'],
+    li_unrecorded: ['Connected on LinkedIn, not marked in Zoho', 'Set LI Connect to Connected in Zoho'],
   };
   const blText = (c, item) => BL_TEXT[c + '|' + item] || BL_TEXT[item] || [item, ''];
   const AGREE_COLS = [['partner', 'Partner', null, false, false, partnerLink], ['account', 'Company', null, true, false, ['Accounts', 'account_id']], ['kind', 'Document', null, true], ['state', 'State'], ['sent', 'Sent', 'date', true], ['deadline', 'Deadline', 'date']];
@@ -3901,12 +4000,12 @@ dash.calc('attention', {
     const staleKeep = (d) => CC_RULES.isOpen(d) && d.updated && (today - parseDay(d.updated).getTime()) / 864e5 >= 14;
     const deals = (keep, note) => ({ title, swatch, source: 'deals_tagged', rowKey: 'id', cols: DEAL_COLS, rows: (rowsOf('deals_tagged') || []).filter(keep).sort((a, b) => String(a.updated || '').localeCompare(String(b.updated || ''))), note });
     const ag = (kind, state) => ({ title, swatch, source: 'agreements', rowKey: 'key', cols: AGREE_COLS, rows: (rowsOf('agreements') || []).filter((a) => a.kind === kind && a.state === state).sort((a, b) => String(a.deadline || '').localeCompare(String(b.deadline || ''))) });
-    const people = (source, keep, note) => ({
+    const people = (source, keep, note, extra = []) => ({
       title, swatch, source, rowKey: 'id', cols: BL_PEOPLE_COLS, note: note || 'Select a name to open the contact in Zoho CRM.',
-      rows: (rowsOf(source) || []).filter(keep).map((r) => ({
+      rows: [...(rowsOf(source) || []).filter(keep), ...extra].map((r) => ({
         id: r.id, name: r.Full_Name || '—', title: r.Title || '—', account: r.Account_Name || '—', account_id: r.Account_Name_id || null,
         priority: r.Priority ? 'P' + r.Priority : 'Not set', priority_rank: r.Priority ? Number(r.Priority) : 99,
-        linkedin: r.LI_Connect || 'Not requested', last_activity: r.Last_Activity_Time || null,
+        linkedin: r.li_label || r.LI_Connect || 'Not requested', last_activity: r.Last_Activity_Time || null,
       })).sort((a, b) => a.priority_rank - b.priority_rank || String(a.name).localeCompare(String(b.name))),
     });
     const campName = { rp: 'B2B Campaign', icp: 'ICP Prospecting', fn: 'Founder Network', mc: 'Medical Courier' }[c];
@@ -3922,10 +4021,13 @@ dash.calc('attention', {
       const ids = new Set(signed.flatMap((a) => [a.contact_id, a.account_id]).filter(Boolean));
       return deals((d) => d.kind === 'Partnership' && CC_RULES.isOpen(d) && (ids.has(d.contact_id) || ids.has(d.account_id)), 'The partner signed in Zoho Sign, but the deal is not at Closed.');
     }
-    if (item === 'connected_unmet') return people({ rp: 'rp_backlog_people', icp: 'icp_backlog_people', fn: 'fn_backlog_people' }[c], (r) => r.LI_Connect === 'Connected' && !(r.Total_Meetings_Created || 0));
-    if (item === 'connected_no_priority') return people('rp_backlog_people', (r) => r.LI_Connect === 'Connected' && !r.Priority);
-    if (item === 'p13_no_request') return people('icp_backlog_people', (r) => ['1', '3'].includes(r.Priority) && !r.LI_Connect);
-    if (item === 'requests_pending') return people('icp_backlog_people', (r) => r.LI_Connect === 'Requested');
+    const liRows = (camp, keep) => (rowsOf('li_fixes_' + camp) || []).filter(keep).map((f) => ({ ...f, LI_Connect: 'Connected', li_label: 'Connected on LinkedIn ' + liDayF(f.connected_on) + '; Zoho says ' + (f.zoho_li || 'nothing') }));
+    const icpFixed = new Set((rowsOf('li_fixes_icp') || []).map((f) => f.id));
+    if (item === 'connected_unmet') return people({ rp: 'rp_backlog_people', icp: 'icp_backlog_people', fn: 'fn_backlog_people' }[c], (r) => r.LI_Connect === 'Connected' && !(r.Total_Meetings_Created || 0), null, liRows(c, (f) => !f.Total_Meetings_Created));
+    if (item === 'connected_no_priority') return people('rp_backlog_people', (r) => r.LI_Connect === 'Connected' && !r.Priority, null, liRows('rp', (f) => !f.Priority));
+    if (item === 'p13_no_request') return people('icp_backlog_people', (r) => ['1', '3'].includes(r.Priority) && !r.LI_Connect && !icpFixed.has(String(r.id)));
+    if (item === 'requests_pending') return people('icp_backlog_people', (r) => r.LI_Connect === 'Requested' && !icpFixed.has(String(r.id)));
+    if (item === 'li_unrecorded') return people('li_fixes_' + c, () => false, 'From Mack’s LinkedIn export. Zoho doesn’t mark these people Connected, so the public site doesn’t count them. Open each in Zoho and set LI Connect to Connected; the item clears on the next load.', liRows(c, () => true));
     if (item === 'thin_accounts') {
       return { title, swatch, source: 'icp_account_list', rowKey: 'id', cols: [['Account_Name', 'Account', null, false, false, ['Accounts', 'id']], ['Priority', 'Priority'], ['Count_of_associated_Contacts', 'Executives', 'int', false, true]],
         rows: (rowsOf('icp_account_list') || []).filter((a) => (a.Count_of_associated_Contacts || 0) < 5).map((a) => ({ ...a, Count_of_associated_Contacts: a.Count_of_associated_Contacts || 0 })).sort((a, b) => a.Count_of_associated_Contacts - b.Count_of_associated_Contacts || String(a.Account_Name).localeCompare(String(b.Account_Name))) };
@@ -4211,7 +4313,7 @@ dash.calc('attention', {
     if (c === 'icp' && s === 'accounts') {
       return { title, swatch, source: 'icp_accounts', rowKey: 'Priority', cols: [['Priority', 'Account Priority'], ['count', 'Accounts', 'int', false, true]], rows: (rowsOf('icp_accounts') || []).slice().sort((a, b) => Number(a.Priority) - Number(b.Priority)) };
     }
-    const keep = { invited: (r) => r.linkedin === 'Requested' || r.linkedin === 'Connected', connected: (r) => r.linkedin === 'Connected' }[s] || (() => true);
+    const keep = { invited: (r) => r.linkedin === 'Requested' || r.linkedin.startsWith('Connected'), connected: (r) => r.linkedin.startsWith('Connected') }[s] || (() => true);
     const rows = (rowsOf('contact_breakdown') || []).filter((r) => r.campaign === c && keep(r))
       .sort((a, b) => String(a.priority).localeCompare(String(b.priority), 'en', { numeric: true }) || b.contacts - a.contacts);
     return { title, swatch, source: 'contact_breakdown', rowKey: 'key', cols: [['priority', 'Priority'], ['linkedin', 'LinkedIn status'], ['contacts', 'Contacts', 'int', false, true]], rows, note: 'Grouped by Priority and LinkedIn status. Select Open in Zoho on the B2B, ICP or Founder Network list to work through the names.' };
@@ -5009,15 +5111,15 @@ dash.calc('attention', {
   const icData = () => {
     const people = rowsOf('icp_backlog_people');
     const accts = rowsOf('icp_account_list');
-    const contacts = rowsOf('icp_contacts');
+    const contacts = rowsOf('icp_contacts_li');
     const funnel = rowsOf('funnel');
     if (!people || !accts || !contacts || !funnel) return null;
     const t0 = parseDay(todayCT).getTime();
     const accById = new Map(accts.map((a) => [a.id, a]));
     const mackOn = new Map();
-    (rowsOf('wi_mack') || []).forEach((m) => { if (m.Zoho_Id && m.Connected_On && !mackOn.has(m.Zoho_Id)) mackOn.set(m.Zoho_Id, m.Connected_On); });
+    [...(rowsOf('li_sync') || []), ...(rowsOf('wi_mack') || [])].forEach((m) => { if (m.Zoho_Id && m.Connected_On && !mackOn.has(String(m.Zoho_Id))) mackOn.set(String(m.Zoho_Id), String(m.Connected_On).slice(0, 10)); });
     const inList = new Set(people.map((r) => r.id));
-    const synced = (rowsOf('wi_icp_people') || []).filter((r) => r.id && !inList.has(r.id) && r.LI_Connect !== 'Connected' && mackOn.has(r.id) && !(r.Total_Meetings_Created > 0));
+    const synced = (rowsOf('wi_icp_people') || []).filter((r) => r.id && !inList.has(r.id) && r.LI_Connect !== 'Connected' && mackOn.has(String(r.id)) && !(r.Total_Meetings_Created > 0));
     const ppl = people.concat(synced).map((r) => {
       const acc = accById.get(r.Account_Name_id) || {};
       const ind = r['Account_Name.Industries'] || acc.Industries || null;
@@ -5028,9 +5130,9 @@ dash.calc('attention', {
         id: r.id, name, first: icFirst(r.Full_Name), title: r.Title || '—', tier: icTier(r.Title),
         account: r.Account_Name || null, account_id: r.Account_Name_id || null, industry: ind || 'Not set', fit: cls.fit, group: cls.group,
         size, size_label: icSizeLabel(size), priority: r.Priority || null, priority_label: r.Priority ? 'P' + r.Priority : 'Not set',
-        li: r.LI_Connect !== 'Connected' && mackOn.has(r.id) ? 'Connected' : (r.LI_Connect || 'Not requested'),
-        li_zoho: r.LI_Connect || null, li_on: r.LI_Connect !== 'Connected' ? (mackOn.get(r.id) || null) : null, con_on: mackOn.get(r.id) || null,
-        li_label: r.LI_Connect !== 'Connected' && mackOn.has(r.id) ? 'Connected on LinkedIn; Zoho says ' + (r.LI_Connect || 'nothing') : (r.LI_Connect || 'Not requested'),
+        li: r.LI_Connect !== 'Connected' && mackOn.has(String(r.id)) ? 'Connected' : (r.LI_Connect || 'Not requested'),
+        li_zoho: r.LI_Connect || null, li_on: r.LI_Connect !== 'Connected' ? (mackOn.get(String(r.id)) || null) : null, con_on: mackOn.get(String(r.id)) || null,
+        li_label: r.LI_Connect !== 'Connected' && mackOn.has(String(r.id)) ? 'Connected on LinkedIn; Zoho says ' + (r.LI_Connect || 'nothing') : (r.LI_Connect || 'Not requested'),
         met: (r.Total_Meetings_Created || 0) > 0,
         act_days: r.Last_Activity_Time ? Math.max(0, Math.round((t0 - parseDay(r.Last_Activity_Time).getTime()) / 864e5)) : null,
       };
@@ -5109,7 +5211,7 @@ dash.calc('attention', {
   const icAccSpec = (title, rows, note) => ({ title: 'ICP · ' + title, swatch: hueOf('icp'), source: 'icp_account_list', rowKey: 'id', cols: IC_ACC_COLS, rows, note: note || 'Select an account to open it in Zoho CRM.', empty: 'No accounts match.' });
   const icReady = (box, d) => {
     if (!box) return false;
-    if (['icp_backlog_people', 'icp_account_list', 'icp_contacts', 'funnel'].some((id) => status(id) === 'loading')) return false;
+    if (['icp_backlog_people', 'icp_account_list', 'icp_contacts_li', 'funnel'].some((id) => status(id) === 'loading')) return false;
     box.classList.remove('dash-skeleton');
     if (!d) { box.replaceChildren(failNode()); return false; }
     return true;
@@ -5141,7 +5243,7 @@ dash.calc('attention', {
     const p13 = d.ppl.filter((p) => p.li === 'Not requested' && ['1', '3'].includes(p.priority)).length;
     const steps = [
       ['asks', 'Ask ' + intF(d.asks.length) + ' connected executives for a meeting', 'They already accepted. Start with the top 10 in Who to ask below; each has an opener ready. Log every meeting in Zoho so it counts here.'],
-      ...(d.synced.length ? [['sync', 'Update LI Connect on ' + intF(d.synced.length) + ' ' + (d.synced.length === 1 ? 'contact' : 'contacts') + ' Mack is already connected to', 'His LinkedIn export shows the connection, but Zoho still says Requested or nothing. They’re already in Who to ask below; set LI Connect to Connected so the funnel and acceptance counts include them.']] : []),
+      ...(d.synced.length ? [['sync', 'Update LI Connect on ' + intF(d.synced.length) + ' ' + (d.synced.length === 1 ? 'contact' : 'contacts') + ' Mack is already connected to', 'His LinkedIn export shows the connection, but Zoho still says Requested or nothing. This dashboard already counts them as connected and they’re in Who to ask below; set LI Connect to Connected so Zoho and the public site agree.']] : []),
       ['queue', 'Send requests to ' + intF(d.queue.length) + ' Priority 1 and 3 executives', intF(p13) + ' have never been requested; this list caps each company at ' + IC_MAX_PER_ACCOUNT + ' people so no account gets flooded. Lead with a note about their industry, not a generic line.'],
       ['off', 'Review ' + intF(offAccts.length) + ' accounts outside the ICP industries', 'Consulting, IT, advertising, media, non-profit and similar accounts rarely buy. Keep the ones that do, move consulting and IT firms to the B2B partner list, drop the rest.'],
       ['noind', 'Fill in Industry on ' + intF(noInd.length) + ' accounts', 'Without it, fit can’t be checked and acceptance by industry is blind for these accounts.'],
