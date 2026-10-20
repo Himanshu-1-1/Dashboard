@@ -193,6 +193,56 @@
     },
   });
 
+  /* Email (dataset b2b_mail: one row per B2B contact with an address in Zoho; dates and counts only, from the
+     info@ and hemang@ mailboxes, matched by address; b2b_mail_weeks: messages per week). Private dashboard only. */
+  const MAIL_RECENT = 30;
+  const MAIL_QUIET = 14;
+  const MAIL_STATUS = ['They wrote last', 'Gone quiet', 'No reply yet', 'Talking', 'Never emailed', 'No address'];
+  dash.calc('b2b_mail_people', {
+    title: 'B2B prospects by email status',
+    description: 'Each B2B prospect with their email history from the info@ and hemang@ mailboxes, matched to Zoho by email address: last email from them (automatic replies and meeting responses left out), last email from us, and counts. Status: they wrote last; gone quiet (they have written before, our last email was 14 or more days ago); no reply yet (we emailed, they never wrote); talking; never emailed; no address in Zoho. Mail sent from other mailboxes is not included.',
+    inputs: ['b2b_people', 'b2b_mail'],
+    fn: (b2b_people, b2b_mail) => {
+      const m = new Map(b2b_mail.map((r) => [String(r.Zoho_Id), r]));
+      const now = Date.now();
+      const ago = (iso) => (iso ? Math.max(0, Math.floor((now - Date.parse(iso)) / 864e5)) : null);
+      return b2b_people.map((p) => {
+        const r = m.get(p.id);
+        const o = { id: p.id, name: p.name, account: p.account, account_id: p.account_id, priority: p.priority, met: p.met, signed: p.signed, dnc: p.dnc, tasks: p.tasks };
+        if (!r) return { ...o, status: 'No address', n_in: 0, n_out: 0, last_in: null, last_out: null, last_out_by: null, in_days: null, out_days: null };
+        const nIn = Number(r.n_in || 0);
+        const nOut = Number(r.n_out || 0);
+        const li = r.last_in || null;
+        const lo = r.last_out || null;
+        const inD = ago(li);
+        const outD = ago(lo);
+        let status = 'Talking';
+        if (!nIn && !nOut) status = 'Never emailed';
+        else if (li && (!lo || Date.parse(li) > Date.parse(lo))) status = 'They wrote last';
+        else if (!nIn) status = 'No reply yet';
+        else if (outD != null && outD >= MAIL_QUIET) status = 'Gone quiet';
+        return { ...o, status, n_in: nIn, n_out: nOut, last_in: li, last_out: lo, last_out_by: r.last_out_by || null, in_days: inD, out_days: outD };
+      });
+    },
+  });
+
+  dash.calc('b2b_queue', {
+    title: 'B2B work queue with email',
+    description: 'The B2B work queue plus one Reply item for each prospect whose email is the latest in the thread and arrived in the last 30 days, unless a reply or follow-up task for them is already in the queue or they are marked Do Not Contact.',
+    inputs: ['b2b_actions', 'b2b_mail_people'],
+    fn: (b2b_actions, b2b_mail_people) => {
+      const has = new Set(b2b_actions.filter((a) => a.type === 'Reply' || a.type === 'Follow-up').map((a) => a.id));
+      const add = b2b_mail_people
+        .filter((p) => p.status === 'They wrote last' && p.in_days != null && p.in_days <= MAIL_RECENT && !p.dnc && !has.has(p.id))
+        .map((p) => ({ key: 'Mail|' + p.id, order: 1, type: 'Reply', sop: 3, id: p.id, name: p.name, account: p.account,
+          action: 'Read their last email and answer it, or close the loop',
+          why: p.signed ? 'Signed partner' : p.met ? `Met ${p.met === 1 ? 'once' : p.met + ' times'}` : p.priority ? `P${p.priority}` : 'Campaign contact',
+          why_now: `They emailed ${p.in_days === 0 ? 'today' : p.in_days === 1 ? 'yesterday' : p.in_days + ' days ago'}; ${p.last_out ? 'our last email was before that' : 'we have not emailed them'}`,
+          late: p.in_days, mail: true, done: 'Your reply is sent, or no reply is needed', record: 'Log the email in Zoho; set the next task with a due date' }));
+      return [...b2b_actions, ...add].sort((a, b) => a.order - b.order || b.late - a.late || String(a.name).localeCompare(String(b.name)));
+    },
+  });
+
   /* ---------- view ---------- */
   const root = document.querySelector('#b2-root');
   if (!root) return;
@@ -248,10 +298,19 @@
   const nextCard = card('b2-next', 'Do this next', 'The first item in today’s queue, with everything needed to do it right.', 'cc-b2-nextcard');
   const nextBody = el('div', 'cc-b2-nextbody');
   nextCard.append(nextBody);
-  const queueCard = card('b2-queue', 'Today’s queue', 'In order: replies, follow-ups, agreements, meeting asks, first introductions, stalled deals. Select a row to make it the next action.');
+  const queueCard = card('b2-queue', 'Today’s queue', 'In order: replies (tasks, and emails waiting on us), follow-ups, agreements, meeting asks, first introductions, stalled deals. Select a row to make it the next action.');
   const queueTools = el('div', 'cc-tools cc-b2-chips');
   const queueBody = el('div', 'cc-b2-wrap');
   queueCard.append(queueTools, queueBody);
+  const mailCard = card('b2-mail', 'Email with B2B prospects', 'From the info@ and hemang@ mailboxes, matched to Zoho by email address. Only dates and counts are kept; no subjects or message text.');
+  const mailStats = el('div', 'cc-b2-mstats');
+  const mailWeeks = el('div', 'cc-b2-mweeks');
+  const mailKey = el('p', 'cc-b2-mkey');
+  const mailTools = el('div', 'cc-tools cc-b2-chips');
+  const mailBody = el('div', 'cc-b2-wrap');
+  const mailNote = el('p', 'cc-b2-insight');
+  const mailFoot = el('p', 'cc-b2-mfoot');
+  mailCard.append(mailStats, mailWeeks, mailKey, mailNote, mailTools, mailBody, mailFoot);
   const monCard = card('b2-monday', 'Monday selection queue', `Up to ${MONDAY} P5 prospects to review each week. Ordered by the partner evidence on their record; the order is proposed, awaiting Mack. Select or skip each one in Zoho.`);
   const monBody = el('div', 'cc-b2-wrap');
   const monMore = el('div', 'cc-tools');
@@ -323,7 +382,7 @@
   drill.querySelector('.cc-card-head').append(drillClose);
   drill.append(drillBody);
 
-  root.append(head, tiles, grid1, drill, nextCard, queueCard, monCard, grid2, stagesCard, sopCard, dqCard);
+  root.append(head, tiles, grid1, drill, nextCard, queueCard, mailCard, monCard, grid2, stagesCard, sopCard, dqCard);
   root.addEventListener('click', (e) => {
     const b = e.target.closest('[data-sop]');
     if (!b) return;
@@ -361,6 +420,12 @@
 
   let queueFilter = 'All';
   let queueAll = false;
+  let mailFilter = 'They wrote last';
+  let mailAll = false;
+  const mailOk = () => state(['b2b_mail_people']) === 'ok';
+  const queueRows = () => (state(['b2b_queue']) === 'ok' ? rows('b2b_queue') : rows('b2b_actions'));
+  const ctDay = (iso) => (iso ? new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }) : null);
+  const daysF = (n) => (n == null ? '—' : n === 0 ? 'today' : n === 1 ? '1 day ago' : intF(n) + ' days ago');
   let picked = 0;
   let monPage = 0;
 
@@ -368,7 +433,7 @@
     nextBody.replaceChildren();
     if (!a) { nextBody.append(el('p', 'cc-b2-insight', 'Nothing is due today. Work the Monday queue, then ask connected P1 and P3 prospects for a first meeting.')); return; }
     const left = el('div');
-    const act = el('p', 'cc-b2-action'); act.append(document.createTextNode(a.type + ': '), link('Contacts', a.id, a.name));
+    const act = el('p', 'cc-b2-action'); act.append(document.createTextNode((a.mail ? 'Reply by email' : a.type) + ': '), link('Contacts', a.id, a.name));
     left.append(act, el('p', 'cc-b2-who', [a.account || 'No company on record', a.why].join('. ')));
     const dl = el('dl', 'cc-b2-dl');
     const pair = (k, v) => { dl.append(el('dt', null, k)); const dd = el('dd'); if (v instanceof Node) dd.append(v); else dd.textContent = v; dl.append(dd); };
@@ -391,16 +456,18 @@
     }
     verdict.classList.remove('cc-b2-bad');
     const ppl = rows('b2b_people');
-    const acts = rows('b2b_actions');
+    const acts = queueRows();
     const mon = rows('b2b_monday');
     const fun = rows('b2b_funnel');
     const seg = rows('b2b_segments');
     const fv = (k) => (fun.find((r) => r.key === k) || {}).value || 0;
     const count = (type) => acts.filter((a) => a.type === type).length;
+    const mailN = acts.filter((a) => a.mail).length;
+    const lateN = acts.filter((a) => (a.type === 'Reply' || a.type === 'Follow-up') && !a.mail).length;
     const strong = mon.filter((m) => m.strength >= 3).length;
     const fnN = ppl.filter((p) => p.source === 'Founder network').length;
 
-    verdict.textContent = `${intF(fv('met'))} of ${intF(fv('all'))} B2B prospects have met us and ${intF(fv('signed'))} have signed, but only ${intF(fv('introduced'))} ${fv('introduced') === 1 ? 'partner has' : 'partners have'} introduced a client. The work is conversations and activation, not more names: ${intF(count('Reply') + count('Follow-up'))} follow-ups are overdue, ${intF(count('Meeting ask'))} connected P1 and P3 prospects have never been asked to meet, and ${intF(count('First introduction'))} signed partners have not been asked for an introduction.`;
+    verdict.textContent = `${intF(fv('met'))} of ${intF(fv('all'))} B2B prospects have met us and ${intF(fv('signed'))} have signed, but only ${intF(fv('introduced'))} ${fv('introduced') === 1 ? 'partner has' : 'partners have'} introduced a client. The work is conversations and activation, not more names: ${mailN ? `${intF(mailN)} ${mailN === 1 ? 'prospect is' : 'prospects are'} waiting on an email reply, ` : ''}${intF(lateN)} follow-ups are overdue, ${intF(count('Meeting ask'))} connected P1 and P3 prospects have never been asked to meet, and ${intF(count('First introduction'))} signed partners have not been asked for an introduction.`;
 
     /* Tiles: Add, Select, Build relationships. */
     tiles.replaceChildren();
@@ -430,10 +497,10 @@
       'Selections per week can’t be counted until Zoho records when a stage changes.',
     ], [['1', 'SOP 1 Select']]);
     tile('3', 'Build relationships', 'Rules proposed', 'cc-b2-wait', intF(acts.length), 'items in today’s queue', [
-      `${intF(count('Reply'))} replies and ${intF(count('Follow-up'))} follow-ups overdue; ${intF(count('Agreement'))} agreement steps waiting.`,
+      `${mailN ? intF(mailN) + ' emails waiting on a reply; ' : ''}${intF(lateN)} reply and follow-up tasks overdue; ${intF(count('Agreement'))} agreement steps waiting.`,
       `${intF(ppl.filter((p) => p.connected && !p.met).length)} connected prospects have never met us.`,
       'An accepted LinkedIn connection is not a conversation; two-way contact means they wrote back or spoke with us.',
-      'Replies and conversations by day can’t be counted until Zoho logs them as events.',
+      mailWeekLine(),
     ], [['3', 'SOP 3'], ['4', 'SOP 4'], ['5', 'SOP 5'], ['6', 'SOP 6'], ['7', 'SOP 7']]);
 
     /* Funnel. */
@@ -462,7 +529,8 @@
     /* Next steps. */
     stepsBody.replaceChildren();
     const steps = [
-      [count('Reply') + count('Follow-up'), `Clear ${intF(count('Reply') + count('Follow-up'))} overdue replies and follow-ups`, `The oldest is ${intF(Math.max(0, ...acts.filter((a) => a.type === 'Reply' || a.type === 'Follow-up').map((a) => a.late)))} days late. Replies first: a conversation goes cold faster than a task.`, () => { queueFilter = 'Reply'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '3'],
+      [mailN, `Answer ${intF(mailN)} ${mailN === 1 ? 'email' : 'emails'} waiting on us`, `Their email is the latest in the thread, sent in the last ${MAIL_RECENT} days; the oldest has waited ${intF(Math.max(0, ...acts.filter((a) => a.mail).map((a) => a.late)))} days. Some need no answer: read, then reply or log it.`, () => { queueFilter = 'Reply'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '3'],
+      [lateN, `Clear ${intF(lateN)} overdue replies and follow-ups`, `The oldest is ${intF(Math.max(0, ...acts.filter((a) => (a.type === 'Reply' || a.type === 'Follow-up') && !a.mail).map((a) => a.late)))} days late. Replies first: a conversation goes cold faster than a task.`, () => { queueFilter = 'Reply'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '3'],
       [count('Agreement'), `Move ${intF(count('Agreement'))} agreement steps`, 'Signatures waiting and agreement tasks overdue. Each signed partner is a channel; an unsigned one is a conversation.', () => { queueFilter = 'Agreement'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '5'],
       [count('Meeting ask'), `Ask ${intF(count('Meeting ask'))} connected P1 and P3 prospects for a first meeting`, 'Top priority, already connected, never met and nothing scheduled. P1 prospects meet us far more often than P5.', () => { queueFilter = 'Meeting ask'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '4'],
       [count('First introduction'), `Ask ${intF(count('First introduction'))} signed partners for their first introduction`, 'A signed agreement earns nothing until it produces an introduction. Name one client problem we solve and ask who comes to mind.', () => { queueFilter = 'First introduction'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '6'],
@@ -481,6 +549,7 @@
     });
 
     drawQueue();
+    drawMail();
     drawMonday();
 
     /* Segments. */
@@ -544,6 +613,15 @@
       [p5Signed, 'signed partners still at P5', 'Priority isn’t kept current; set the right stage.', (p) => p.signed && p.priority === '5'],
       [liOnly, 'connected on LinkedIn but not marked in Zoho', 'Set LI Connect to Connected so Zoho and this page agree.', (p) => p.li_only],
       [fnN, 'founder-network prospects tagged B2B', 'Counted here; the B2B Campaign tab leaves them out.', (p) => p.source === 'Founder network'],
+      ...(mailOk() ? (() => {
+        const mp = new Map(rows('b2b_mail_people').map((m) => [m.id, m]));
+        const wrote = (p) => (mp.get(p.id) || {}).n_in > 0 && (p.priority === '5' || !p.priority) && !p.signed;
+        const noAddr = (p) => (mp.get(p.id) || {}).status === 'No address';
+        return [
+          [ppl.filter(wrote).length, 'prospects who wrote back by email but are still P5 or have no Priority', 'Two-way contact is on record; under the proposed stages they are P3.', wrote],
+          [ppl.filter(noAddr).length, 'prospects with no email address in Zoho', 'Email history can’t be matched without one. Add it when you have it.', noAddr],
+        ];
+      })() : []),
     ].forEach(([n, label, fix, keep]) => {
       const li = el('li', 'cc-b2-dqi' + (n ? '' : ' cc-b2-clear'));
       li.append(el('b', null, intF(n)), el('span', null, label), el('small', null, fix));
@@ -556,7 +634,7 @@
   };
 
   const drawQueue = () => {
-    const acts = rows('b2b_actions');
+    const acts = queueRows();
     const types = ['All', ...['Reply', 'Follow-up', 'Agreement', 'Meeting ask', 'First introduction', 'Revive deal'].filter((t) => acts.some((a) => a.type === t))];
     if (!types.includes(queueFilter)) queueFilter = 'All';
     queueTools.replaceChildren(...types.map((t) => {
@@ -577,7 +655,7 @@
     list.slice(0, queueAll ? 200 : 12).forEach((a, i) => {
       const tr = el('tr', i === picked ? 'cc-b2-picked' : null);
       const who = el('td'); who.append(link('Contacts', a.id, a.name)); if (a.account) who.append(el('small', null, a.account));
-      tr.append(el('td', null, String(i + 1)), el('td', null, a.type), who, el('td', null, a.action));
+      tr.append(el('td', null, String(i + 1)), el('td', null, a.mail ? 'Reply by email' : a.type), who, el('td', null, a.action));
       tr.append(el('td', a.late ? 'cc-b2-late' : null, a.why_now));
       const s = el('td'); s.append(sopBtn(a.sop)); tr.append(s);
       tr.addEventListener('click', (e) => { if (e.target.closest('a, button')) return; picked = i; drawQueue(); nextCard.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
@@ -592,6 +670,134 @@
       const bar = el('div', 'cc-tools'); bar.append(more);
       queueBody.append(bar);
     }
+  };
+
+  const mailWeekLine = () => {
+    const wk = rows('b2b_mail_weeks');
+    if (state(['b2b_mail_weeks']) !== 'ok' || wk.length < 2) return 'Email activity by week shows once the mailbox data loads; LinkedIn messages and calls are not recorded anywhere yet.';
+    const a = wk[wk.length - 1];
+    const b = wk[wk.length - 2];
+    return `Email: ${intF(a.people_sent)} prospects emailed this week (${intF(b.people_sent)} last week); ${intF(a.received)} emails from prospects this week (${intF(b.received)} last week). LinkedIn messages and calls are not recorded yet.`;
+  };
+
+  const drawMail = () => {
+    const st = state(['b2b_mail_people']);
+    if (st !== 'ok') {
+      [mailStats, mailWeeks, mailTools, mailBody].forEach((n) => n.replaceChildren());
+      mailKey.textContent = '';
+      mailFoot.textContent = '';
+      mailNote.textContent = st === 'loading' ? 'Loading the mailbox data…' : 'The mailbox data did not load, so email history isn’t shown. The rest of this page doesn’t depend on it.';
+      mailNote.classList.toggle('cc-b2-bad', st === 'error');
+      return;
+    }
+    mailNote.classList.remove('cc-b2-bad');
+    const mp = rows('b2b_mail_people');
+    const by = (k) => mp.filter((m) => m.status === k);
+    const withAddr = mp.filter((m) => m.status !== 'No address');
+    const emailed = mp.filter((m) => m.n_out > 0);
+    const wroteBack = emailed.filter((m) => m.n_in > 0);
+    const waiting = by('They wrote last').filter((m) => m.in_days != null && m.in_days <= MAIL_RECENT);
+    const wk = state(['b2b_mail_weeks']) === 'ok' ? rows('b2b_mail_weeks') : [];
+    const thisW = wk[wk.length - 1] || null;
+    const lastW = wk[wk.length - 2] || null;
+
+    /* Stats. */
+    mailStats.replaceChildren();
+    const stat = (big, label, sub, go, cls) => {
+      const c = el('div', 'cc-b2-mstat' + (cls ? ' ' + cls : ''));
+      c.append(el('b', null, big), el('span', null, label));
+      if (sub) c.append(el('small', null, sub));
+      if (go) press(c, go);
+      mailStats.append(c);
+    };
+    const pick = (k) => () => { mailFilter = k; mailAll = false; drawMail(); mailTools.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); };
+    stat(intF(waiting.length), 'waiting on our reply', `They wrote last, in the last ${MAIL_RECENT} days. ${intF(by('They wrote last').length - waiting.length)} older.`, pick('They wrote last'), waiting.length ? 'cc-b2-mwarn' : null);
+    if (thisW) {
+      const d = lastW ? thisW.people_sent - lastW.people_sent : null;
+      stat(intF(thisW.people_sent), 'prospects emailed this week', lastW ? `${intF(lastW.people_sent)} last week (${d > 0 ? '+' : ''}${intF(d)}). Week starts Monday, CT.` : null, null);
+    }
+    stat(pct(wroteBack.length, emailed.length), 'of the prospects we emailed wrote back', `${intF(wroteBack.length)} of ${intF(emailed.length)}. Automatic replies and meeting responses don’t count.`, pick('No reply yet'));
+    stat(intF(withAddr.length), 'of ' + intF(mp.length) + ' prospects have an email address in Zoho', `${intF(mp.length - withAddr.length)} can’t be matched.`, pick('No address'));
+
+    /* Weeks: sent and received, paired bars. */
+    mailWeeks.replaceChildren();
+    if (wk.length) {
+      const peak = Math.max(1, ...wk.map((w) => Math.max(w.sent, w.received)));
+      wk.forEach((w, i) => {
+        const col = el('div', 'cc-b2-mcol' + (i === wk.length - 1 ? ' cc-b2-wnow' : ''));
+        const bars = el('span', 'cc-b2-mbars');
+        const bs = el('i', 'cc-b2-msent'); bs.style.height = (w.sent / peak) * 100 + '%';
+        const br = el('i', 'cc-b2-mrecv'); br.style.height = (w.received / peak) * 100 + '%';
+        bars.append(bs, br);
+        const nums = el('span', 'cc-b2-mnums'); nums.append(el('b', null, intF(w.sent)), document.createTextNode(' / '), el('b', null, intF(w.received)));
+        col.append(nums, bars, el('small', null, dayF(w.week)));
+        col.title = `Week of ${dayF(w.week)}: ${w.sent} emails sent to ${w.people_sent} prospects, ${w.received} received`;
+        mailWeeks.append(col);
+      });
+      mailKey.replaceChildren();
+      const k1 = el('span', 'cc-b2-mk cc-b2-mk-sent', 'Sent by us'); const k2 = el('span', 'cc-b2-mk cc-b2-mk-recv', 'Received from prospects');
+      mailKey.append(k1, k2, document.createTextNode(' Emails per week, last 12 weeks. This week is in progress.'));
+    } else {
+      mailKey.textContent = '';
+    }
+
+    /* Insight: does an email reply go with meeting us? */
+    const metRate = (list) => (list.length ? list.filter((m) => m.met > 0).length / list.length : null);
+    const silent = emailed.filter((m) => !m.n_in);
+    const a = metRate(wroteBack);
+    const b = metRate(silent);
+    const quiet = by('Gone quiet').length;
+    mailNote.textContent = a != null && b != null && wroteBack.length >= 5
+      ? `Of prospects who wrote back by email, ${pct(wroteBack.filter((m) => m.met > 0).length, wroteBack.length)} have met us; of those emailed who never wrote back, ${pct(silent.filter((m) => m.met > 0).length, silent.length)}. ${quiet ? `${intF(quiet)} threads have gone quiet: they wrote before, and our last email was ${MAIL_QUIET} or more days ago.` : ''}`
+      : `${intF(quiet)} threads have gone quiet: they wrote before, and our last email was ${MAIL_QUIET} or more days ago.`;
+
+    /* Chips and table. */
+    const counts = new Map(MAIL_STATUS.map((k) => [k, by(k).length]));
+    if (!counts.get(mailFilter)) mailFilter = MAIL_STATUS.find((k) => counts.get(k)) || MAIL_STATUS[0];
+    mailTools.replaceChildren(...MAIL_STATUS.filter((k) => counts.get(k)).map((k) => {
+      const b2 = el('button', 'cc-chip', `${k} (${intF(counts.get(k))})`);
+      b2.type = 'button'; b2.setAttribute('aria-pressed', String(mailFilter === k));
+      b2.addEventListener('click', () => { mailFilter = k; mailAll = false; drawMail(); });
+      return b2;
+    }));
+    const list = by(mailFilter).slice().sort((x, y) => {
+      if (mailFilter === 'They wrote last') return (x.in_days ?? 1e9) - (y.in_days ?? 1e9);
+      if (mailFilter === 'Gone quiet' || mailFilter === 'No reply yet' || mailFilter === 'Talking') return (x.out_days ?? 1e9) - (y.out_days ?? 1e9);
+      return String(x.name).localeCompare(String(y.name));
+    });
+    const tbl = el('table', 'cc-tbl');
+    const th = el('thead'); const hr = el('tr');
+    const noMail = mailFilter === 'Never emailed' || mailFilter === 'No address';
+    (noMail ? ['Name', 'Company', 'Priority', 'Met'] : ['Name', 'Company', 'Their last email', 'Our last email', 'Emails out / in', 'Met', '']).forEach((x) => { const c = el('th', null, x); c.scope = 'col'; hr.append(c); });
+    th.append(hr); tbl.append(th);
+    const tb = el('tbody');
+    list.slice(0, mailAll ? 300 : 12).forEach((m) => {
+      const tr = el('tr');
+      const n = el('td'); n.append(link('Contacts', m.id, m.name)); tr.append(n);
+      const ac = el('td'); if (m.account_id) ac.append(link('Accounts', m.account_id, m.account)); else ac.textContent = 'No company'; tr.append(ac);
+      if (noMail) {
+        tr.append(el('td', null, m.priority ? 'P' + m.priority : 'Not set'), el('td', null, m.met ? intF(m.met) : '—'));
+      } else {
+        const li = el('td', m.status === 'They wrote last' && m.in_days != null && m.in_days <= MAIL_RECENT ? 'cc-b2-late' : null);
+        li.textContent = m.last_in ? dayF(ctDay(m.last_in)) : 'Never'; if (m.last_in) li.append(el('small', null, daysF(m.in_days)));
+        const lo = el('td'); lo.textContent = m.last_out ? dayF(ctDay(m.last_out)) : 'Never';
+        if (m.last_out) lo.append(el('small', null, daysF(m.out_days) + (m.last_out_by ? ', ' + m.last_out_by : '')));
+        tr.append(li, lo, el('td', null, intF(m.n_out) + ' / ' + intF(m.n_in)), el('td', null, m.met ? intF(m.met) : '—'));
+        const s = el('td'); s.append(sopBtn(m.status === 'They wrote last' || m.status === 'Gone quiet' ? 3 : m.status === 'Talking' ? 4 : 2)); tr.append(s);
+      }
+      tb.append(tr);
+    });
+    tbl.append(tb);
+    mailBody.replaceChildren(tbl);
+    if (list.length > 12) {
+      const more = el('button', 'cc-go', mailAll ? 'Show the first 12' : `Show all ${intF(Math.min(list.length, 300))}`);
+      more.type = 'button';
+      more.addEventListener('click', () => { mailAll = !mailAll; drawMail(); });
+      const bar = el('div', 'cc-tools'); bar.append(more);
+      mailBody.append(bar);
+    }
+    const asOf = (rows('b2b_mail')[0] || {}).as_of;
+    mailFoot.textContent = `Mail as of ${asOf ? dayF(ctDay(asOf)) + ' (CT)' : 'the last refresh'}. Covers info@ and hemang@; mail sent only from another mailbox won’t show, so “they wrote last” can mean someone already answered from elsewhere. Check before replying.`;
   };
 
   const drawMonday = () => {
