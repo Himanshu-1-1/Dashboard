@@ -75,6 +75,22 @@ jobs:
             echo "::warning::No research-snapshot branch, so Warm Intros shows only people in Zoho."
           fi
 
+      - name: Add the B2B Today tab
+        run: |
+          # Source lives in artifact/ (shared with the private Claude Dashboard); the public page loads the same files.
+          cp artifact/b2b-today.js artifact/b2b-today.css site/
+
+      - name: Lock the data behind the team passcode
+        env:
+          DASH_PASSCODE: ${{ secrets.DASH_PASSCODE }}
+        run: |
+          # Encrypts data.js, boxbyte.js, courier.js and research.js into data.lock.json and deletes the readable
+          # files. Fails (and nothing is published) when the DASH_PASSCODE secret is missing or shorter than 16 characters.
+          node scripts/lock_site.mjs site
+          for f in data.js boxbyte.js courier.js research.js; do
+            if [ -e "site/$f" ]; then echo "::error::site/$f is still present"; exit 1; fi
+          done
+
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3

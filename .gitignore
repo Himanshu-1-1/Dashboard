@@ -6,3 +6,6 @@ __pycache__/
 site/boxbyte.js
 site/courier.js
 site/research.js
+site/data.lock.json
+site/b2b-today.js
+site/b2b-today.css

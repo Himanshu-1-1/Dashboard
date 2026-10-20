@@ -154,7 +154,89 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
     box.append(h, p1, p2);
     shell.prepend(box);
   };
-  const start = () => {
+  /* Passcode lock. On GitHub Pages the data ships only as data.lock.json (AES-256-GCM, key from the shared passcode
+     via PBKDF2-SHA256, written by scripts/lock_site.mjs). Run locally, data.js is read as before. */
+  const LOCK_KEY = 'cc-unlock-v1';
+  const b64 = (str) => Uint8Array.from(atob(str), (c) => c.charCodeAt(0));
+  const toB64 = (bytes) => { let out = ''; bytes.forEach((b) => { out += String.fromCharCode(b); }); return btoa(out); };
+  const store = {
+    get() { try { return JSON.parse(localStorage.getItem(LOCK_KEY) || 'null'); } catch (err) { return null; } },
+    set(v) { try { localStorage.setItem(LOCK_KEY, JSON.stringify(v)); } catch (err) { /* private window: the unlock lasts this visit only */ } },
+    clear() { try { localStorage.removeItem(LOCK_KEY); } catch (err) { /* ignore */ } },
+  };
+  const deriveKey = async (passcode, lock) => {
+    const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(passcode), 'PBKDF2', false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: b64(lock.salt), iterations: lock.iterations }, base, 256);
+    return new Uint8Array(bits);
+  };
+  const openLock = async (raw32, lock) => {
+    const key = await crypto.subtle.importKey('raw', raw32, 'AES-GCM', false, ['decrypt']);
+    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(lock.iv) }, key, b64(lock.data));
+    return JSON.parse(new TextDecoder().decode(plain));
+  };
+  const unlocked = (bundle) => {
+    Object.entries(bundle).forEach(([name, value]) => { if (/^__[A-Z_]+__$/.test(name)) window[name] = value; });
+    document.body.classList.remove('cc-locked');
+    const gate = document.getElementById('cc-gate');
+    if (gate) gate.hidden = true;
+    const lockBtn = document.getElementById('cc-lock');
+    if (lockBtn) lockBtn.hidden = false;
+    load();
+  };
+  const showGate = (lock) => {
+    const gate = document.getElementById('cc-gate');
+    const form = document.getElementById('cc-gate-form');
+    const input = document.getElementById('cc-gate-pass');
+    const remember = document.getElementById('cc-gate-remember');
+    const msg = document.getElementById('cc-gate-msg');
+    const btn = form.querySelector('button[type="submit"]');
+    gate.hidden = false;
+    input.focus();
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const pass = input.value;
+      if (!pass) { msg.textContent = 'Enter the passcode.'; return; }
+      btn.disabled = true;
+      msg.textContent = 'Unlocking…';
+      try {
+        const raw32 = await deriveKey(pass, lock);
+        const bundle = await openLock(raw32, lock);
+        if (remember.checked) store.set({ salt: lock.salt, iterations: lock.iterations, key: toB64(raw32) });
+        else store.clear();
+        input.value = '';
+        msg.textContent = '';
+        unlocked(bundle);
+      } catch (err) {
+        msg.textContent = 'That passcode didn’t unlock the data. Check it and try again.';
+        input.select();
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  };
+  const gateOrLoad = async () => {
+    const lockBtn = document.getElementById('cc-lock');
+    if (lockBtn) lockBtn.addEventListener('click', () => { store.clear(); location.reload(); });
+    if (window.__DASH_DATA__) { document.body.classList.remove('cc-locked'); load(); return; }
+    let lock = null;
+    try {
+      const res = await fetch('data.lock.json', { cache: 'no-store' });
+      if (res.ok) lock = await res.json();
+    } catch (err) { /* file:// or offline: fall through to the no-data banner */ }
+    if (!lock || !lock.data) { document.body.classList.remove('cc-locked'); load(); return; }
+    if (!window.crypto || !crypto.subtle) {
+      document.body.classList.remove('cc-locked');
+      loadError = 'This browser can’t unlock the data (it needs a secure https page).';
+      load();
+      return;
+    }
+    const saved = store.get();
+    if (saved && saved.key && saved.salt === lock.salt && saved.iterations === lock.iterations) {
+      try { unlocked(await openLock(b64(saved.key), lock)); return; } catch (err) { store.clear(); }
+    }
+    showGate(lock);
+  };
+  const load = () => {
     const json = window.__DASH_DATA__;
     const extras = [window.__BOXBYTE__, window.__COURIER__, window.__RESEARCH__].filter((x) => x && x.datasets);
     if (json && json.datasets) {
@@ -163,22 +245,34 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
       runAll();
       stamp('Data from Zoho CRM as of ' + when(json.generated_at) + '.');
     } else {
-      loadError = 'data.js not found';
+      loadError = loadError || 'data.js not found';
       cache = {};
       runAll();
       stamp('No data loaded yet.', true);
       banner();
     }
   };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
-  else start();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', gateOrLoad);
+  else gateOrLoad();
   let resizeTimer;
   window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(runAll, 150); });
 })();
 </script>
 </head>
-<body>
+<body class="cc-locked">
 <main class="cc-shell">
+<div class="cc-gate" id="cc-gate" hidden>
+  <form class="cc-gate-card" id="cc-gate-form">
+    <h1>Campaign Command Center</h1>
+    <p>This dashboard holds contact and pipeline data, so it’s locked. Enter the team passcode to open it.</p>
+    <input type="text" name="username" value="Campaign Command Center" autocomplete="username" hidden>
+    <label for="cc-gate-pass">Passcode</label>
+    <input id="cc-gate-pass" name="password" type="password" autocomplete="current-password" spellcheck="false">
+    <label class="cc-gate-check"><input id="cc-gate-remember" type="checkbox" checked> Keep this device unlocked</label>
+    <button type="submit">Unlock</button>
+    <p class="cc-gate-msg" id="cc-gate-msg" role="status" aria-live="polite"></p>
+  </form>
+</div>
 <style>
 .cc { display: grid; gap: var(--cds-gap-lg); font-family: var(--font-anthropic-sans); font-size: var(--cds-font-size-body); color: var(--color-fg); }
 .cc * { box-sizing: border-box; }
@@ -604,17 +698,36 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
   .cc-donut svg { max-width: 9rem; }
   .cc-dlegend { width: 100%; }
 }
+/* Passcode gate */
+body.cc-locked .cc { display: none; }
+.cc-gate { min-height: 80vh; display: grid; place-items: center; padding: var(--cds-pad-lg) 16px; }
+.cc-gate-card { width: min(100%, 26rem); display: grid; gap: var(--cds-gap-sm); padding: var(--cds-pad-lg); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); }
+.cc-gate-card h1 { margin: 0 0 4px; font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); }
+.cc-gate-card p { margin: 0; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.cc-gate-card label { font-size: var(--cds-font-size-caption); font-weight: var(--cds-font-weight-medium); margin-top: 6px; }
+.cc-gate-card input[type="password"] { font: inherit; padding: 10px 12px; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-bg); color: var(--color-fg); }
+.cc-gate-card input[type="password"]:focus-visible, .cc-gate-card button:focus-visible, .cc-lockbtn:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
+.cc-gate-check { display: flex; align-items: center; gap: 8px; font-weight: 400 !important; }
+.cc-gate-card button { font: inherit; font-weight: var(--cds-font-weight-medium); margin-top: 6px; padding: 10px 14px; border: 0; border-radius: var(--cds-radius); background: var(--color-fg); color: var(--color-bg); cursor: pointer; }
+.cc-gate-card button:disabled { opacity: .6; cursor: progress; }
+.cc-gate-msg { min-height: 1.2em; color: var(--color-bad) !important; }
+.cc-head { position: relative; }
+.cc-lockbtn { position: absolute; top: 4px; right: 0; width: auto; font: inherit; font-size: var(--cds-font-size-caption); padding: 4px 10px; border: 1px solid var(--color-border-line); border-radius: 999px; background: transparent; color: var(--color-fg-muted); cursor: pointer; }
+.cc-lockbtn:hover { color: var(--color-fg); }
+@media (max-width: 640px) { .cc-lockbtn { position: static; justify-self: start; } }
 </style>
 
 <div class="cc" id="top">
   <header class="cc-head">
     <h1>Campaign Command Center</h1>
+    <button type="button" class="cc-lockbtn" id="cc-lock" hidden title="Forget the passcode on this device">Lock this device</button>
     <p class="cc-meta"><span id="cc-refreshed">Loading today’s data from Zoho CRM…</span> Refreshed daily at 6:00 PM IST. Dates are Central time. Targets come from the 2026 campaign tracking sheets; the pace line assumes the campaigns run Aug 17 to Dec 18, 2026.</p>
   </header>
 
   <nav class="cc-tabs" role="tablist" aria-label="Campaigns">
     <button type="button" class="cc-tab" role="tab" id="tab-overview" data-tab="overview" aria-controls="overview">Overview</button>
     <button type="button" class="cc-tab" role="tab" id="tab-rp" data-tab="rp" aria-controls="rp"><i class="cc-dot" data-hue="rp"></i>B2B Campaign</button>
+    <button type="button" class="cc-tab" role="tab" id="tab-today" data-tab="today" aria-controls="today"><i class="cc-dot" data-hue="rp"></i>B2B Today</button>
     <button type="button" class="cc-tab" role="tab" id="tab-ref" data-tab="ref" aria-controls="ref"><i class="cc-dot" data-hue="rp"></i>Referrals</button>
     <button type="button" class="cc-tab" role="tab" id="tab-icp" data-tab="icp" aria-controls="icp"><i class="cc-dot" data-hue="icp"></i>ICP Prospecting</button>
     <button type="button" class="cc-tab" role="tab" id="tab-fn" data-tab="fn" aria-controls="fn"><i class="cc-dot" data-hue="fn"></i>Founder Network</button>
@@ -801,6 +914,8 @@ th[aria-sort="descending"] .cc-sort::after { content: "↓"; }
       <p class="cc-empty" hidden>No partnership deals are open.</p>
     </article>
   </section>
+
+  <section class="cc-page" id="today" role="tabpanel" aria-labelledby="tab-today" hidden><link rel="stylesheet" href="b2b-today.css"><div class="cc-b2-root" id="b2-root"></div></section>
 
   <section class="cc-page" id="ref" role="tabpanel" aria-labelledby="tab-ref" hidden>
     <p class="cc-intro">Which partner sent us which client, where each referred deal stands, and whether that partner's agreement is signed.</p>
@@ -6218,6 +6333,8 @@ dash.calc('attention', {
 })();
 </script>
 
+<script>window.CC_MAIL_PRIVATE = true; /* email history stays on the private Claude Dashboard */</script>
+<script src="b2b-today.js"></script>
 </main>
 </body>
 </html>

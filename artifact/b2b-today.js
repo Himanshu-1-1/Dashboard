@@ -423,8 +423,9 @@
   let queueAll = false;
   let mailFilter = 'They wrote last';
   let mailAll = false;
-  const mailOk = () => state(['b2b_mail_people']) === 'ok';
-  const queueRows = () => (state(['b2b_queue']) === 'ok' ? rows('b2b_queue') : rows('b2b_actions'));
+  const MAIL_PRIVATE = Boolean(window.CC_MAIL_PRIVATE);
+  const mailOk = () => !MAIL_PRIVATE && state(['b2b_mail_people']) === 'ok';
+  const queueRows = () => (!MAIL_PRIVATE && state(['b2b_queue']) === 'ok' ? rows('b2b_queue') : rows('b2b_actions'));
   const ctDay = (iso) => (iso ? new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }) : null);
   const daysF = (n) => (n == null ? '—' : n === 0 ? 'today' : n === 1 ? '1 day ago' : intF(n) + ' days ago');
   let picked = 0;
@@ -677,6 +678,7 @@
   };
 
   const mailWeekLine = () => {
+    if (MAIL_PRIVATE) return 'Email activity by week is on the private Claude Dashboard; LinkedIn messages and calls are not recorded anywhere yet.';
     const wk = rows('b2b_mail_weeks');
     if (state(['b2b_mail_weeks']) !== 'ok' || wk.length < 2) return 'Email activity by week shows once the mailbox data loads; LinkedIn messages and calls are not recorded anywhere yet.';
     const a = wk[wk.length - 1];
@@ -685,6 +687,13 @@
   };
 
   const drawMail = () => {
+    if (MAIL_PRIVATE) {
+      [mailStats, mailWeeks, mailTools, mailBody].forEach((n) => n.replaceChildren());
+      mailKey.textContent = '';
+      mailFoot.textContent = '';
+      mailNote.textContent = 'Email history with prospects is kept on the private Claude Dashboard only, so it isn’t shown here.';
+      return;
+    }
     const st = state(['b2b_mail_people']);
     if (st !== 'ok') {
       [mailStats, mailWeeks, mailTools, mailBody].forEach((n) => n.replaceChildren());
