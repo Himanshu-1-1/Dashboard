@@ -200,7 +200,7 @@
   const MAIL_STATUS = ['They wrote last', 'Gone quiet', 'No reply yet', 'Talking', 'Bounced', 'Never emailed', 'No address'];
   dash.calc('b2b_mail_people', {
     title: 'B2B prospects by email status',
-    description: 'Each B2B prospect with their email history from the info@ and hemang@ mailboxes, matched to Zoho by email address: last email from them (automatic replies and meeting responses left out), last email from us, and counts. Status: they wrote last; gone quiet (they have written before, our last email was 14 or more days ago); no reply yet (we emailed, they never wrote); talking; bounced (our email to the address in Zoho came back undelivered and nothing has arrived from it since); never emailed; no address in Zoho. Mail sent from other mailboxes is not included.',
+    description: 'Each B2B prospect with their email history from the team’s mailboxes (info@, hemang@, mack@, shruti@), matched to Zoho by email address: last email from them (automatic replies and meeting responses left out), last email from us, and counts. Status: they wrote last; gone quiet (they have written before, our last email was 14 or more days ago); no reply yet (we emailed, they never wrote); talking; bounced (our email to the address in Zoho came back undelivered and nothing has arrived from it since); never emailed; no address in Zoho. Mail sent from other mailboxes is not included.',
     inputs: ['b2b_people', 'b2b_mail'],
     fn: (b2b_people, b2b_mail) => {
       const m = new Map(b2b_mail.map((r) => [String(r.Zoho_Id), r]));
@@ -303,7 +303,7 @@
   const queueTools = el('div', 'cc-tools cc-b2-chips');
   const queueBody = el('div', 'cc-b2-wrap');
   queueCard.append(queueTools, queueBody);
-  const mailCard = card('b2-mail', 'Email with B2B prospects', 'From the info@ and hemang@ mailboxes, matched to Zoho by email address. Only dates and counts are kept; no subjects or message text.');
+  const mailCard = card('b2-mail', 'Email with B2B prospects', 'From the team’s mailboxes, matched to Zoho by email address. Only dates and counts are kept; no subjects or message text.');
   const mailStats = el('div', 'cc-b2-mstats');
   const mailWeeks = el('div', 'cc-b2-mweeks');
   const mailKey = el('p', 'cc-b2-mkey');
@@ -800,8 +800,9 @@
       const bar = el('div', 'cc-tools'); bar.append(more);
       mailBody.append(bar);
     }
-    const asOf = (rows('b2b_mail')[0] || {}).as_of;
-    mailFoot.textContent = `Mail as of ${asOf ? dayF(ctDay(asOf)) + ' (CT)' : 'the last refresh'}. Covers info@ and hemang@; mail sent only from another mailbox won’t show, so “they wrote last” can mean someone already answered from elsewhere. Check before replying.`;
+    const first = rows('b2b_mail')[0] || {};
+    const boxes = first.mailboxes || 'info@, hemang@';
+    mailFoot.textContent = `Mail as of ${first.as_of ? dayF(ctDay(first.as_of)) + ' (CT)' : 'the last refresh'}. Covers ${boxes}; mail sent only from another mailbox, a personal address or LinkedIn won’t show, so “they wrote last” can mean someone already answered elsewhere. Check before replying.`;
   };
 
   const drawMonday = () => {
