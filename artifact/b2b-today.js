@@ -197,10 +197,10 @@
      info@ and hemang@ mailboxes, matched by address; b2b_mail_weeks: messages per week). Private dashboard only. */
   const MAIL_RECENT = 30;
   const MAIL_QUIET = 14;
-  const MAIL_STATUS = ['They wrote last', 'Gone quiet', 'No reply yet', 'Talking', 'Never emailed', 'No address'];
+  const MAIL_STATUS = ['They wrote last', 'Gone quiet', 'No reply yet', 'Talking', 'Bounced', 'Never emailed', 'No address'];
   dash.calc('b2b_mail_people', {
     title: 'B2B prospects by email status',
-    description: 'Each B2B prospect with their email history from the info@ and hemang@ mailboxes, matched to Zoho by email address: last email from them (automatic replies and meeting responses left out), last email from us, and counts. Status: they wrote last; gone quiet (they have written before, our last email was 14 or more days ago); no reply yet (we emailed, they never wrote); talking; never emailed; no address in Zoho. Mail sent from other mailboxes is not included.',
+    description: 'Each B2B prospect with their email history from the info@ and hemang@ mailboxes, matched to Zoho by email address: last email from them (automatic replies and meeting responses left out), last email from us, and counts. Status: they wrote last; gone quiet (they have written before, our last email was 14 or more days ago); no reply yet (we emailed, they never wrote); talking; bounced (our email to the address in Zoho came back undelivered and nothing has arrived from it since); never emailed; no address in Zoho. Mail sent from other mailboxes is not included.',
     inputs: ['b2b_people', 'b2b_mail'],
     fn: (b2b_people, b2b_mail) => {
       const m = new Map(b2b_mail.map((r) => [String(r.Zoho_Id), r]));
@@ -217,7 +217,8 @@
         const inD = ago(li);
         const outD = ago(lo);
         let status = 'Talking';
-        if (!nIn && !nOut) status = 'Never emailed';
+        if (r.bounced) status = 'Bounced';
+        else if (!nIn && !nOut) status = 'Never emailed';
         else if (li && (!lo || Date.parse(li) > Date.parse(lo))) status = 'They wrote last';
         else if (!nIn) status = 'No reply yet';
         else if (outD != null && outD >= MAIL_QUIET) status = 'Gone quiet';
@@ -617,7 +618,9 @@
         const mp = new Map(rows('b2b_mail_people').map((m) => [m.id, m]));
         const wrote = (p) => (mp.get(p.id) || {}).n_in > 0 && (p.priority === '5' || !p.priority) && !p.signed;
         const noAddr = (p) => (mp.get(p.id) || {}).status === 'No address';
+        const bad = (p) => (mp.get(p.id) || {}).status === 'Bounced';
         return [
+          [ppl.filter(bad).length, 'email addresses in Zoho that bounced', 'Our email came back undelivered. Find the current address, or clear the field.', bad],
           [ppl.filter(wrote).length, 'prospects who wrote back by email but are still P5 or have no Priority', 'Two-way contact is on record; under the proposed stages they are P3.', wrote],
           [ppl.filter(noAddr).length, 'prospects with no email address in Zoho', 'Email history can’t be matched without one. Add it when you have it.', noAddr],
         ];
@@ -783,7 +786,7 @@
         const lo = el('td'); lo.textContent = m.last_out ? dayF(ctDay(m.last_out)) : 'Never';
         if (m.last_out) lo.append(el('small', null, daysF(m.out_days) + (m.last_out_by ? ', ' + m.last_out_by : '')));
         tr.append(li, lo, el('td', null, intF(m.n_out) + ' / ' + intF(m.n_in)), el('td', null, m.met ? intF(m.met) : '—'));
-        const s = el('td'); s.append(sopBtn(m.status === 'They wrote last' || m.status === 'Gone quiet' ? 3 : m.status === 'Talking' ? 4 : 2)); tr.append(s);
+        const s = el('td'); if (m.status !== 'Bounced') s.append(sopBtn(m.status === 'They wrote last' || m.status === 'Gone quiet' ? 3 : m.status === 'Talking' ? 4 : 2)); tr.append(s);
       }
       tb.append(tr);
     });
