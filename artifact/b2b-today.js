@@ -464,11 +464,12 @@
     const fv = (k) => (fun.find((r) => r.key === k) || {}).value || 0;
     const count = (type) => acts.filter((a) => a.type === type).length;
     const mailN = acts.filter((a) => a.mail).length;
+    const waitN = mailOk() ? rows('b2b_mail_people').filter((m) => m.status === 'They wrote last' && m.in_days != null && m.in_days <= MAIL_RECENT && !m.dnc).length : 0;
     const lateN = acts.filter((a) => (a.type === 'Reply' || a.type === 'Follow-up') && !a.mail).length;
     const strong = mon.filter((m) => m.strength >= 3).length;
     const fnN = ppl.filter((p) => p.source === 'Founder network').length;
 
-    verdict.textContent = `${intF(fv('met'))} of ${intF(fv('all'))} B2B prospects have met us and ${intF(fv('signed'))} have signed, but only ${intF(fv('introduced'))} ${fv('introduced') === 1 ? 'partner has' : 'partners have'} introduced a client. The work is conversations and activation, not more names: ${mailN ? `${intF(mailN)} ${mailN === 1 ? 'prospect is' : 'prospects are'} waiting on an email reply, ` : ''}${intF(lateN)} follow-ups are overdue, ${intF(count('Meeting ask'))} connected P1 and P3 prospects have never been asked to meet, and ${intF(count('First introduction'))} signed partners have not been asked for an introduction.`;
+    verdict.textContent = `${intF(fv('met'))} of ${intF(fv('all'))} B2B prospects have met us and ${intF(fv('signed'))} have signed, but only ${intF(fv('introduced'))} ${fv('introduced') === 1 ? 'partner has' : 'partners have'} introduced a client. The work is conversations and activation, not more names: ${waitN ? `${intF(waitN)} ${waitN === 1 ? 'prospect wrote' : 'prospects wrote'} last by email in the last 30 days, ` : ''}${intF(lateN)} follow-ups are overdue, ${intF(count('Meeting ask'))} connected P1 and P3 prospects have never been asked to meet, and ${intF(count('First introduction'))} signed partners have not been asked for an introduction.`;
 
     /* Tiles: Add, Select, Build relationships. */
     tiles.replaceChildren();
@@ -498,7 +499,7 @@
       'Selections per week can’t be counted until Zoho records when a stage changes.',
     ], [['1', 'SOP 1 Select']]);
     tile('3', 'Build relationships', 'Rules proposed', 'cc-b2-wait', intF(acts.length), 'items in today’s queue', [
-      `${mailN ? intF(mailN) + ' emails waiting on a reply; ' : ''}${intF(lateN)} reply and follow-up tasks overdue; ${intF(count('Agreement'))} agreement steps waiting.`,
+      `${waitN ? intF(waitN) + ' emails waiting on a reply; ' : ''}${intF(lateN)} reply and follow-up tasks overdue; ${intF(count('Agreement'))} agreement steps waiting.`,
       `${intF(ppl.filter((p) => p.connected && !p.met).length)} connected prospects have never met us.`,
       'An accepted LinkedIn connection is not a conversation; two-way contact means they wrote back or spoke with us.',
       mailWeekLine(),
@@ -530,7 +531,7 @@
     /* Next steps. */
     stepsBody.replaceChildren();
     const steps = [
-      [mailN, `Answer ${intF(mailN)} ${mailN === 1 ? 'email' : 'emails'} waiting on us`, `Their email is the latest in the thread, sent in the last ${MAIL_RECENT} days; the oldest has waited ${intF(Math.max(0, ...acts.filter((a) => a.mail).map((a) => a.late)))} days. Some need no answer: read, then reply or log it.`, () => { queueFilter = 'Reply'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '3'],
+      [waitN, `Answer ${intF(waitN)} ${waitN === 1 ? 'email' : 'emails'} waiting on us`, `Their email is the latest in the thread, sent in the last ${MAIL_RECENT} days${waitN > mailN ? `; ${intF(waitN - mailN)} already have a reply or follow-up task in the queue` : ''}. Some need no answer: read, then reply or log it.`, () => { mailFilter = 'They wrote last'; drawMail(); mailCard.scrollIntoView({ behavior: 'smooth' }); }, '3'],
       [lateN, `Clear ${intF(lateN)} overdue replies and follow-ups`, `The oldest is ${intF(Math.max(0, ...acts.filter((a) => (a.type === 'Reply' || a.type === 'Follow-up') && !a.mail).map((a) => a.late)))} days late. Replies first: a conversation goes cold faster than a task.`, () => { queueFilter = 'Reply'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '3'],
       [count('Agreement'), `Move ${intF(count('Agreement'))} agreement steps`, 'Signatures waiting and agreement tasks overdue. Each signed partner is a channel; an unsigned one is a conversation.', () => { queueFilter = 'Agreement'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '5'],
       [count('Meeting ask'), `Ask ${intF(count('Meeting ask'))} connected P1 and P3 prospects for a first meeting`, 'Top priority, already connected, never met and nothing scheduled. P1 prospects meet us far more often than P5.', () => { queueFilter = 'Meeting ask'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '4'],
