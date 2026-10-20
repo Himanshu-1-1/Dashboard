@@ -75,6 +75,18 @@ jobs:
             echo "::warning::No research-snapshot branch, so Warm Intros shows only people in Zoho."
           fi
 
+      - name: Add the sealed private datasets
+        run: |
+          # Email history and Mack's LinkedIn matches sit on their own branches sealed with scripts/seal.mjs (RSA public
+          # key in scripts/seal_key.pub.pem); only the MAIL_KEY secret opens them, in the lock step below.
+          for b in mail linkedin; do
+            if git fetch --depth=1 origin "$b-snapshot" 2>/dev/null; then
+              git show "FETCH_HEAD:$b.sealed.json" > "site/$b.sealed.json"
+            else
+              echo "::warning::No $b-snapshot branch, so B2B Today goes out without it."
+            fi
+          done
+
       - name: Add the B2B Today tab
         run: |
           # Source lives in artifact/ (shared with the private Claude Dashboard); the public page loads the same files.
@@ -83,11 +95,12 @@ jobs:
       - name: Lock the data behind the team passcode
         env:
           DASH_PASSCODE: ${{ secrets.DASH_PASSCODE }}
+          MAIL_KEY: ${{ secrets.MAIL_KEY }}
         run: |
           # Encrypts data.js, boxbyte.js, courier.js and research.js into data.lock.json and deletes the readable
           # files. Fails (and nothing is published) when the DASH_PASSCODE secret is missing or shorter than 16 characters.
           node scripts/lock_site.mjs site
-          for f in data.js boxbyte.js courier.js research.js; do
+          for f in data.js boxbyte.js courier.js research.js mail.sealed.json linkedin.sealed.json; do
             if [ -e "site/$f" ]; then echo "::error::site/$f is still present"; exit 1; fi
           done
 

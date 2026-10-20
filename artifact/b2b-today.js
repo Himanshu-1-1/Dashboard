@@ -423,9 +423,9 @@
   let queueAll = false;
   let mailFilter = 'They wrote last';
   let mailAll = false;
-  const MAIL_PRIVATE = Boolean(window.CC_MAIL_PRIVATE);
-  const mailOk = () => !MAIL_PRIVATE && state(['b2b_mail_people']) === 'ok';
-  const queueRows = () => (!MAIL_PRIVATE && state(['b2b_queue']) === 'ok' ? rows('b2b_queue') : rows('b2b_actions'));
+  const mailMissing = () => Boolean(window.CC_MAIL_PRIVATE) && dash.data('b2b_mail').status === 'error';
+  const mailOk = () => !mailMissing() && state(['b2b_mail_people']) === 'ok';
+  const queueRows = () => (!mailMissing() && state(['b2b_queue']) === 'ok' ? rows('b2b_queue') : rows('b2b_actions'));
   const ctDay = (iso) => (iso ? new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }) : null);
   const daysF = (n) => (n == null ? '—' : n === 0 ? 'today' : n === 1 ? '1 day ago' : intF(n) + ' days ago');
   let picked = 0;
@@ -678,7 +678,7 @@
   };
 
   const mailWeekLine = () => {
-    if (MAIL_PRIVATE) return 'Email activity by week is on the private Claude Dashboard; LinkedIn messages and calls are not recorded anywhere yet.';
+    if (mailMissing()) return 'Email activity by week isn’t in this build of the page; LinkedIn messages and calls are not recorded anywhere yet.';
     const wk = rows('b2b_mail_weeks');
     if (state(['b2b_mail_weeks']) !== 'ok' || wk.length < 2) return 'Email activity by week shows once the mailbox data loads; LinkedIn messages and calls are not recorded anywhere yet.';
     const a = wk[wk.length - 1];
@@ -687,11 +687,11 @@
   };
 
   const drawMail = () => {
-    if (MAIL_PRIVATE) {
+    if (mailMissing()) {
       [mailStats, mailWeeks, mailTools, mailBody].forEach((n) => n.replaceChildren());
       mailKey.textContent = '';
       mailFoot.textContent = '';
-      mailNote.textContent = 'Email history with prospects is kept on the private Claude Dashboard only, so it isn’t shown here.';
+      mailNote.textContent = 'Email history isn’t in this build of the page. It appears after the next daily refresh; the private Claude Dashboard always has it.';
       return;
     }
     const st = state(['b2b_mail_people']);

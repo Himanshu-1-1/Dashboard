@@ -9,3 +9,4 @@ site/research.js
 site/data.lock.json
 site/b2b-today.js
 site/b2b-today.css
+site/*.sealed.json

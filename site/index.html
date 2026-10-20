@@ -238,7 +238,7 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
   };
   const load = () => {
     const json = window.__DASH_DATA__;
-    const extras = [window.__BOXBYTE__, window.__COURIER__, window.__RESEARCH__].filter((x) => x && x.datasets);
+    const extras = [window.__BOXBYTE__, window.__COURIER__, window.__RESEARCH__, window.__SEALED__].filter((x) => x && x.datasets);
     if (json && json.datasets) {
       raw = { ...json, datasets: Object.assign({ wi_research: [], wi_mack: [], li_sync: [] }, json.datasets, ...extras.map((x) => x.datasets)) };
       cache = {};
@@ -6333,7 +6333,7 @@ dash.calc('attention', {
 })();
 </script>
 
-<script>window.CC_MAIL_PRIVATE = true; /* email history stays on the private Claude Dashboard */</script>
+<script>window.CC_MAIL_PRIVATE = true; /* B2B Today: say so when the sealed email history isn't in this build */</script>
 <script src="b2b-today.js"></script>
 </main>
 </body>
