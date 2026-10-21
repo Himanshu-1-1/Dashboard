@@ -639,7 +639,7 @@
   drill.querySelector('.cc-card-head').append(drillClose);
   drill.append(drillBody);
 
-  root.append(score, p3, head, tiles, grid1, drill, nextCard, queueCard, mailCard, monCard, grid2, stagesCard, sopCard, dqCard);
+  root.append(score, p3, mailCard, head, tiles, grid1, drill, nextCard, queueCard, monCard, grid2, stagesCard, sopCard, dqCard);
   root.addEventListener('click', (e) => {
     const b = e.target.closest('[data-sop]');
     if (!b) return;
