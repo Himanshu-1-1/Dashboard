@@ -79,12 +79,6 @@
 .cc-b2-note { cursor: default; }
 .cc-b2-note b { font-size: 12px; font-family: inherit; font-weight: var(--cds-font-weight-medium); color: var(--color-warn); }
 .cc-b2-note:hover { background: none; }
-.cc-b2-stages { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--cds-gap-sm); grid-template-columns: repeat(5, minmax(0, 1fr)); }
-@media (max-width: 900px) { .cc-b2-stages { grid-template-columns: 1fr; } }
-.cc-b2-stage { display: grid; gap: 4px; align-content: start; padding: var(--cds-pad-md); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); font-size: var(--cds-font-size-caption); line-height: 1.4; }
-.cc-b2-stage b { font-size: 15px; font-weight: var(--cds-font-weight-medium); }
-.cc-b2-stage small { color: var(--color-fg-muted); }
-.cc-b2-stage-open { border-style: dashed; }
 .cc-b2-searchlab { display: block; }
 .cc-b2-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .cc-b2-search { width: 100%; max-width: 28rem; font: inherit; padding: 8px 12px; border-radius: var(--cds-radius); border: 1px solid var(--color-border-line); background: var(--color-bg); color: var(--color-fg); }

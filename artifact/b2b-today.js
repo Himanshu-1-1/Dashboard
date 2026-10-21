@@ -687,14 +687,6 @@
   const dqBody = el('ul', 'cc-b2-dq');
   dqCard.append(dqBody);
 
-  const stagesCard = card('b2-stages', 'Relationship stages', 'A stage changes only on evidence you can point to. An accepted LinkedIn connection alone never makes a two-way conversation.');
-  const stages = el('ol', 'cc-b2-stages');
-  [['P5 Backlog', 'In the campaign, not selected yet', 'Next: the weekly transfer to Priority 3'], ['P3 Relationship development', 'Selected; LinkedIn request, then connection', 'Next: first outreach (SOP 2), then a conversation'], ['P1 Two-way conversation', 'Connected, and they wrote back or spoke with us', 'Next: ask for a meeting (SOP 4), then the agreement (SOP 5)'], ['P2 and P4', 'Not used', 'No meaning defined']].forEach(([a, b, c], i) => {
-    const li = el('li', 'cc-b2-stage' + (i === 3 ? ' cc-b2-stage-open' : ''));
-    li.append(el('b', null, a), el('span', null, b), el('small', null, c));
-    stages.append(li);
-  });
-  stagesCard.append(stages);
 
   const sopCard = card('b2-sops', 'SOP library', 'Drafts, awaiting approval. Timings say “approved cadence” until Mack sets them.');
   const sl = el('label', 'cc-b2-searchlab');
@@ -740,7 +732,7 @@
   drill.querySelector('.cc-card-head').append(drillClose);
   drill.append(drillBody);
 
-  root.append(score, p3, mtg, mailCard, grid1, drill, nextCard, queueCard, monCard, grid2, stagesCard, sopCard, dqCard);
+  root.append(score, p3, mtg, mailCard, grid1, drill, nextCard, queueCard, monCard, grid2, sopCard, dqCard);
   root.addEventListener('click', (e) => {
     const b = e.target.closest('[data-sop]');
     if (!b) return;
