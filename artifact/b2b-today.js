@@ -293,25 +293,24 @@
     return n;
   };
 
-  dash.loader('b2b_added', {
-    description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text.',
-    fn: ({ answer }) => {
-      const a = typeof answer === 'string' ? (answer.trim() ? JSON.parse(answer) : {}) : (answer || {});
-      if (a.status === 'error' || (a.code && !a.data)) throw new Error(a.message || a.code || 'Zoho CRM refused the query');
-      const body = a.data && !Array.isArray(a.data) ? a.data : a;
-      const list = Array.isArray(body.data) ? body.data : [];
-      const rows = list.map((r) => {
-        const o = {};
-        for (const [k, v] of Object.entries(r)) {
-          if (Array.isArray(v)) o[k] = v.map((x) => (x && typeof x === 'object' ? x.name : x)).filter((x) => x != null && x !== '').join(', ');
-          else if (v && typeof v === 'object') { o[k] = v.name ?? null; o[k + '_id'] = v.id ?? null; }
-          else o[k] = v;
-        }
-        return o;
-      });
-      return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
-    },
-  });
+  const coqlRows = ({ answer }) => {
+    const a = typeof answer === 'string' ? (answer.trim() ? JSON.parse(answer) : {}) : (answer || {});
+    if (a.status === 'error' || (a.code && !a.data)) throw new Error(a.message || a.code || 'Zoho CRM refused the query');
+    const body = a.data && !Array.isArray(a.data) ? a.data : a;
+    const list = Array.isArray(body.data) ? body.data : [];
+    const rows = list.map((r) => {
+      const o = {};
+      for (const [k, v] of Object.entries(r)) {
+        if (Array.isArray(v)) o[k] = v.map((x) => (x && typeof x === 'object' ? x.name : x)).filter((x) => x != null && x !== '').join(', ');
+        else if (v && typeof v === 'object') { o[k] = v.name ?? null; o[k + '_id'] = v.id ?? null; }
+        else o[k] = v;
+      }
+      return o;
+    });
+    return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
+  };
+  dash.loader('b2b_added', { description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text.', fn: coqlRows });
+  dash.loader('b2b_meetings', { description: 'Zoho’s COQL answer as rows: the linked contact becomes Who_Id (name) and Who_Id_id.', fn: coqlRows });
 
   dash.calc('b2b_added_rows', {
     title: 'B2B prospects added to Zoho, one row each',
@@ -470,6 +469,88 @@
     },
   });
 
+  /* Meeting frequency and relationship depth (dataset b2b_meetings: Zoho Events linked to a B2B contact by Who_Id).
+     A meeting counts only when Meeting Status is Completed and it has started; one per contact per start minute.
+     Everything over time is rebuilt from meeting dates and the day Zoho created each contact; nothing is estimated. */
+  const MTG_STAGES = [
+    { k: 0, label: 'Never Met', def: 'No completed meetings', icon: 'person' },
+    { k: 1, label: 'Met Once', def: 'One completed meeting', icon: 'person' },
+    { k: 2, label: 'Met Twice', def: 'Two completed meetings', icon: 'group' },
+    { k: 3, label: 'Met Thrice', def: 'Three completed meetings', icon: 'group' },
+    { k: 4, label: 'Met 4+ Times', def: '4 or more completed meetings', icon: 'group' },
+  ];
+  const MTG_WEEKS = 12;
+  const minuteOf = (t) => Math.floor(t / 6e4);
+
+  dash.calc('mtg_people', {
+    title: 'B2B prospects by completed meetings',
+    description: 'One row per B2B prospect: completed meetings (Zoho Meeting Status Completed, start time passed, one per start minute), the Central-time day of each, the day they entered each meeting-count stage, the next scheduled meeting, and past meetings not marked Completed.',
+    inputs: ['b2b_people', 'b2b_added', 'b2b_meetings'],
+    fn: (b2b_people, b2b_added, b2b_meetings) => {
+      const now = Date.now();
+      const added = new Map(b2b_added.map((r) => [String(r.id), r]));
+      const by = new Map();
+      b2b_meetings.forEach((m) => {
+        const id = m.Who_Id_id ? String(m.Who_Id_id) : null;
+        const t = Date.parse(m.Start_DateTime);
+        if (!id || !Number.isFinite(t)) return;
+        const status = m.Meeting_Status && m.Meeting_Status !== '-None-' ? String(m.Meeting_Status) : null;
+        if (!by.has(id)) by.set(id, { done: new Map(), next: null, unmarked: [] });
+        const b = by.get(id);
+        if (t > now) { if (b.next == null || t < b.next) b.next = t; return; }
+        if (status === 'Completed') b.done.set(minuteOf(t), t);
+        else b.unmarked.push({ t, status: status || 'Blank' });
+      });
+      return b2b_people.map((p) => {
+        const b = by.get(p.id) || { done: new Map(), next: null, unmarked: [] };
+        const done = [...b.done.values()].sort((x, y) => x - y);
+        const unmarked = b.unmarked.filter((u) => !b.done.has(minuteOf(u.t))).sort((x, y) => x.t - y.t);
+        const a = added.get(p.id) || {};
+        const created = Date.parse(a.Created_Time);
+        const hasCreated = Number.isFinite(created);
+        const days = done.map((t) => ctDate(t));
+        const startT = hasCreated ? (done.length ? Math.min(created, done[0]) : created) : done.length ? done[0] : null;
+        return {
+          id: p.id, name: p.name, account: p.account, account_id: p.account_id, assigned: a.Assigned || null,
+          n: done.length, cat: Math.min(4, done.length), days, last: days.length ? days[days.length - 1] : null,
+          next: b.next == null ? null : new Date(b.next).toISOString(),
+          start: startT == null ? null : ctDate(startT), created: hasCreated ? ctDate(created) : null,
+          entered: [hasCreated && (!done.length || created < done[0]) ? ctDate(created) : null, days[0] || null, days[1] || null, days[2] || null, days[3] || null],
+          unmarked: unmarked.map((u) => ({ at: new Date(u.t).toISOString(), day: ctDate(u.t), status: u.status })),
+        };
+      });
+    },
+  });
+
+  dash.calc('mtg_depth', {
+    title: 'Meeting frequency stages',
+    description: 'For each stage (Never Met, Met Once, Twice, Thrice, 4+): prospects in it now; unique prospects who newly entered it today, this week (Monday start) and this calendar month (Central time); the count on the same day last month with the change since; and the count at the end of each of the last 12 weeks. Never Met is entered on the day Zoho created the contact; each later stage on the day of the meeting that reached it.',
+    inputs: ['mtg_people'],
+    fn: (ppl) => {
+      const today = todayCT();
+      const t = new Date(today + 'T00:00:00Z');
+      const mon = new Date(t); mon.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7));
+      const iso = (d) => d.toISOString().slice(0, 10);
+      const starts = { today, week: iso(mon), month: today.slice(0, 8) + '01' };
+      const [y, m, d] = today.split('-').map(Number);
+      const prevDay = iso(new Date(Date.UTC(y, m - 2, Math.min(d, new Date(Date.UTC(y, m - 1, 0)).getUTCDate()))));
+      const points = Array.from({ length: MTG_WEEKS }, (_, i) => (i === MTG_WEEKS - 1 ? today : iso(new Date(mon.getTime() - (MTG_WEEKS - 2 - i) * 7 * 864e5 - 864e5))));
+      const catAt = (p, day) => (!p.start || p.start > day ? null : Math.min(4, p.days.filter((x) => x <= day).length));
+      const from = ppl.reduce((mn, p) => (p.start && (!mn || p.start < mn) ? p.start : mn), null);
+      return MTG_STAGES.map((s) => {
+        const total = ppl.filter((p) => p.cat === s.k).length;
+        const prev = from && from <= prevDay ? ppl.filter((p) => catAt(p, prevDay) === s.k).length : null;
+        const entered = (day) => ppl.filter((p) => p.entered[s.k] && p.entered[s.k] >= day && p.entered[s.k] <= today).length;
+        return {
+          key: String(s.k), stage: s.k, label: s.label, total,
+          today: entered(starts.today), week: entered(starts.week), month: entered(starts.month),
+          prev_day: prevDay, prev, change: prev ? (total - prev) / prev : null, history_from: from,
+          spark: points.map((day) => ({ day, n: from && from <= day ? ppl.filter((p) => catAt(p, day) === s.k).length : null })),
+        };
+      });
+    },
+  });
+
   /* ---------- view ---------- */
   const root = document.querySelector('#b2-root');
   if (!root) return;
@@ -567,6 +648,26 @@
   const mailNote = el('p', 'cc-b2-insight');
   const mailFoot = el('p', 'cc-b2-mfoot');
   mailCard.append(mailStats, mailWeeks, mailKey, mailNote, mailTools, mailBody, mailFoot);
+  const mtg = el('section', 'cc-card cc-mt');
+  mtg.id = 'b2-mtg';
+  mtg.setAttribute('aria-labelledby', 'b2-mtg-title');
+  const mtgHead = el('div', 'cc-b2-scorehead');
+  const mtgTitleBox = el('div');
+  const mtgTitle = el('h2', null, 'Prospect Meeting Frequency & Relationship Depth');
+  mtgTitle.id = 'b2-mtg-title';
+  mtgTitleBox.append(mtgTitle, el('p', 'cc-b2-insight', 'Track how frequently we meet prospects and how relationships develop over time.'));
+  mtgHead.append(mtgTitleBox);
+  const mtgPath = el('div', 'cc-mt-path');
+  const mtgBar = el('ol', 'cc-mt-bar');
+  mtgBar.setAttribute('aria-label', 'Relationship stages, earliest first');
+  const mtgCap = el('div', 'cc-mt-cap');
+  mtgCap.append(el('span', null, 'Earlier in relationship'), el('span', null, 'Stronger relationship depth →'));
+  mtgPath.append(mtgBar, mtgCap);
+  const mtgGap = el('div', 'cc-mt-gap');
+  mtgGap.hidden = true;
+  const mtgGrid = el('div', 'cc-mt-grid');
+  const mtgNote = el('p', 'cc-b2-insight cc-mt-note');
+  mtg.append(mtgHead, mtgPath, mtgGap, mtgGrid, mtgNote);
   const monCard = card('b2-monday', 'Priority 3 queue', 'Everyone at Priority 3, grouped by what to do next from LI Connect: untouched first, then connected, then waiting. Within a group, the strongest partner evidence comes first.');
   const monTools = el('div', 'cc-tools cc-b2-chips');
   const monBody = el('div', 'cc-b2-wrap');
@@ -639,7 +740,7 @@
   drill.querySelector('.cc-card-head').append(drillClose);
   drill.append(drillBody);
 
-  root.append(score, p3, mailCard, grid1, drill, nextCard, queueCard, monCard, grid2, stagesCard, sopCard, dqCard);
+  root.append(score, p3, mailCard, mtg, grid1, drill, nextCard, queueCard, monCard, grid2, stagesCard, sopCard, dqCard);
   root.addEventListener('click', (e) => {
     const b = e.target.closest('[data-sop]');
     if (!b) return;
@@ -708,6 +809,7 @@
   const draw = () => {
     drawScore();
     drawP3();
+    drawMtg();
     const st = state(['b2b_people', 'b2b_actions', 'b2b_monday', 'b2b_funnel', 'b2b_segments']);
     if (st !== 'ok') {
       const msg = st === 'loading' ? 'Loading from Zoho…' : 'Some Zoho data did not load, so this page cannot be worked out. Reload, or check the source in the dashboard menu.';
@@ -1375,6 +1477,161 @@
     const prev = el('button', 'cc-go', 'Previous 10'); prev.type = 'button'; prev.disabled = monPage === 0; prev.addEventListener('click', () => { monPage -= 1; drawMonday(); });
     const next = el('button', 'cc-go', 'Next 10'); next.type = 'button'; next.disabled = monPage >= pages - 1; next.addEventListener('click', () => { monPage += 1; drawMonday(); });
     monMore.replaceChildren(prev, next, el('span', 'cc-b2-insight', `${intF(mon.length)} at Priority 3${monFilter === 'All' ? '' : ', ' + monFilter.toLowerCase()}, page ${monPage + 1} of ${pages}`));
+  };
+
+  /* Meeting frequency and relationship depth. */
+  const MTG_ICON = {
+    person: '<circle cx="12" cy="8" r="4"/><path d="M4 21c.9-4.2 4-6.5 8-6.5s7.1 2.3 8 6.5"/>',
+    group: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.2 14.8c1.7.8 2.9 2.6 3.3 5.2"/>',
+  };
+  const mtgIcon = (name) => {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('class', 'cc-mt-icon');
+    svg.innerHTML = MTG_ICON[name];
+    return svg;
+  };
+  const whenF = (iso) => new Date(iso).toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' CT';
+  const fullDayF = (s) => new Date(String(s).slice(0, 10) + 'T00:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' });
+  const spark = (pts, label) => {
+    const ns = 'http://www.w3.org/2000/svg';
+    const W = 160; const H = 40; const P = 3;
+    const vals = pts.map((p) => p.n);
+    const max = Math.max(1, ...vals.filter((v) => v != null));
+    const known = pts.map((p, i) => ({ i, n: p.n })).filter((p) => p.n != null);
+    const x = (i) => P + (i * (W - 2 * P)) / Math.max(1, pts.length - 1);
+    const yv = (v) => H - P - (v / max) * (H - 2 * P);
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('preserveAspectRatio', 'none'); svg.setAttribute('class', 'cc-mt-spark');
+    svg.setAttribute('role', 'img');
+    const first = known[0]; const last = known[known.length - 1];
+    svg.setAttribute('aria-label', `${label}, last ${MTG_WEEKS} weeks: ${intF(first.n)} on ${dayF(pts[first.i].day)}, ${intF(last.n)} now`);
+    const line = known.map((p, j) => `${j ? 'L' : 'M'}${x(p.i).toFixed(1)} ${yv(p.n).toFixed(1)}`).join(' ');
+    const area = document.createElementNS(ns, 'path');
+    area.setAttribute('d', `${line} L${x(last.i).toFixed(1)} ${H} L${x(first.i).toFixed(1)} ${H} Z`); area.setAttribute('class', 'cc-mt-area');
+    const path = document.createElementNS(ns, 'path');
+    path.setAttribute('d', line); path.setAttribute('class', 'cc-mt-line'); path.setAttribute('vector-effect', 'non-scaling-stroke');
+    const dot = document.createElementNS(ns, 'circle');
+    dot.setAttribute('cx', x(last.i).toFixed(1)); dot.setAttribute('cy', yv(last.n).toFixed(1)); dot.setAttribute('r', '2.6'); dot.setAttribute('class', 'cc-mt-dot');
+    svg.append(area, path, dot);
+    return svg;
+  };
+
+  const showMtg = (title, list, note, mode) => {
+    drill.querySelector('h3').textContent = title + ' (' + intF(list.length) + ')';
+    const tbl = el('table', 'cc-tbl');
+    const th = el('thead'); const hr = el('tr');
+    (mode === 'unmarked'
+      ? ['Name', 'Company', 'Owner (Assigned)', 'Meeting (CT)', 'Meeting Status', 'Completed meetings']
+      : ['Name', 'Company', 'Owner (Assigned)', 'Last completed meeting', 'Completed meetings', 'Next scheduled meeting']).forEach((x) => { const c = el('th', null, x); c.scope = 'col'; hr.append(c); });
+    th.append(hr); tbl.append(th);
+    const tb = el('tbody');
+    list.forEach((r) => {
+      const p = r.p || r;
+      const tr = el('tr');
+      const n = el('td'); n.append(link('Contacts', p.id, p.name)); tr.append(n);
+      const a = el('td'); if (p.account_id) a.append(link('Accounts', p.account_id, p.account)); else a.textContent = 'No company'; tr.append(a);
+      tr.append(el('td', null, p.assigned || 'Not assigned'));
+      if (mode === 'unmarked') tr.append(el('td', null, whenF(r.u.at)), el('td', 'cc-b2-late', r.u.status), el('td', null, intF(p.n)));
+      else tr.append(el('td', null, p.last ? fullDayF(p.last) : 'None'), el('td', null, intF(p.n)), el('td', null, p.next ? whenF(p.next) : 'None scheduled'));
+      tb.append(tr);
+    });
+    tbl.append(tb);
+    drillBody.replaceChildren(tbl);
+    if (note) drillBody.prepend(el('p', 'cc-b2-insight', note));
+    if (mode === 'unmarked') drillBody.prepend(sopBtn(7, 'SOP 7 Log a meeting'));
+    drill.hidden = false;
+    drill.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const drawMtg = () => {
+    const st = state(['mtg_people', 'mtg_depth']);
+    mtgNote.classList.toggle('cc-b2-bad', st === 'error');
+    if (st !== 'ok') {
+      mtgGap.hidden = true;
+      mtgBar.replaceChildren(...MTG_STAGES.map((s) => { const li = el('li', 'cc-mt-step cc-mt-s' + s.k); li.append(el('span', null, s.label), el('b', null, st === 'loading' ? '…' : '—')); return li; }));
+      mtgGrid.replaceChildren(...MTG_STAGES.map((s) => {
+        const c = el('article', 'cc-mt-kpi cc-mt-s' + s.k + ' cc-mt-wait');
+        const h = el('header', 'cc-mt-head'); h.append(mtgIcon(s.icon), el('h3', null, s.label));
+        c.append(h, el('p', 'cc-mt-big', st === 'loading' ? '…' : '—'), el('p', 'cc-mt-def', st === 'loading' ? 'Loading' : 'Unavailable'));
+        return c;
+      }));
+      mtgNote.textContent = st === 'loading' ? 'Loading meetings and B2B contacts from Zoho…' : 'Zoho meetings or B2B contacts didn’t load, so the stages can’t be worked out. Reload, or check the source in the dashboard menu.';
+      return;
+    }
+    const ppl = rows('mtg_people');
+    const stages = rows('mtg_depth');
+    if (!ppl.length) {
+      mtgGap.hidden = true;
+      mtgBar.replaceChildren();
+      mtgGrid.replaceChildren(el('p', 'cc-b2-insight', 'No B2B prospects in Zoho yet. Contacts tagged “May 2026 - 100 B2B” appear here with their meeting history.'));
+      mtgNote.textContent = '';
+      return;
+    }
+    const byStage = (k) => stages.find((s) => s.stage === k) || { total: 0, today: 0, week: 0, month: 0, spark: [] };
+
+    mtgBar.replaceChildren(...MTG_STAGES.map((s) => {
+      const li = el('li', 'cc-mt-step cc-mt-s' + s.k);
+      li.append(el('span', null, s.label), el('b', null, intF(byStage(s.k).total)));
+      return li;
+    }));
+
+    const unmarked = ppl.flatMap((p) => p.unmarked.map((u) => ({ p, u }))).sort((a, b) => b.u.at.localeCompare(a.u.at));
+    if (unmarked.length) {
+      const who = new Set(unmarked.map((x) => x.p.id)).size;
+      const txt = el('p');
+      txt.append(el('b', null, `${intF(unmarked.length)} past meeting${unmarked.length === 1 ? '' : 's'} with ${intF(who)} prospect${who === 1 ? '' : 's'} ${unmarked.length === 1 ? 'isn’t' : 'aren’t'} marked Completed in Zoho`), document.createTextNode(' (Meeting Status is Scheduled or blank), so they don’t count in the stages below. Set Meeting Status to Completed for meetings that happened. Zoho has no Cancelled or No-show value, so a meeting that didn’t happen can only stay uncounted.'));
+      const b = el('button', 'cc-go', 'List them'); b.type = 'button';
+      b.addEventListener('click', () => showMtg('Past meetings not marked Completed', unmarked, 'Newest first. Each one stays out of the counts until Meeting Status says Completed.', 'unmarked'));
+      mtgGap.replaceChildren(txt, b);
+      mtgGap.hidden = false;
+    } else mtgGap.hidden = true;
+
+    const prevDay = (stages[0] || {}).prev_day;
+    mtgGrid.replaceChildren(...MTG_STAGES.map((s) => {
+      const r = byStage(s.k);
+      const c = el('article', 'cc-mt-kpi cc-mt-s' + s.k);
+      c.id = 'b2-mtg-' + s.k;
+      const h = el('header', 'cc-mt-head'); h.append(mtgIcon(s.icon), el('h3', null, s.label));
+      const top = el('div', 'cc-mt-top');
+      top.append(el('p', 'cc-mt-big', intF(r.total)));
+      const delta = el('span', 'cc-mt-delta');
+      let spoken = 'no comparison';
+      if (r.change == null) { delta.textContent = '—'; delta.classList.add('cc-mt-flat'); delta.title = r.prev === 0 ? `None here on ${fullDayF(prevDay)}, so there’s no percentage` : 'No history for the same day last month'; }
+      else {
+        const p = Math.round(r.change * 100);
+        const up = p > 0; const down = p < 0;
+        const tone = !up && !down ? 'flat' : s.k === 0 ? (up ? 'bad' : 'good') : s.k === 4 ? (up ? 'good' : 'bad') : 'flat';
+        delta.textContent = (up ? '▲ ' : down ? '▼ ' : '') + Math.abs(p) + '%';
+        delta.classList.add('cc-mt-' + tone);
+        delta.title = `${intF(r.prev)} on ${fullDayF(prevDay)}` + (s.k > 0 && s.k < 4 ? '. A drop here can mean people moved up a stage.' : '');
+        spoken = `${up ? 'up' : down ? 'down' : 'unchanged'} ${Math.abs(p)}% since ${dayF(prevDay)}`;
+      }
+      top.append(delta);
+      if (prevDay && (r.change != null || r.prev === 0)) top.append(el('span', 'cc-mt-vs', 'vs ' + dayF(prevDay)));
+      const dl = el('dl', 'cc-mt-periods');
+      [['Today', r.today], ['This week', r.week], ['This month', r.month]].forEach(([k, v]) => { const d = el('div'); d.append(el('dt', null, k), el('dd', null, intF(v))); dl.append(d); });
+      c.append(h, top, el('p', 'cc-mt-def', s.def), el('p', 'cc-mt-ptitle', s.k === 0 ? 'Newly added, not met yet' : 'Newly reached this stage'), dl);
+      const pts = r.spark || [];
+      const real = pts.filter((x) => x.n != null);
+      const sp = el('div', 'cc-mt-sparkbox');
+      if (real.length >= 2 && real.some((x) => x.n > 0)) { sp.append(spark(pts, s.label)); sp.append(el('p', 'cc-mt-sparkcap', `Last ${MTG_WEEKS} weeks, end of each week`)); }
+      else sp.append(el('p', 'cc-mt-nospark', real.length >= 2 ? `Nobody at this stage in the last ${MTG_WEEKS} weeks` : 'Not enough history for a trend yet'));
+      c.append(sp);
+      if (s.k === 0 && r.total) c.append(el('p', 'cc-mt-flag', 'Action required: no meeting yet'));
+      const members = ppl.filter((p) => p.cat === s.k).slice().sort((a, b) => (s.k === 0 ? String(a.name).localeCompare(String(b.name)) : String(b.last || '').localeCompare(String(a.last || '')) || String(a.name).localeCompare(String(b.name))));
+      const notes = {
+        0: 'No completed meeting in Zoho. Ask connected prospects for a first meeting (SOP 4); past meetings not marked Completed are listed above the cards.',
+        1: 'One completed meeting. Follow up and book the second.',
+        2: 'Two completed meetings: early repeat engagement.',
+        3: 'Three completed meetings: a developing relationship.',
+        4: 'Four or more completed meetings: our deepest relationships.',
+      };
+      press(c, () => showMtg(s.label, members, notes[s.k] + ' Owner shows Zoho’s Assigned field, since Contact Owner is the shared Transpire login.'));
+      c.setAttribute('aria-label', `${s.label}: ${intF(r.total)} prospects, ${spoken}. Today ${intF(r.today)}, this week ${intF(r.week)}, this month ${intF(r.month)} newly entered. Open the list.`);
+      return c;
+    }));
+    const from = (stages[0] || {}).history_from;
+    mtgNote.textContent = `Counts unique B2B prospects by completed meetings in Zoho (Meeting Status Completed, start time passed); future and unmarked meetings don’t count, and each prospect sits in one stage. Today, This week (from Monday) and This month count prospects who newly reached a stage, in Central time; Never Met is reached when Zoho creates the contact. The change compares today’s total with ${prevDay ? fullDayF(prevDay) : 'the same day last month'}. Trends are rebuilt from meeting dates and contact creation dates${from ? ' since ' + fullDayF(from) : ''}; prospects later removed from the campaign aren’t in past weeks.`;
   };
 
   dash.onData(draw);
