@@ -284,7 +284,7 @@
 
   dash.calc('b2b_added_rows', {
     title: 'B2B prospects added to Zoho, one row each',
-    description: 'Every contact tagged “May 2026 - 100 B2B” (Priority 9 and 11 left out), by the month Zoho created it (Central time). A contact counts toward the monthly target when it has a first and last name, a company and a LinkedIn profile (the SOP’s required fields), is not labeled only Client, and is not a repeat of an earlier contact (same LinkedIn profile, or same name at the same company).',
+    description: 'Every contact tagged “May 2026 - 100 B2B” (Priority 9 and 11 left out), by the month Zoho created it (Central time). A contact counts toward the monthly target unless it is labeled only Client or repeats an earlier contact (same LinkedIn profile, or same name at the same company). Missing name, company or LinkedIn doesn’t stop it counting; it is listed so the record can be completed.',
     inputs: ['b2b_added'],
     fn: (b2b_added) => {
       const seen = new Map();
@@ -303,11 +303,12 @@
           const keys = [liKey(r.LinkedIn) && 'li:' + liKey(r.LinkedIn), nameKey(r) && r.Account_Name && 'nm:' + nameKey(r) + '|' + String(r.Account_Name).toLowerCase()].filter(Boolean);
           const dupOf = keys.map((k) => seen.get(k)).find(Boolean) || null;
           keys.forEach((k) => { if (!seen.has(k)) seen.set(k, r.Full_Name || 'an earlier contact'); });
-          const reason = dupOf ? 'Repeat of ' + dupOf : missing.length ? 'Missing ' + missing.join(', ') : clientOnly ? 'Labeled Client, not a partner' : null;
+          const reason = dupOf ? 'Repeat of ' + dupOf : clientOnly ? 'Labeled Client, not a partner' : null;
           return {
             id: String(r.id), name: r.Full_Name || [r.First_Name, r.Last_Name].filter(Boolean).join(' ') || '—', account: r.Account_Name || null, account_id: r.Account_Name_id || null,
             day, month: day.slice(0, 7), linkedin: liKey(r.LinkedIn) ? r.LinkedIn : null, assigned: r.Assigned || null,
             source: /founder network/i.test(rel) ? 'Founder network' : 'Other sources', counted: !reason, reason,
+            missing: missing.length ? 'Missing ' + missing.join(', ') : null,
           };
         });
     },
@@ -953,7 +954,7 @@
       const a = el('td'); if (r.account_id) a.append(link('Accounts', r.account_id, r.account)); else a.textContent = 'No company'; tr.append(a);
       tr.append(el('td', null, dayF(r.day)));
       const li = el('td'); if (r.linkedin) { const x = el('a', 'cc-zlink', 'Profile'); x.href = r.linkedin; x.target = '_blank'; x.rel = 'noopener'; li.append(x); } else li.textContent = 'Missing'; tr.append(li);
-      tr.append(el('td', null, r.source), el('td', null, r.assigned || 'Not assigned'), el('td', r.counted ? null : 'cc-b2-late', r.counted ? 'Yes' : r.reason));
+      tr.append(el('td', null, r.source), el('td', null, r.assigned || 'Not assigned'), el('td', r.counted ? (r.missing ? 'cc-b2-wait' : null) : 'cc-b2-late', r.counted ? (r.missing ? 'Yes. ' + r.missing : 'Yes') : r.reason));
       tb.append(tr);
     });
     tbl.append(tb);
@@ -990,7 +991,7 @@
     big.classList.add(sc.actual >= sc.target ? 'cc-b2-scoremet' : 'cc-b2-scoreshort');
     big.append(el('b', null, intF(sc.actual)), el('span', null, 'of ' + intF(sc.target)));
     const bigLabel = el('p', 'cc-b2-scorelabel', `qualified partner prospects added in ${monthF(sc.month)}`);
-    press(big, () => showAdded(`Counted toward ${monthF(sc.month)}’s target`, counted, 'Tagged “May 2026 - 100 B2B” and created in Zoho this month, with name, company and LinkedIn filled, not labeled only Client and not a repeat.'));
+    press(big, () => showAdded(`Counted toward ${monthF(sc.month)}’s target`, counted, 'Tagged “May 2026 - 100 B2B” and created in Zoho this month, not labeled only Client and not a repeat.'));
     big.title = 'List the contacts in this count';
     const bar = el('div', 'cc-b2-scorebar');
     bar.setAttribute('role', 'img');
@@ -1041,13 +1042,16 @@
 
     scoreBody.append(top, sub);
     const notCounted = inMonth.filter((r) => !r.counted);
+    const incomplete = counted.filter((r) => r.missing);
+    const toFix = [...notCounted, ...incomplete];
     const foot = [];
-    if (notCounted.length) foot.push(`${intF(notCounted.length)} more ${notCounted.length === 1 ? 'was' : 'were'} added this month but ${notCounted.length === 1 ? 'doesn’t' : 'don’t'} count yet (missing fields, labeled Client or a repeat).`);
+    if (notCounted.length) foot.push(`${intF(notCounted.length)} more ${notCounted.length === 1 ? 'was' : 'were'} added this month but ${notCounted.length === 1 ? 'doesn’t' : 'don’t'} count (labeled Client or a repeat).`);
+    if (incomplete.length) foot.push(`${intF(incomplete.length)} counted ${incomplete.length === 1 ? 'contact is' : 'contacts are'} missing a name, company or LinkedIn profile.`);
     foot.push('Counted by the date Zoho created the contact; contacts tagged later don’t count as new.');
     scoreFoot.replaceChildren(document.createTextNode(foot.join(' ') + ' '));
-    if (notCounted.length) {
+    if (toFix.length) {
       const fix = el('button', 'cc-go', 'List the ones to fix'); fix.type = 'button';
-      fix.addEventListener('click', () => showAdded(`Added in ${monthF(sc.month)} but not counted`, notCounted, 'Fill the missing fields in Zoho, remove the B2B tag from clients, and merge repeats; they count once fixed.'));
+      fix.addEventListener('click', () => showAdded(`Added in ${monthF(sc.month)}: records to fix`, toFix, 'Remove the B2B tag from clients and merge repeats; those count once fixed. Fill missing names, companies and LinkedIn profiles so the record is usable.'));
       scoreFoot.append(fix);
     }
   };
