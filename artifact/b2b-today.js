@@ -356,6 +356,80 @@
     },
   });
 
+  /* Priority 3, relationship development. Current balances come from b2b_people (Zoho's Priority and LI Connect);
+     Today / This week / This month come only from field-change history (dataset p3_events: one row per change,
+     {contact_id, field: 'Priority' | 'LI_Connect', from, to, at}), never inferred from current values. */
+  const P3_SOP_URL = 'https://docs.google.com/document/d/1ocLD2VXVnVrZAVz91FaocBRpqU8Tm8w8-9qUKvMztu8/edit?tab=t.0#heading=h.2n9bebp463et';
+  const liOf = (v) => (v == null || v === '' || v === '-None-' ? null : String(v));
+  const prOf = (v) => (v == null || v === '' || v === '-None-' ? null : String(v));
+
+  dash.calc('p3_state', {
+    title: 'Priority 3 relationship development, now',
+    description: 'B2B prospects by their current Zoho Priority and LI Connect: the Priority 3 backlog, untouched (LI Connect empty), pending (Requested), connected, Email Required, and Priority 1 contacts that are Connected.',
+    inputs: ['b2b_people'],
+    fn: (b2b_people) => b2b_people.map((p) => ({ id: p.id, name: p.name, account: p.account, account_id: p.account_id, priority: prOf(p.priority), li: liOf(p.li), met: p.met })),
+  });
+
+  const P3_KPIS = {
+    backlog: (x) => x.pr === '3',
+    untouched: (x) => x.pr === '3' && x.li == null,
+    pending: (x) => x.pr === '3' && x.li === 'Requested',
+    connected: (x) => x.pr === '3' && x.li === 'Connected',
+    email: (x) => x.pr === '3' && x.li === 'Email Required',
+  };
+
+  dash.calc('p3_periods', {
+    title: 'Priority 3 changes today, this week and this month',
+    description: 'From Zoho field history for Priority and LI Connect (Central time; weeks start Monday). Balances: the count now minus the count at the start of the period, rebuilt from the recorded changes. Events: unique contacts that made the change in the period while at Priority 3: pursued (LI Connect empty to Requested), connected (Requested to Connected), Email Required (newly set), and two-way conversations (Priority 3 to 1 while Connected). Periods that began before tracking started are marked partial.',
+    inputs: ['p3_state', 'p3_events'],
+    fn: (p3_state, p3_events) => {
+      const today = todayCT();
+      const t = new Date(today + 'T00:00:00Z');
+      const mon = new Date(t); mon.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7));
+      const starts = { today, week: mon.toISOString().slice(0, 10), month: today.slice(0, 8) + '01' };
+      const ctOf = (iso) => new Date(iso).toLocaleString('sv-SE', { timeZone: 'America/Chicago' }).replace(' ', 'T');
+      const ev = p3_events
+        .filter((e) => e && e.contact_id && e.at && (e.field === 'Priority' || e.field === 'LI_Connect'))
+        .map((e) => ({ id: String(e.contact_id), field: e.field, from: e.field === 'Priority' ? prOf(e.from) : liOf(e.from), to: e.field === 'Priority' ? prOf(e.to) : liOf(e.to), ct: ctOf(e.at), at: e.at }))
+        .sort((a, b) => a.ct.localeCompare(b.ct));
+      const tracked = ev.length ? ev[0].ct.slice(0, 10) : null;
+      const now = new Map(p3_state.map((p) => [p.id, { pr: p.priority, li: p.li }]));
+      const byId = new Map();
+      ev.forEach((e) => { if (!byId.has(e.id)) byId.set(e.id, []); byId.get(e.id).push(e); });
+      const valueAt = (id, field, ct) => {
+        const cur = now.get(id) || { pr: null, li: null };
+        const list = (byId.get(id) || []).filter((e) => e.field === field);
+        let v = field === 'Priority' ? cur.pr : cur.li;
+        for (let i = list.length - 1; i >= 0; i -= 1) { if (list[i].ct >= ct) v = list[i].from; else break; }
+        return v;
+      };
+      const stateAt = (id, ct) => ({ pr: valueAt(id, 'Priority', ct), li: valueAt(id, 'LI_Connect', ct) });
+      const ids = new Set([...now.keys(), ...byId.keys()]);
+      const out = [];
+      Object.entries(starts).forEach(([period, day]) => {
+        const ct0 = day + 'T00:00:00';
+        const partial = !tracked || tracked > day;
+        const row = { key: period, period, start: day, partial, tracked };
+        Object.entries(P3_KPIS).forEach(([k, f]) => {
+          let nowN = 0; let thenN = 0;
+          ids.forEach((id) => { const c = now.get(id) || { pr: null, li: null }; if (f(c)) nowN += 1; if (f(stateAt(id, ct0))) thenN += 1; });
+          row[k + '_net'] = nowN - thenN;
+        });
+        const inP = ev.filter((e) => e.ct >= ct0);
+        const uniq = (list) => [...new Map(list.map((e) => [e.id, e])).values()];
+        const at3 = (e) => stateAt(e.id, e.ct).pr === '3';
+        row.pursued = uniq(inP.filter((e) => e.field === 'LI_Connect' && e.from == null && e.to === 'Requested' && at3(e)));
+        row.newly_connected = uniq(inP.filter((e) => e.field === 'LI_Connect' && e.from === 'Requested' && e.to === 'Connected' && at3(e)));
+        row.newly_email = uniq(inP.filter((e) => e.field === 'LI_Connect' && e.to === 'Email Required' && e.from !== 'Email Required' && at3(e)));
+        row.promoted = uniq(inP.filter((e) => e.field === 'Priority' && e.from === '3' && e.to === '1' && stateAt(e.id, e.ct).li === 'Connected'));
+        out.push(row);
+      });
+      const all = ev.filter((e) => e.field === 'Priority' && e.from === '3' && e.to === '1' && stateAt(e.id, e.ct).li === 'Connected');
+      out.push({ key: 'all', period: 'all', start: tracked, partial: false, tracked, promoted: [...new Map(all.map((e) => [e.id, e])).values()] });
+      return out;
+    },
+  });
+
   /* ---------- view ---------- */
   const root = document.querySelector('#b2-root');
   if (!root) return;
@@ -369,11 +443,11 @@
   const sopBtn = (n, label) => { const b = el('button', 'cc-b2-sop', label || 'SOP ' + n); b.type = 'button'; b.dataset.sop = n; return b; };
 
   const SOPS = [
-    ['1', 'Add and select a partner prospect', 'When you add someone to B2B, or work the Monday queue.', ['Check Zoho for the person and the company first. Never create a duplicate.', 'Fill company, title and source: Founder Network or Researched.', 'Founder network: set the starting stage the rules allow and write the reason. Researched: leave at P5 for the Monday queue.', 'From the Monday queue: select with one line of evidence per fit question and set P4, or skip and record the reason.'], null, 'The record is complete and the stage matches the rules.', 'The person works for a competitor or an existing client, or another rep already owns them.'],
-    ['2', 'First outreach', 'A selected (P4) contact has no outreach yet.', ['Read their profile and company. Note one problem their clients deal with.', 'Send the connection note, or a message if you are already connected.', 'In Zoho, set LI Connect to Requested, or log the message.', 'Never send a second request while one is pending.'], 'Hi {first name}, your clients in {industry} seem to be wrestling with {problem}. I work on that side of things and would like to compare notes. Glad to connect.', 'The request or message is sent and recorded.', 'You are unsure whether someone already contacted them.'],
+    ['1', 'Add and select a partner prospect', 'When you add someone to B2B, or work the Monday queue.', ['Check Zoho for the person and the company first. Never create a duplicate.', 'Fill company, title and source: Founder Network or Researched.', 'Founder network: set the starting stage the rules allow and write the reason. Researched: leave at P5 for the Monday queue.', 'From the Monday queue: select with one line of evidence per fit question and set P3, or skip and record the reason.'], null, 'The record is complete and the stage matches the rules.', 'The person works for a competitor or an existing client, or another rep already owns them.'],
+    ['2', 'First outreach', 'A Priority 3 contact has LI Connect empty: no request sent yet.', ['Read their profile and company. Note one problem their clients deal with.', 'Send the connection note, or a message if you are already connected.', 'In Zoho, set LI Connect to Requested, or log the message.', 'Never send a second request while one is pending.'], 'Hi {first name}, your clients in {industry} seem to be wrestling with {problem}. I work on that side of things and would like to compare notes. Glad to connect.', 'The request or message is sent and recorded.', 'You are unsure whether someone already contacted them.'],
     ['3', 'Reply and follow up', 'They wrote back, or a follow-up task is due.', ['Read the whole thread and the Zoho notes.', 'Answer their actual point first, in a few lines. No sales pitch.', 'If they want to talk, use SOP 4.', 'Close the task, log the message and set the next task with a due date.'], null, 'Your reply is sent and the next task exists.', 'They ask about commission, exclusivity or agreement terms.'],
-    ['4', 'Ask for a first meeting', 'Two-way contact exists (P3) and no meeting has been asked for.', ['Send the approved booking link with the message below.', 'Log that you asked, and set a check-in task on the approved cadence.'], "Would a 20-minute call help? I'd like to hear which client problems come up most for you, and see whether we can help each other. Here's my booking link.", 'The link is sent and a check-in task exists.', 'They want to bring someone else, or talk terms first.'],
-    ['5', 'Send and follow up on the agreement', 'After a meeting where the partner said yes to discussing a partnership (P1), or an agreement is waiting.', ['Send the approved referral agreement through Zoho Sign with the company overview.', 'Move the partnership deal to Proposals.', 'Set a follow-up task on the approved cadence.'], null, 'The agreement is out (or signed) and the deal stage matches.', 'The partner asks for changes to the agreement.'],
+    ['4', 'Ask for a first meeting', 'A two-way conversation has started (P1) and no meeting has been asked for.', ['Send the approved booking link with the message below.', 'Log that you asked, and set a check-in task on the approved cadence.'], "Would a 20-minute call help? I'd like to hear which client problems come up most for you, and see whether we can help each other. Here's my booking link.", 'The link is sent and a check-in task exists.', 'They want to bring someone else, or talk terms first.'],
+    ['5', 'Send and follow up on the agreement', 'After a meeting where the partner said yes to discussing a partnership, or an agreement is waiting.', ['Send the approved referral agreement through Zoho Sign with the company overview.', 'Move the partnership deal to Proposals.', 'Set a follow-up task on the approved cadence.'], null, 'The agreement is out (or signed) and the deal stage matches.', 'The partner asks for changes to the agreement.'],
     ['6', 'Introductions and partner updates', 'A signed partner has not introduced anyone yet, a partner introduces a client, or a referred deal changes stage.', ['No introduction yet: name one client problem we solve that their clients have, and ask whether anyone comes to mind.', 'An introduction: create the client deal and fill Referred By with the partner. A partnership deal never refers itself.', 'When the referred deal moves, send one short update. No internal detail, no request for their time.'], "Quick update on {client}: we've {met them / sent a proposal / started work}. Thanks again for the introduction.", 'Referred By is filled and the update is logged.', 'You are unsure which partner made the introduction.'],
     ['7', 'Log a meeting', 'On the day of the meeting.', ['Check whether the booking tool already created it. Do not add it twice.', 'Write the outcome the same day.', 'Change the stage only if the partner stated interest. A meeting alone never moves the stage.'], null, 'The outcome is in Zoho the same day.', 'The meeting raised commercial questions you cannot answer.'],
     ['8', 'Pause or close a prospect', 'No response after the approved cadence, they ask to stop, or they are not a fit.', ['Move the stage back, or close it out, with a reason.', 'Tick Do Not Contact if they asked you to stop.', 'Cancel open tasks that no longer apply.'], null, 'Nothing remains open on the contact.', 'Two reps claim the same contact.'],
@@ -404,6 +478,21 @@
   const scoreBody = el('div', 'cc-b2-scorebody');
   const scoreFoot = el('p', 'cc-b2-insight cc-b2-scorefoot');
   score.append(scoreHead, scoreBody, scoreFoot);
+
+  const p3 = el('section', 'cc-card cc-p3');
+  p3.id = 'b2-p3';
+  p3.setAttribute('aria-labelledby', 'b2-p3-title');
+  const p3Head = el('div', 'cc-b2-scorehead');
+  const p3TitleBox = el('div');
+  const p3Title = el('h2', null, 'Priority 3 — Relationship development');
+  p3Title.id = 'b2-p3-title';
+  p3TitleBox.append(p3Title, el('p', 'cc-b2-insight', 'Build relationships with selected B2B partner prospects.'));
+  const p3Sop = el('a', 'cc-b2-soplink', 'SOP');
+  p3Sop.href = P3_SOP_URL; p3Sop.target = '_blank'; p3Sop.rel = 'noopener'; p3Sop.title = 'Priority 3 relationship-development SOP';
+  p3Head.append(p3TitleBox, p3Sop);
+  const p3Grid = el('div', 'cc-p3-grid');
+  const p3Note = el('p', 'cc-b2-insight cc-p3-note');
+  p3.append(p3Head, p3Grid, p3Note);
   const head = el('div', 'cc-b2-head');
   const t = el('div', 'cc-wi-title');
   t.append(el('h2', null, 'B2B Today'), el('p', null, 'What the B2B referral-partner campaign needs next, who to work today, and how to do it right.'));
@@ -455,10 +544,10 @@
   const dqBody = el('ul', 'cc-b2-dq');
   dqCard.append(dqBody);
 
-  const stagesCard = card('b2-stages', 'Relationship stages', 'Proposed, awaiting Mack. A stage changes only on evidence you can point to; a meeting alone or an accepted connection never moves it.');
+  const stagesCard = card('b2-stages', 'Relationship stages', 'A stage changes only on evidence you can point to. An accepted LinkedIn connection alone never makes a two-way conversation.');
   const stages = el('ol', 'cc-b2-stages');
-  [['P5 Backlog', 'In the campaign, not selected', 'Next: the Monday queue'], ['P4 Selected', 'Chosen, with fit evidence', 'Next: first outreach (SOP 2)'], ['P3 Two-way contact', 'They wrote back or spoke with us', 'Next: ask for a meeting (SOP 4)'], ['P1 Active pursuit', 'Met, and agreed to explore a partnership', 'Next: the agreement (SOP 5)'], ['P2', 'Meaning not decided', 'Unused until Mack decides']].forEach(([a, b, c], i) => {
-    const li = el('li', 'cc-b2-stage' + (i === 4 ? ' cc-b2-stage-open' : ''));
+  [['P5 Backlog', 'In the campaign, not selected yet', 'Next: the weekly transfer to Priority 3'], ['P3 Relationship development', 'Selected; LinkedIn request, then connection', 'Next: first outreach (SOP 2), then a conversation'], ['P1 Two-way conversation', 'Connected, and they wrote back or spoke with us', 'Next: ask for a meeting (SOP 4), then the agreement (SOP 5)'], ['P2 and P4', 'Not used', 'No meaning defined']].forEach(([a, b, c], i) => {
+    const li = el('li', 'cc-b2-stage' + (i === 3 ? ' cc-b2-stage-open' : ''));
     li.append(el('b', null, a), el('span', null, b), el('small', null, c));
     stages.append(li);
   });
@@ -508,7 +597,7 @@
   drill.querySelector('.cc-card-head').append(drillClose);
   drill.append(drillBody);
 
-  root.append(score, head, tiles, grid1, drill, nextCard, queueCard, mailCard, monCard, grid2, stagesCard, sopCard, dqCard);
+  root.append(score, p3, head, tiles, grid1, drill, nextCard, queueCard, mailCard, monCard, grid2, stagesCard, sopCard, dqCard);
   root.addEventListener('click', (e) => {
     const b = e.target.closest('[data-sop]');
     if (!b) return;
@@ -575,6 +664,7 @@
 
   const draw = () => {
     drawScore();
+    drawP3();
     const st = state(['b2b_people', 'b2b_actions', 'b2b_monday', 'b2b_funnel', 'b2b_segments']);
     if (st !== 'ok') {
       const msg = st === 'loading' ? 'Loading from Zoho…' : 'Some Zoho data did not load, so this page cannot be worked out. Reload, or check the source in the dashboard menu.';
@@ -732,13 +822,13 @@
 
     /* Data quality. */
     dqBody.replaceChildren();
-    const unverified = ppl.filter((p) => (p.priority === '1' || p.priority === '3') && !p.met && !p.signed).length;
+    const unverified = ppl.filter((p) => p.priority === '1' && p.li !== 'Connected').length;
     const liOnly = ppl.filter((p) => p.li_only).length;
     const p5Signed = ppl.filter((p) => p.signed && p.priority === '5').length;
     [
       [clients, 'client prospects tagged B2B', 'Remove the B2B tag; they belong to a client campaign.', (p) => p.client_only],
       [incomplete, 'prospects with no company or no title', 'Fill them so the person can be judged as a partner.', (p) => !p.complete],
-      [unverified, 'P1 or P3 prospects with no meeting logged', 'Stage unverified under the proposed rules; confirm or move each one.', (p) => (p.priority === '1' || p.priority === '3') && !p.met && !p.signed],
+      [unverified, 'Priority 1 prospects not Connected in Zoho', 'Priority 1 means a two-way conversation after a LinkedIn connection; set LI Connect, or move them back to Priority 3.', (p) => p.priority === '1' && p.li !== 'Connected'],
       [p5Signed, 'signed partners still at P5', 'Priority isn’t kept current; set the right stage.', (p) => p.signed && p.priority === '5'],
       [liOnly, 'connected on LinkedIn but not marked in Zoho', 'Set LI Connect to Connected so Zoho and this page agree.', (p) => p.li_only],
       [fnN, 'founder-network prospects tagged B2B', 'Counted here; the B2B Campaign tab leaves them out.', (p) => p.source === 'Founder network'],
@@ -749,7 +839,7 @@
         const bad = (p) => (mp.get(p.id) || {}).status === 'Bounced';
         return [
           [ppl.filter(bad).length, 'email addresses in Zoho that bounced', 'Our email came back undelivered. Find the current address, or clear the field.', bad],
-          [ppl.filter(wrote).length, 'prospects who wrote back by email but are still P5 or have no Priority', 'Two-way contact is on record; under the proposed stages they are P3.', wrote],
+          [ppl.filter(wrote).length, 'prospects who wrote back by email but are still P5 or have no Priority', 'They wrote back, which is a two-way conversation: once connected on LinkedIn they belong at Priority 1.', wrote],
           [ppl.filter(noAddr).length, 'prospects with no email address in Zoho', 'Email history can’t be matched without one. Add it when you have it.', noAddr],
         ];
       })() : []),
@@ -1056,6 +1146,113 @@
     }
   };
 
+  const P3_ICON = {
+    backlog: '<path d="M4 6h16M4 12h16M4 18h10"/>',
+    untouched: '<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5"/>',
+    pursued: '<path d="M21 3 10 14"/><path d="m21 3-7 18-4-7-7-4z"/>',
+    connected: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="m15.5 11 2 2 4-4"/>',
+    email: '<circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/>',
+    twoway: '<path d="M4 5h11a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9l-4 3v-3H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M19 9h1a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-1v3l-3.5-3H12"/>',
+  };
+  const svgIcon = (name) => {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('class', 'cc-p3-icon');
+    svg.innerHTML = P3_ICON[name];
+    return svg;
+  };
+  const showP3 = (title, list, note, trans) => {
+    drill.querySelector('h3').textContent = title + ' (' + intF(list.length) + ')';
+    const tbl = el('table', 'cc-tbl');
+    const th = el('thead'); const hr = el('tr');
+    (trans ? ['Name', 'Company', 'Changed (CT)', 'From', 'To', 'Priority now', 'LI Connect now'] : ['Name', 'Company', 'Priority', 'LI Connect', 'Met']).forEach((x) => { const c = el('th', null, x); c.scope = 'col'; hr.append(c); });
+    th.append(hr); tbl.append(th);
+    const tb = el('tbody');
+    const people = new Map(rows('p3_state').map((p) => [p.id, p]));
+    list.forEach((r) => {
+      const p = trans ? people.get(r.id) || { id: r.id, name: 'Contact ' + r.id } : r;
+      const tr = el('tr');
+      const n = el('td'); n.append(link('Contacts', p.id, p.name)); tr.append(n);
+      const a = el('td'); if (p.account_id) a.append(link('Accounts', p.account_id, p.account)); else a.textContent = 'No company'; tr.append(a);
+      if (trans) tr.append(el('td', null, r.ct.replace('T', ' ').slice(0, 16)), el('td', null, r.from || 'Empty'), el('td', null, r.to || 'Empty'), el('td', null, p.priority ? 'P' + p.priority : 'Not set'), el('td', null, p.li || 'Empty'));
+      else tr.append(el('td', null, p.priority ? 'P' + p.priority : 'Not set'), el('td', null, p.li || 'Empty'), el('td', null, p.met ? intF(p.met) : '—'));
+      tb.append(tr);
+    });
+    tbl.append(tb);
+    drillBody.replaceChildren(tbl);
+    if (note) drillBody.prepend(el('p', 'cc-b2-insight', note));
+    drill.hidden = false;
+    drill.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const drawP3 = () => {
+    p3Grid.replaceChildren();
+    const st = state(['p3_state']);
+    if (st !== 'ok') {
+      p3Note.textContent = st === 'error' ? 'The B2B contacts didn’t load from Zoho, so the Priority 3 panel can’t be worked out. Reload, or check the source in the dashboard menu.' : 'Loading Priority 3 from Zoho…';
+      p3Note.classList.toggle('cc-b2-bad', st === 'error');
+      return;
+    }
+    p3Note.classList.remove('cc-b2-bad');
+    const ppl = rows('p3_state');
+    const per = state(['p3_periods']) === 'ok' ? rows('p3_periods') : null;
+    const pr = (k) => (per ? per.find((r) => r.key === k) : null);
+    const list = (f) => ppl.filter((p) => f({ pr: p.priority, li: p.li }));
+    const signed = (n) => (n > 0 ? '+' + intF(n) : n < 0 ? '−' + intF(-n) : '0');
+    const cell = (v) => (per ? v : '—');
+    const kpi = (opt) => {
+      const c = el('article', 'cc-p3-kpi cc-p3-' + opt.theme);
+      c.id = 'b2-p3-' + opt.key;
+      const h = el('header', 'cc-p3-head');
+      h.append(svgIcon(opt.icon), el('h3', null, opt.label));
+      const big = el('p', 'cc-p3-big', opt.big);
+      c.append(h, big, el('p', 'cc-p3-sub', opt.sub));
+      (opt.blocks || [{ rows: opt.rows }]).forEach((b) => {
+        const blk = el('div', 'cc-p3-block');
+        if (b.title) {
+          const bt = el('p', 'cc-p3-btitle'); bt.append(document.createTextNode(b.title));
+          if (b.total != null) bt.append(el('b', null, b.total));
+          blk.append(bt);
+        }
+        const dl = el('dl', 'cc-p3-periods');
+        b.rows.forEach(([k, v]) => { const d = el('div'); d.append(el('dt', null, k), el('dd', null, v)); dl.append(d); });
+        blk.append(dl);
+        if (b.foot) blk.append(el('p', 'cc-p3-foot', b.foot));
+        c.append(blk);
+      });
+      if (opt.flag) c.append(el('p', 'cc-p3-flag', opt.flag));
+      press(c, opt.go);
+      c.setAttribute('aria-label', opt.label + ': ' + opt.big + '. Open the list.');
+      p3Grid.append(c);
+    };
+    const net = (k) => [['Today', cell(signed((pr('today') || {})[k + '_net']))], ['Week', cell(signed((pr('week') || {})[k + '_net']))], ['Month', cell(signed((pr('month') || {})[k + '_net']))]];
+    const evt = (k) => [['Today', cell(intF(((pr('today') || {})[k] || []).length))], ['Week', cell(intF(((pr('week') || {})[k] || []).length))], ['Month', cell(intF(((pr('month') || {})[k] || []).length))]];
+    const evtList = (k, title) => () => {
+      if (!per) { showP3(title + ': this month', [], 'Changes aren’t recorded yet: Zoho history tracking for LI Connect and Priority isn’t on.', true); return; }
+      showP3(title + ' this month', (pr('month') || {})[k] || [], 'Each contact once, with the change Zoho recorded.', true);
+    };
+
+    const backlog = list(P3_KPIS.backlog);
+    const untouched = list(P3_KPIS.untouched);
+    const pending = list(P3_KPIS.pending);
+    const connected = list(P3_KPIS.connected);
+    const email = list(P3_KPIS.email);
+    const p1c = ppl.filter((p) => p.priority === '1' && p.li === 'Connected');
+    const promotedAll = (pr('all') || {}).promoted || null;
+
+    kpi({ key: 'backlog', theme: 'neutral', icon: 'backlog', label: 'Priority 3 backlog', big: intF(backlog.length), sub: 'Current total', rows: net('backlog'), go: () => showP3('Priority 3 backlog', backlog) });
+    kpi({ key: 'untouched', theme: untouched.length ? 'bad' : 'good', icon: 'untouched', label: 'Untouched records', big: intF(untouched.length), sub: untouched.length ? 'LI Connect is empty: no request sent' : 'All contacts pursued', rows: net('untouched'), flag: untouched.length ? 'Action required until this reaches 0' : null, go: () => showP3('Untouched: Priority 3, LI Connect empty', untouched, 'Send each one a connection request (SOP 2) and set LI Connect to Requested.') });
+    kpi({ key: 'pursued', theme: 'progress', icon: 'pursued', label: 'Pursued / pending', big: intF(pending.length), sub: 'Requests pending now', blocks: [{ title: 'New requests sent', rows: evt('pursued') }, { title: 'Pending total ', total: intF(pending.length), rows: net('pending'), foot: 'Net change in pending requests' }], go: per ? evtList('pursued', 'Newly pursued') : () => showP3('Pending: Priority 3, LI Connect Requested', pending) });
+    kpi({ key: 'connected', theme: 'teal', icon: 'connected', label: 'Contacts connected', big: intF(connected.length), sub: 'Priority 3 at Connected now', rows: evt('newly_connected'), go: () => showP3('Connected: Priority 3, LI Connect Connected', connected, 'An accepted connection isn’t a conversation yet. When they write back or talk with us, move them to Priority 1.') });
+    kpi({ key: 'email', theme: 'gray', icon: 'email', label: 'Email Required', big: intF(email.length), sub: 'Blocked — No action available', rows: evt('newly_email'), go: () => showP3('Email Required: Priority 3', email, 'Tracking only. LinkedIn needs their email to send a request, so there is nothing to do here for now.') });
+    kpi({ key: 'twoway', theme: 'good', icon: 'twoway', label: 'Two-way conversations', big: promotedAll ? intF(promotedAll.length) : intF(p1c.length), sub: promotedAll ? `Connected, then moved from Priority 3 to 1${(pr('all') || {}).tracked ? ' since ' + dayF((pr('all') || {}).tracked) : ''}` : 'Priority 1 and Connected now (promotions count once tracking is on)', rows: evt('promoted'), go: () => (promotedAll ? showP3('Two-way conversations started', promotedAll, 'Moved from Priority 3 to 1 while Connected on LinkedIn.', true) : showP3('Priority 1 and Connected now', p1c, 'Promotions from Priority 3 to 1 can’t be counted until Zoho records Priority changes.')) });
+
+    const m = pr('month');
+    p3Note.textContent = !per
+      ? 'Today, Week and Month show — because Zoho doesn’t record when Priority or LI Connect change yet. They fill in from the day history tracking is switched on for both fields; nothing is estimated before then.'
+      : m && m.partial ? `Changes are counted from ${dayF(m.tracked)}, when Zoho started recording them, so this week’s and this month’s figures may be partial.` : 'Changes come from Zoho’s field history. Times are Central; weeks start Monday.';
+  };
+
   const drawMonday = () => {
     const mon = rows('b2b_monday');
     const pages = Math.max(1, Math.ceil(mon.length / MONDAY));
@@ -1075,7 +1272,7 @@
       tb.append(tr);
     });
     tbl.append(tb);
-    monBody.replaceChildren(tbl, el('p', 'cc-b2-insight', 'Select: set Priority to 4 in Zoho and write one line of evidence for each fit question. Skip: record the reason. Until Zoho stores skips, the same people return here until they are worked.'));
+    monBody.replaceChildren(tbl, el('p', 'cc-b2-insight', 'Select: set Priority to 3 in Zoho and write one line of evidence for each fit question. Skip: record the reason. Until Zoho stores skips, the same people return here until they are worked.'));
     const prev = el('button', 'cc-go', 'Previous 10'); prev.type = 'button'; prev.disabled = monPage === 0; prev.addEventListener('click', () => { monPage -= 1; drawMonday(); });
     const next = el('button', 'cc-go', 'Next 10'); next.type = 'button'; next.disabled = monPage >= pages - 1; next.addEventListener('click', () => { monPage += 1; drawMonday(); });
     monMore.replaceChildren(prev, next, el('span', 'cc-b2-insight', `${intF(mon.length)} candidates, page ${monPage + 1} of ${pages}`));
