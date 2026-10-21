@@ -314,6 +314,15 @@
     },
   });
 
+  dash.calc('b2b_p5_backlog', {
+    title: 'Priority 5 backlog',
+    description: 'Every contact tagged “May 2026 - 100 B2B” whose current Priority is 5, one row per Zoho contact: the backlog available for future selection. Separate from the monthly target of new partner prospects.',
+    inputs: ['b2b_added'],
+    fn: (b2b_added) => [...new Map(b2b_added.filter((r) => String(r.Priority) === '5').map((r) => [String(r.id), r])).values()]
+      .map((r) => ({ id: String(r.id), name: r.Full_Name || [r.First_Name, r.Last_Name].filter(Boolean).join(' ') || '—', account: r.Account_Name || null, account_id: r.Account_Name_id || null, created: r.Created_Time ? ctDate(r.Created_Time) : null, priority: String(r.Priority) }))
+      .sort((a, b) => String(b.created || '').localeCompare(String(a.created || '')) || a.name.localeCompare(b.name)),
+  });
+
   dash.calc('b2b_scorecard', {
     title: 'Monthly partner acquisition scorecard',
     description: 'This calendar month (Central time) against the target of 50 qualified B2B partner prospects added to Zoho: counted so far, this week (Monday start), last month, the pace needed over the remaining weekdays, and whether the month is on track (counted so far at least the target’s share of weekdays gone). Months are the last four.',
@@ -1054,6 +1063,26 @@
     drill.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  const showP5 = (list) => {
+    drill.querySelector('h3').textContent = 'Priority 5 backlog (' + intF(list.length) + ')';
+    const tbl = el('table', 'cc-tbl');
+    const th = el('thead'); const hr = el('tr');
+    ['Name', 'Company', 'Created in Zoho', 'Priority'].forEach((x) => { const c = el('th', null, x); c.scope = 'col'; hr.append(c); });
+    th.append(hr); tbl.append(th);
+    const tb = el('tbody');
+    list.forEach((r) => {
+      const tr = el('tr');
+      const n = el('td'); n.append(link('Contacts', r.id, r.name)); tr.append(n);
+      const a = el('td'); if (r.account_id) a.append(link('Accounts', r.account_id, r.account)); else a.textContent = 'No company'; tr.append(a);
+      tr.append(el('td', null, r.created ? dayF(r.created) + ' ' + r.created.slice(0, 4) : '—'), el('td', null, 'P' + r.priority));
+      tb.append(tr);
+    });
+    tbl.append(tb);
+    drillBody.replaceChildren(el('p', 'cc-b2-insight', 'Tagged “May 2026 - 100 B2B” with Priority 5 now: the backlog the weekly transfer to Priority 3 picks from. Newest first.'), tbl);
+    drill.hidden = false;
+    drill.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   const drawScore = () => {
     const st = state(['b2b_scorecard']);
     scoreBody.replaceChildren();
@@ -1105,6 +1134,12 @@
     fact('This week', intF(sc.week), `${intF(sc.last_week)} last week. Weeks start Monday, CT.`, () => showAdded('Counted this week', counted.filter((r) => r.day >= (() => { const t = new Date(sc.today + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); })())));
     const diff = sc.actual - sc.prev_actual;
     fact(monthF(sc.prev_month) + ' total', intF(sc.prev_actual), diff === 0 ? `${monthF(sc.month)} has matched it so far` : `${monthF(sc.month)} is ${intF(Math.abs(diff))} ${diff > 0 ? 'ahead' : 'behind'} so far`, () => showAdded(`Counted toward ${monthF(sc.prev_month)}`, all.filter((r) => r.month === sc.prev_month && r.counted)));
+    const p5st = state(['b2b_p5_backlog']);
+    const p5 = p5st === 'ok' ? rows('b2b_p5_backlog') : [];
+    const p5card = el('div', 'cc-b2-scorefact cc-b2-p5');
+    p5card.append(el('dt', null, 'Priority 5 backlog'), el('dd', null, p5st === 'ok' ? intF(p5.length) : p5st === 'loading' ? '…' : 'Unavailable'), el('small', null, p5st === 'error' ? 'The contact list didn’t load from Zoho.' : 'Waiting for selection. Not part of the 50.'));
+    if (p5st === 'ok') press(p5card, () => showP5(p5));
+    facts.append(p5card);
     const top = el('div', 'cc-b2-scoretop');
     top.append(main, facts);
 
