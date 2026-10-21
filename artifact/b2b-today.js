@@ -482,8 +482,9 @@
   const scoreHead = el('div', 'cc-b2-scorehead');
   const scoreTitle = el('h2', null, 'New B2B partners added to Zoho');
   scoreTitle.id = 'b2-score-title';
-  const sopLink = el('a', 'cc-b2-soplink', 'SOP: how to find and add partners');
-  sopLink.href = ADD_SOP_URL; sopLink.target = '_blank'; sopLink.rel = 'noopener';
+  const sopLink = el('a', 'cc-b2-soplink', 'SOP');
+  sopLink.href = ADD_SOP_URL; sopLink.target = '_blank'; sopLink.rel = 'noopener'; sopLink.title = 'B2B partner acquisition SOP: how to find and add partners';
+  sopLink.setAttribute('aria-label', 'SOP: how to find and add partners (opens in a new tab)');
   const scoreState = el('span', 'cc-b2-state');
   scoreHead.append(scoreTitle, scoreState, sopLink);
   const scoreBody = el('div', 'cc-b2-scorebody');
