@@ -7,6 +7,9 @@ scratch folder and on the private Claude Dashboard artifact; never commit them o
   rebuild  DIR   per-contact search results DIR/out*_*.csv  -> DIR/b2b_mail.json, DIR/b2b_mail_weeks.json
   merge    DIR   DIR/b2b_mail.json + DIR/b2b_mail_weeks.json (current datasets) + DIR/messages.jsonl (new mail)
                  -> the same two files, updated in place
+  jsfile   DIR   DIR/b2b_mail.json + DIR/b2b_mail_weeks.json -> DIR/mail.js (window.__MAIL__), the file the
+                 mail-snapshot branch carries for the locked public site; refuses any field that isn't an ID,
+                 date, count or flag
 
 Both read DIR/contacts.csv: one "zoho_contact_id,email" line per B2B campaign contact with an address in Zoho.
 
@@ -236,7 +239,30 @@ def merge(d):
     summary(out, wrows)
 
 
+MAIL_FIELDS = {'Zoho_Id', 'n_in', 'n_out', 'last_in', 'last_out', 'last_out_by', 'bounced', 'as_of', 'mailboxes'}
+WEEK_FIELDS = {'week', 'sent', 'received', 'people_sent', '_sent_ids', '_received_ids', '_people'}
+
+
+def jsfile(d):
+    with open(d + '/b2b_mail.json') as f:
+        rows = json.load(f)
+    with open(d + '/b2b_mail_weeks.json') as f:
+        weeks = json.load(f)
+    if not rows or not weeks:
+        sys.exit('b2b_mail.json or b2b_mail_weeks.json is empty')
+    extra = {k for r in rows for k in r} - MAIL_FIELDS | {k for w in weeks for k in w} - WEEK_FIELDS
+    if extra:
+        sys.exit('unexpected fields, not publishing: ' + ', '.join(sorted(extra)))
+    for r in rows:
+        if r.get('last_out_by') and '@' in r['last_out_by']:
+            sys.exit('last_out_by must be a mailbox name, not an address')
+    body = {'generated_at': stamp(datetime.now(timezone.utc)), 'datasets': {'b2b_mail': rows, 'b2b_mail_weeks': weeks}}
+    with open(d + '/mail.js', 'w') as f:
+        f.write('window.__MAIL__ = ' + json.dumps(body) + ';\n')
+    print('wrote', d + '/mail.js')
+
+
 if __name__ == '__main__':
-    if len(sys.argv) != 3 or sys.argv[1] not in ('rebuild', 'merge'):
+    if len(sys.argv) != 3 or sys.argv[1] not in ('rebuild', 'merge', 'jsfile'):
         sys.exit(__doc__)
-    {'rebuild': rebuild, 'merge': merge}[sys.argv[1]](sys.argv[2].rstrip('/'))
+    {'rebuild': rebuild, 'merge': merge, 'jsfile': jsfile}[sys.argv[1]](sys.argv[2].rstrip('/'))
