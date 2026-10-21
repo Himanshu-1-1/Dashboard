@@ -2666,7 +2666,7 @@ dash.calc('tasks_tagged', {
       const late = due ? Math.round((t0 - Date.parse(due + 'T00:00:00Z')) / 864e5) : null;
       return {
         id: t.id, subject: t.Subject || 'Untitled task', contact: t.Who_Id || '—', contact_id: t.Who_Id_id || null, related: t.What_Id || '—', owner: t.Owner || 'Unassigned',
-        status: t.Status || 'Not Started', due, days_overdue: late != null && late > 0 ? late : 0, overdue: late != null && late > 0,
+        status: t.Status || 'Not Started', due, days_overdue: late != null && late > 0 ? late : 0, overdue: late != null && late > 0, created: t.Created_Time || null,
         campaign_key: key, campaign: key ? CC_NAMES[key] : (t.Who_Id ? 'Contact not in a campaign' : 'No contact linked'),
       };
     });

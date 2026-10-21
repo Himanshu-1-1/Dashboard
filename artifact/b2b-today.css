@@ -310,3 +310,6 @@
 .cc-b2-rowlink:hover td { background: color-mix(in oklab, var(--color-fg) 5%, transparent); }
 .cc-b2-wcol, .cc-b2-mcol { cursor: pointer; }
 .cc-b2-wcol:hover, .cc-b2-mcol:hover { background: color-mix(in oklab, var(--color-fg) 5%, transparent); border-radius: 6px; }
+.cc-b2-more { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.cc-b2-qtbl td small { display: block; color: var(--color-fg-muted); font-size: 11px; }
+.cc-b2-closecell { color: var(--color-fg-muted); }

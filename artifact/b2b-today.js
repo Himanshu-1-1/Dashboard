@@ -8,6 +8,10 @@
   const STALE_DAYS = 14;
   const SR = { Closed: 6, Proposals: 5, Discovery: 4, Identify: 3, Hold: 2, 'Closed Lost': 1, 'Closed Lost to Competition': 1 };
   const OPEN = ['Identify', 'Discovery', 'Proposals'];
+  const TASK_STALE = 45;
+  const CLOSE_ORDER = 7;
+  const ctD = (iso) => new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+  const TASK_OWNER = /^\s*(mack|shruti|harsh|hemang|pulkit)\b/i;
   const todayCT = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
   const dayMs = (s) => Date.parse(String(s).slice(0, 10) + 'T00:00:00Z');
   const tier = (t) => {
@@ -117,7 +121,7 @@
 
   dash.calc('b2b_actions', {
     title: 'B2B work queue',
-    description: 'Today’s B2B work in the proposed order: overdue replies, other overdue follow-ups, agreements awaiting signature, meeting asks for connected P1 and P3 prospects, first-introduction asks for signed partners, and partnership deals untouched for 14 days or more.',
+    description: 'Today’s B2B work in the proposed order: overdue replies, other overdue follow-ups, agreements awaiting signature, meeting asks for Priority 1 prospects (a two-way conversation, connected, never met), first-introduction asks for signed partners, and partnership deals untouched for 14 days or more.',
     inputs: ['b2b_people', 'tasks_tagged', 'agreements'],
     fn: (b2b_people, tasks_tagged, agreements) => {
       const ppl = new Map(b2b_people.map((p) => [p.id, p]));
@@ -128,20 +132,32 @@
         const s = t.subject || '';
         const reply = /respon|repl|message|get back|answer/i.test(s);
         const agree = /agreement|mnda|sign|contract|\bpp\b/i.test(s);
-        add({ order: reply ? 1 : agree ? 3 : 2, type: reply ? 'Reply' : agree ? 'Agreement' : 'Follow-up', sop: reply ? 3 : agree ? 5 : 3, id: p.id, name: p.name, account: p.account, task_id: t.id,
-          action: s, why: p.signed ? 'Signed partner' : p.met ? `Met ${p.met === 1 ? 'once' : p.met + ' times'}` : p.priority ? `P${p.priority}` : 'Campaign contact',
-          why_now: t.days_overdue ? `Task due ${t.due}, ${t.days_overdue} ${t.days_overdue === 1 ? 'day' : 'days'} late` : 'Task due today', late: t.days_overdue || 0,
+        const who = TASK_OWNER.exec(s);
+        const base = { id: p.id, name: p.name, account: p.account, task_id: t.id, task_created: t.created ? ctD(t.created) : null, task_kind: reply ? 'reply' : agree ? 'agreement' : 'follow-up',
+          owner_hint: who ? who[1][0].toUpperCase() + who[1].slice(1).toLowerCase() : null,
+          why: p.signed ? 'Signed partner' : p.met ? `Met ${p.met === 1 ? 'once' : p.met + ' times'}` : p.priority ? `P${p.priority}` : 'Campaign contact', late: t.days_overdue || 0 };
+        if (p.dnc) {
+          add({ ...base, order: CLOSE_ORDER, type: 'Close in Zoho', sop: 8, action: `Close “${s}”`, why_now: 'Marked Do Not Contact in Zoho, but this task is still open', done: 'The task is closed', record: 'Close the task; cancel any others for them' });
+          return;
+        }
+        if (t.days_overdue > TASK_STALE) {
+          add({ ...base, order: CLOSE_ORDER, type: 'Close in Zoho', sop: 3, action: `Re-date or close “${s}”`, why_now: `Due ${t.due}, ${t.days_overdue} days late: too old to be today’s work. Close it if it’s done or no longer needed; otherwise give it a new due date.`, stale: true, done: 'Closed, or re-dated with the real next step', record: 'Task status and due date' });
+          return;
+        }
+        add({ ...base, order: reply ? 1 : agree ? 3 : 2, type: reply ? 'Reply' : agree ? 'Agreement' : 'Follow-up', sop: reply ? 3 : agree ? 5 : 3,
+          action: s, why_now: t.days_overdue ? `Task due ${t.due}, ${t.days_overdue} ${t.days_overdue === 1 ? 'day' : 'days'} late` : 'Task due today',
           done: reply ? 'Your reply is sent' : agree ? 'The agreement step is done' : 'The follow-up is sent', record: 'Close the task; set the next one with a due date' });
       });
       agreements.filter((a) => a.kind === 'Referral agreement' && (a.state === 'Out for signature' || /^Expired/.test(a.state)) && a.contact_id && ppl.has(String(a.contact_id))).forEach((a) => {
         const p = ppl.get(String(a.contact_id));
+        if (p.dnc || p.signed || (p.deal_stage && /^Closed Lost/.test(p.deal_stage))) return;
         add({ order: 3, type: 'Agreement', sop: 5, id: p.id, name: p.name, account: p.account, action: a.state === 'Out for signature' ? 'Chase the signature' : 'Re-send the agreement',
-          why: 'Agreement in Zoho Sign', why_now: a.state === 'Out for signature' ? (a.days_left != null ? `Deadline in ${a.days_left} days` : 'Out for signature') : 'Expired, not re-sent', late: a.days_left != null && a.days_left < 0 ? -a.days_left : 0,
+          why: 'Agreement in Zoho Sign', why_now: (a.state === 'Out for signature' ? (a.days_left != null ? `Deadline in ${a.days_left} days` : 'Out for signature') : 'Expired, not re-sent') + (p.deal_stage === 'Hold' ? '; the partnership deal is on Hold, so check it’s still wanted' : ''), late: a.days_left != null && a.days_left < 0 ? -a.days_left : 0,
           done: 'Signed, or a new copy sent', record: 'Partnership deal stage and next step' });
       });
-      b2b_people.filter((p) => (p.priority === '1' || p.priority === '3') && p.connected && !p.met && !p.tasks && !p.signed && !p.dnc).forEach((p) => {
-        add({ order: 4, type: 'Meeting ask', sop: 4, id: p.id, name: p.name, account: p.account, action: 'Ask for a first meeting', why: `P${p.priority}, connected${p.li_only ? ' (Mack’s LinkedIn; Zoho not updated)' : ''}`,
-          why_now: 'Connected, never met, nothing scheduled', late: 0, done: 'Booking link sent', record: 'Log the ask; a check-in task on the approved cadence' });
+      b2b_people.filter((p) => p.priority === '1' && p.connected && !p.met && !p.tasks && !p.signed && !p.dnc).forEach((p) => {
+        add({ order: 4, type: 'Meeting ask', sop: 4, id: p.id, name: p.name, account: p.account, action: 'Ask for a first meeting', why: `P1, connected${p.li_only ? ' (Mack’s LinkedIn; Zoho not updated)' : ''}`,
+          why_now: 'Two-way conversation, never met, nothing scheduled', late: 0, done: 'Booking link sent', record: 'Log the ask; a check-in task on the approved cadence' });
       });
       b2b_people.filter((p) => p.signed && !p.intros).forEach((p) => {
         add({ order: 5, type: 'First introduction', sop: 6, id: p.id, name: p.name, account: p.account, action: 'Ask for the first introduction', why: 'Signed partner',
@@ -258,9 +274,33 @@
 
   dash.calc('b2b_queue', {
     title: 'B2B work queue with email',
-    description: 'The B2B work queue plus one Reply item for each prospect whose email is the latest in the thread and arrived in the last 30 days, unless a reply or follow-up task for them is already in the queue or they are marked Do Not Contact.',
-    inputs: ['b2b_actions', 'b2b_mail_people'],
-    fn: (b2b_actions, b2b_mail_people) => {
+    description: 'The B2B work queue checked against email and meetings. A reply or follow-up task becomes “Close in Zoho” when we emailed the person after the task was created; other tasks note any email since. A meeting ask is dropped when a meeting is already scheduled. A stale deal with email in the last 14 days asks for the deal to be updated rather than revived. Plus one Reply item for each prospect whose email is the latest in the thread and arrived in the last 30 days, unless a reply or follow-up for them is already queued or they are marked Do Not Contact.',
+    inputs: ['b2b_actions', 'b2b_mail_people', 'mtg_people'],
+    fn: (b2b_actions0, b2b_mail_people, mtg_people) => {
+      const mail = new Map(b2b_mail_people.map((m) => [m.id, m]));
+      const nextMtg = new Map(mtg_people.filter((m) => m.next).map((m) => [m.id, m.next]));
+      const day = (iso) => (iso ? ctD(iso) : null);
+      const b2b_actions = b2b_actions0.flatMap((a) => {
+        const m = mail.get(a.id) || {};
+        const outDay = day(m.last_out);
+        const inDay = day(m.last_in);
+        if (a.task_id && !a.stale && a.type !== 'Close in Zoho' && a.task_created && outDay && outDay >= a.task_created) {
+          if (a.task_kind === 'reply' || a.task_kind === 'follow-up') {
+            return [{ ...a, order: CLOSE_ORDER, type: 'Close in Zoho', sop: 3, action: `Close “${a.action}” if it’s done`, probably_done: true,
+              why_now: `We emailed them on ${outDay}${m.last_out_by ? ' (' + m.last_out_by + '@)' : ''}, after this task was created on ${a.task_created}${inDay && inDay > outDay ? `; they wrote again on ${inDay}` : ''}`,
+              done: 'The task is closed, or re-dated if something is still owed', record: 'Task status; a new task if a next step is owed' }];
+          }
+          return [{ ...a, why_now: `${a.why_now}; we emailed them on ${outDay} since the task was created` }];
+        }
+        if (a.type === 'Meeting ask' && nextMtg.has(a.id)) return [];
+        if (a.type === 'Revive deal') {
+          const recent = [outDay, inDay].filter(Boolean).sort().pop();
+          if (recent && (Date.parse(todayCT()) - Date.parse(recent)) / 864e5 <= STALE_DAYS) {
+            return [{ ...a, action: `Update the ${a.action.replace(/^Move the | deal forward$/g, '')} deal in Zoho`, why_now: `${a.why_now}, but there was email on ${recent}: record the stage and next step`, done: 'Stage and next step match the conversation' }];
+          }
+        }
+        return [a];
+      });
       const has = new Set(b2b_actions.filter((a) => a.type === 'Reply' || a.type === 'Follow-up').map((a) => a.id));
       const add = b2b_mail_people
         .filter((p) => p.status === 'They wrote last' && p.in_days != null && p.in_days <= MAIL_RECENT && !p.dnc && !has.has(p.id))
@@ -798,7 +838,21 @@
   let mailAll = false;
   const mailMissing = () => Boolean(window.CC_MAIL_PRIVATE) && dash.data('b2b_mail').status === 'error';
   const mailOk = () => !mailMissing() && state(['b2b_mail_people']) === 'ok';
-  const queueRows = () => (!mailMissing() && state(['b2b_queue']) === 'ok' ? rows('b2b_queue') : rows('b2b_actions'));
+  /* One row per person and kind of work: the most urgent item leads, the rest ride along as “more”. Clean-up items group on their own. */
+  const groupQueue = (list) => {
+    const lead = new Map();
+    const out = [];
+    list.forEach((a) => {
+      const k = a.id + (a.type === 'Close in Zoho' ? '|close' : '');
+      const l = lead.get(k);
+      if (l) { l.more.push(a); return; }
+      const row = { ...a, more: [] };
+      lead.set(k, row);
+      out.push(row);
+    });
+    return out;
+  };
+  const queueRows = () => groupQueue(!mailMissing() && state(['b2b_queue']) === 'ok' ? rows('b2b_queue') : rows('b2b_actions'));
   const ctDay = (iso) => (iso ? new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }) : null);
   const daysF = (n) => (n == null ? '—' : n === 0 ? 'today' : n === 1 ? '1 day ago' : intF(n) + ' days ago');
   let picked = 0;
@@ -807,7 +861,7 @@
 
   const drawNext = (a) => {
     nextBody.replaceChildren();
-    if (!a) { nextBody.append(el('p', 'cc-b2-insight', 'Nothing is due today. Work the Monday queue, then ask connected P1 and P3 prospects for a first meeting.')); return; }
+    if (!a) { nextBody.append(el('p', 'cc-b2-insight', 'Nothing is due today. Work the Priority 3 queue, then ask Priority 1 prospects for a first meeting.')); return; }
     const left = el('div');
     const act = el('p', 'cc-b2-action'); act.append(document.createTextNode((a.mail ? 'Reply by email' : a.type) + ': '), link('Contacts', a.id, a.name));
     left.append(act, el('p', 'cc-b2-who', [a.account || 'No company on record', a.why].join('. ')));
@@ -815,6 +869,12 @@
     const pair = (k, v) => { dl.append(el('dt', null, k)); const dd = el('dd'); if (v instanceof Node) dd.append(v); else dd.textContent = v; dl.append(dd); };
     pair('What to do', a.action);
     pair('Why now', a.why_now);
+    if (a.owner_hint) pair('Named in the task', a.owner_hint);
+    if (a.more && a.more.length) {
+      const ul = el('ul', 'cc-b2-more');
+      a.more.forEach((m) => ul.append(el('li', null, `${m.type}: ${m.action}. ${m.why_now}`)));
+      pair(`Also open for ${a.name.split(' ')[0]}`, ul);
+    }
     pair('SOP', sopBtn(a.sop, 'SOP ' + a.sop + ' ' + (SOPS.find((s) => s[0] === String(a.sop)) || [])[1]));
     pair('Done when', a.done);
     pair('Record it', a.record);
@@ -844,10 +904,15 @@
     const mailN = acts.filter((a) => a.mail).length;
     const waitN = mailOk() ? rows('b2b_mail_people').filter((m) => m.status === 'They wrote last' && m.in_days != null && m.in_days <= MAIL_RECENT && !m.dnc).length : 0;
     const lateN = acts.filter((a) => (a.type === 'Reply' || a.type === 'Follow-up') && !a.mail).length;
+    const closeItems = acts.filter((a) => a.type === 'Close in Zoho').flatMap((a) => [a, ...a.more]);
+    const closeN = closeItems.length;
+    const closeDone = closeItems.filter((a) => a.probably_done).length;
+    const closeStale = closeItems.filter((a) => a.stale).length;
+    const closeDnc = closeN - closeDone - closeStale;
     const strong = mon.filter((m) => m.strength >= 3).length;
     const fnN = ppl.filter((p) => p.source === 'Founder network').length;
 
-    verdict.textContent = `${intF(fv('met'))} of ${intF(fv('all'))} B2B prospects have met us and ${intF(fv('signed'))} have signed, but only ${intF(fv('introduced'))} ${fv('introduced') === 1 ? 'partner has' : 'partners have'} introduced a client. The work is conversations and activation, not more names: ${waitN ? `${intF(waitN)} ${waitN === 1 ? 'prospect wrote' : 'prospects wrote'} last by email in the last 30 days, ` : ''}${intF(lateN)} follow-ups are overdue, ${intF(count('Meeting ask'))} connected P1 and P3 prospects have never been asked to meet, and ${intF(count('First introduction'))} signed partners have not been asked for an introduction.`;
+    verdict.textContent = `${intF(fv('met'))} of ${intF(fv('all'))} B2B prospects have met us and ${intF(fv('signed'))} have signed, but only ${intF(fv('introduced'))} ${fv('introduced') === 1 ? 'partner has' : 'partners have'} introduced a client. The work is conversations and activation, not more names: ${waitN ? `${intF(waitN)} ${waitN === 1 ? 'prospect wrote' : 'prospects wrote'} last by email in the last 30 days, ` : ''}${intF(lateN)} follow-ups are overdue, ${intF(count('Meeting ask'))} Priority 1 prospects in a conversation have never met us, and ${intF(count('First introduction'))} signed partners have not been asked for an introduction.`;
 
     /* Tiles: Add, Select, Build relationships. */
     tiles.replaceChildren();
@@ -912,10 +977,11 @@
       [waitN, `Answer ${intF(waitN)} ${waitN === 1 ? 'email' : 'emails'} waiting on us`, `Their email is the latest in the thread, sent in the last ${MAIL_RECENT} days${waitN > mailN ? `; ${intF(waitN - mailN)} already have a reply or follow-up task in the queue` : ''}. Some need no answer: read, then reply or log it.`, () => { mailFilter = 'They wrote last'; drawMail(); mailCard.scrollIntoView({ behavior: 'smooth' }); }, '3'],
       [lateN, `Clear ${intF(lateN)} overdue replies and follow-ups`, `The oldest is ${intF(Math.max(0, ...acts.filter((a) => (a.type === 'Reply' || a.type === 'Follow-up') && !a.mail).map((a) => a.late)))} days late. Replies first: a conversation goes cold faster than a task.`, () => { queueFilter = 'Reply'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '3'],
       [count('Agreement'), `Move ${intF(count('Agreement'))} agreement steps`, 'Signatures waiting and agreement tasks overdue. Each signed partner is a channel; an unsigned one is a conversation.', () => { queueFilter = 'Agreement'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '5'],
-      [count('Meeting ask'), `Ask ${intF(count('Meeting ask'))} connected P1 and P3 prospects for a first meeting`, 'Top priority, already connected, never met and nothing scheduled. P1 prospects meet us far more often than P5.', () => { queueFilter = 'Meeting ask'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '4'],
+      [count('Meeting ask'), `Ask ${intF(count('Meeting ask'))} Priority 1 prospects for a first meeting`, 'In a two-way conversation, connected, never met and nothing scheduled. Priority 3 contacts get a conversation first (Priority 3 queue), not a meeting ask.', () => { queueFilter = 'Meeting ask'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '4'],
       [count('First introduction'), `Ask ${intF(count('First introduction'))} signed partners for their first introduction`, 'A signed agreement earns nothing until it produces an introduction. Name one client problem we solve and ask who comes to mind.', () => { queueFilter = 'First introduction'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '6'],
-      [mon.length, `Move ${MONDAY} from the Priority 5 backlog to Priority 3`, `${intF(strong)} P5 prospects show three or more partner signs. Select with evidence or skip with a reason.`, () => showP5(rows('b2b_p5_backlog')), '1'],
+      [mon.length, `Move ${intF(Math.min(MONDAY, mon.length))} from the Priority 5 backlog to Priority 3`, `${intF(mon.length)} ${mon.length === 1 ? 'prospect is' : 'prospects are'} at Priority 5 and not yet met; ${intF(strong)} show three or more partner signs. Select with evidence or skip with a reason.`, () => showP5(rows('b2b_p5_backlog')), '1'],
       [count('Revive deal'), `Revive ${intF(count('Revive deal'))} stalled partnership deals`, `Open deals untouched for ${STALE_DAYS} days or more, with no task set.`, () => { queueFilter = 'Revive deal'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '5'],
+      [closeN, `Close or re-date ${intF(closeN)} ${closeN === 1 ? 'task' : 'tasks'} in Zoho`, `${intF(closeDone)} look done (we emailed them after the task was created), ${intF(closeStale)} are more than ${TASK_STALE} days overdue, ${intF(closeDnc)} belong to Do Not Contact records. Open tasks that are already done push real work down the queue.`, () => { queueFilter = 'Close in Zoho'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '3'],
       [fixN, `Fix ${intF(fixN)} records`, `${intF(clients)} client prospects tagged B2B and ${intF(incomplete)} prospects with no company or title.`, () => showPeople('Records to fix', ppl.filter((p) => p.client_only || !p.complete), 'Client prospects: remove the B2B tag. No company or title: fill them, or the person can’t be judged as a partner.'), null],
     ].filter(([n]) => n > 0);
     steps.forEach(([, title, desc, go, sop]) => {
@@ -1029,7 +1095,7 @@
 
   const drawQueue = () => {
     const acts = queueRows();
-    const types = ['All', ...['Reply', 'Follow-up', 'Agreement', 'Meeting ask', 'First introduction', 'Revive deal'].filter((t) => acts.some((a) => a.type === t))];
+    const types = ['All', ...['Reply', 'Follow-up', 'Agreement', 'Meeting ask', 'First introduction', 'Revive deal', 'Close in Zoho'].filter((t) => acts.some((a) => a.type === t))];
     if (!types.includes(queueFilter)) queueFilter = 'All';
     queueTools.replaceChildren(...types.map((t) => {
       const b = el('button', 'cc-chip', t === 'All' ? `All (${acts.length})` : `${t} (${acts.filter((a) => a.type === t).length})`);
@@ -1049,7 +1115,9 @@
     list.slice(0, queueAll ? 200 : 12).forEach((a, i) => {
       const tr = el('tr', i === picked ? 'cc-b2-picked' : null);
       const who = el('td'); who.append(link('Contacts', a.id, a.name)); if (a.account) who.append(el('small', null, a.account));
-      tr.append(el('td', null, String(i + 1)), el('td', null, a.mail ? 'Reply by email' : a.type), who, el('td', null, a.action));
+      const what = el('td', null, a.action);
+      if (a.more && a.more.length) what.append(el('small', null, `+${intF(a.more.length)} more open for them`));
+      tr.append(el('td', null, String(i + 1)), el('td', a.type === 'Close in Zoho' ? 'cc-b2-closecell' : null, a.mail ? 'Reply by email' : a.type), who, what);
       tr.append(el('td', a.late ? 'cc-b2-late' : null, a.why_now));
       const s = el('td'); s.append(sopBtn(a.sop)); tr.append(s);
       tr.addEventListener('click', (e) => { if (e.target.closest('a, button')) return; picked = i; drawQueue(); nextCard.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
