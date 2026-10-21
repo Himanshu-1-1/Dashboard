@@ -388,6 +388,10 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
 .cc-clickable:hover { background: var(--cds-chart-grid); }
 .cc-clickable:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
 .cc-clickable.cc-picked { background: var(--cds-chart-grid); box-shadow: inset 3px 0 0 var(--color-fg); }
+b.cc-clickable, .cc-ic-mgrid > .cc-clickable b, td.cc-clickable { text-decoration: underline dotted; text-decoration-color: var(--color-fg-muted); text-underline-offset: 3px; }
+b.cc-clickable.cc-picked { box-shadow: none; text-decoration-style: solid; }
+text.cc-clickable { cursor: pointer; }
+.cc-ic-mgrid > .cc-clickable { padding: 4px 6px; margin: -4px -6px; }
 .cc-covbar i.cc-clickable, .cc-covbar i.cc-clickable:hover { background-clip: padding-box; }
 .cc-covbar i.cc-picked { box-shadow: 0 0 0 2px var(--color-fg); }
 .cc-frow.cc-clickable, .cc-brow.cc-clickable, .cc-refrow.cc-clickable, .cc-goal.cc-clickable { padding-inline: 6px; margin-inline: -6px; }
@@ -1757,6 +1761,30 @@ dash.loader('wi_icp_people', {
     return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
   },
 });
+
+dash.loader('wi_icp_people_2', {
+  description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text, counts and amounts become numbers.',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? (answer.trim() ? JSON.parse(answer) : {}) : (answer || {});
+    if (a.status === 'error' || (a.code && !a.data)) throw new Error(a.message || a.code || 'Zoho CRM refused the query');
+    const body = a.data && !Array.isArray(a.data) ? a.data : a;
+    const list = Array.isArray(body.data) ? body.data : [];
+    const rename = { 'COUNT(id)': 'count', 'SUM(Amount)': 'amount_sum' };
+    const numeric = ['count', 'amount_sum', 'Amount', 'Total_Meetings_Created', 'Count_of_associated_Contacts'];
+    const rows = list.map((r) => {
+      const o = {};
+      for (const [k, v] of Object.entries(r)) {
+        const key = rename[k] || k;
+        if (Array.isArray(v)) o[key] = v.map((x) => (x && typeof x === 'object' ? x.name : x)).filter((x) => x != null && x !== '').join(', ');
+        else if (v && typeof v === 'object') { o[key] = v.name ?? null; o[key + '_id'] = v.id ?? null; }
+        else o[key] = v;
+      }
+      for (const n of numeric) if (o[n] != null && o[n] !== '') o[n] = Number(o[n]);
+      return o;
+    });
+    return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
+  },
+});
 dash.loader('mc_accounts', {
   description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text, counts and amounts become numbers.',
   fn: ({ answer }) => {
@@ -2725,6 +2753,36 @@ dash.calc('icp_contacts_li', {
   fn: (icp_contacts, li_fixes_icp) => CC_LI.adjust(icp_contacts, li_fixes_icp),
 });
 
+dash.calc('campaign_people', {
+  title: 'Campaign contacts, one row each',
+  description: 'Every contact counted in the B2B, ICP and Founder Network funnels, one row per campaign and contact: title, company, Priority, LinkedIn status (Zoho’s, or Connected when Mack’s LinkedIn export shows a connection Zoho hasn’t recorded) and meetings logged. The people behind the funnel, target and Priority counts.',
+  inputs: ['wi_b2b_people', 'wi_icp_people', 'wi_icp_people_2', 'wi_introducers', 'li_sync'],
+  fn: (wi_b2b_people, wi_icp_people, wi_icp_people_2, wi_introducers, li_sync) => {
+    const on = CC_LI.map(li_sync);
+    const out = [];
+    const add = (c, list) => {
+      const seen = new Set();
+      list.forEach((r) => {
+        const id = r && r.id != null ? String(r.id) : null;
+        if (!id || seen.has(id)) return;
+        seen.add(id);
+        const zli = r.LI_Connect && r.LI_Connect !== '-None-' ? String(r.LI_Connect) : null;
+        const liOnly = zli !== 'Connected' && on.has(id);
+        const pr = r.Priority != null && r.Priority !== '' && r.Priority !== '-None-' ? String(r.Priority) : null;
+        out.push({
+          key: c + '|' + id, campaign: c, id, name: r.Full_Name || '—', title: r.Title || null, account: r.Account_Name || null, account_id: r.Account_Name_id || null,
+          priority: pr || 'Not set', priority_label: pr ? 'P' + pr : 'Not set', li_status: liOnly ? 'Connected' : zli || 'Not requested',
+          li: liOnly ? 'Connected on LinkedIn; Zoho says ' + (zli || 'nothing') : zli || 'Not requested', meetings: Number(r.Total_Meetings_Created || 0),
+        });
+      });
+    };
+    add('rp', wi_b2b_people);
+    add('icp', [...wi_icp_people, ...wi_icp_people_2]);
+    add('fn', wi_introducers.filter((r) => CC_RULES.isFN(r.Relationship_Type) && !CC_RULES.excluded(r.Priority)));
+    return out;
+  },
+});
+
 dash.calc('backlog', {
   title: 'Backlog by campaign',
   description: 'What each campaign is behind on, counted live: lapsed or unsigned agreements, overdue tasks, open deals not updated for 14 days or more, people connected but never met, priority contacts with no next step or LinkedIn request, thin target accounts, courier accounts with no contact, and courier prospects not yet emailed or followed up (from the prospects sheet). Where this dashboard has Mack’s LinkedIn export, people it shows as connected count as connected, and each campaign lists those Zoho hasn’t recorded. Each count is the length of the list its item opens.',
@@ -3371,7 +3429,7 @@ dash.calc('attention', {
       const v = marks.append('text').attr('class', 'cc-fl-val').attr('x', W).attr('y', ys[i] + 5).attr('text-anchor', 'end').text(intF(s.value));
       if (s.target != null) v.append('tspan').text(' of ' + intF(s.target));
       if (picked[pickKey] === s.key) picks.append('rect').attr('class', 'cc-rpick').attr('x', -6).attr('y', ys[i] - rowH / 2 + 3).attr('width', W + 12).attr('height', rowH - 6).attr('rx', 8);
-      svg.append('rect').attr('class', 'cc-rhit').attr('x', -6).attr('y', ys[i] - rowH / 2 + 2).attr('width', W + 12).attr('height', rowH - 4).attr('rx', 8)
+      svg.append('rect').attr('class', 'cc-rhit').attr('x', -6).attr('y', ys[i] - rowH / 2).attr('width', W + 12).attr('height', rowH).attr('rx', 8)
         .attr('tabindex', 0).attr('role', 'button').attr('aria-label', 'Show details for ' + s.label)
         .on('mousemove', (e) => showTip(card, e.clientX, e.clientY, name + ' · ' + s.label, [[hue, 'Count', intF(s.value)]].concat(i > 0 && steps[i - 1].value ? [[null, 'Kept from the step above', pctF(s.value / steps[i - 1].value)]] : [])))
         .on('mouseleave', () => hideTip(card))
@@ -4403,7 +4461,33 @@ dash.calc('attention', {
     'mc|deal_accounts': (d) => d.kind === 'Client' && d.campaign === 'Medical Courier' && CC_RULES.isOpen(d),
     'mc|won': (d) => d.kind === 'Client' && d.campaign === 'Medical Courier' && d.stage === 'Closed',
   };
+  const CAMP_COLS = [['name', 'Contact', null, false, false, ['Contacts', 'id']], ['title', 'Title', null, true], ['account', 'Company', null, false, false, ['Accounts', 'account_id']], ['priority_label', 'Priority'], ['li', 'LinkedIn'], ['meetings', 'Meetings', 'int', false, true]];
+  const campByName = (a, b) => String(a.name).localeCompare(String(b.name));
+  const campSpec = (c, title, keep, note, order) => ({
+    title, swatch: hueOf(c), source: 'campaign_people', rowKey: 'key', cols: CAMP_COLS,
+    rows: (rowsOf('campaign_people') || []).filter((r) => r.campaign === c && keep(r)).sort(order || ((a, b) => b.meetings - a.meetings || campByName(a, b))),
+    note: note || 'Select a name or company to open it in Zoho CRM.', empty: 'Nobody here yet.',
+  });
+  const CAMP_STEP = {
+    total: () => true,
+    invited: (r) => r.li_status === 'Requested' || r.li_status === 'Connected',
+    connected: (r) => r.li_status === 'Connected',
+    met1: (r) => r.meetings >= 1,
+    met4: (r) => r.meetings >= 4,
+    meetings: (r) => r.meetings >= 1,
+  };
+  const ACC_COLS = [['Account_Name', 'Account', null, false, false, ['Accounts', 'id']], ['Industries', 'Industry', null, true], ['Priority', 'Priority'], ['Count_of_associated_Contacts', 'Contacts in Zoho', 'int', false, true]];
+  const accSpec = (title, swatch, source) => ({
+    title, swatch, source, rowKey: 'id', cols: ACC_COLS,
+    rows: (rowsOf(source) || []).slice().sort((a, b) => String(a.Account_Name).localeCompare(String(b.Account_Name))),
+    note: 'Select an account to open it in Zoho CRM.', empty: 'No accounts yet.',
+  });
   const stepSpec = (c, s) => {
+    if (['rp', 'icp', 'fn'].includes(c) && CAMP_STEP[s]) {
+      const title = META[c].name + ' · ' + stepLabel(c, s);
+      return campSpec(c, title, CAMP_STEP[s], s === 'meetings' ? 'The figure counts meetings logged in Zoho; the list shows the people they were with.' : null);
+    }
+    if (s === 'accounts' && (c === 'icp' || c === 'mc')) return accSpec(META[c].name + ' · ' + stepLabel(c, s), hueOf(c), c === 'icp' ? 'icp_account_list' : 'mc_account_list');
     const title = META[c].name + ' · ' + stepLabel(c, s);
     const swatch = hueOf(c);
     const dealKeep = DEAL_STEPS[c + '|' + s];
@@ -4445,6 +4529,9 @@ dash.calc('attention', {
     rows: (rowsOf('fn_next') || []).filter(keep).sort((a, b) => a.open_tasks - b.open_tasks || String(a.contact).localeCompare(String(b.contact))),
   });
   const prioritySpec = (c) => (p) => {
+    if (['rp', 'icp'].includes(c) || (c === 'fn' && p !== '1' && p !== '3')) {
+      return campSpec(c, META[c].name + ' · ' + (p === 'Not set' ? 'No Priority set' : 'P' + p + ' · ' + PRIORITY[p]), (r) => r.priority === p, null, campByName);
+    }
     const title = META[c].name + ' · ' + (p === 'Not set' ? 'No Priority set' : 'P' + p + ' · ' + PRIORITY[p]);
     if (c === 'fn' && (p === '1' || p === '3')) return peopleSpec(title, priorityColor(c, p), (r) => r.priority === p);
     return {
@@ -4594,6 +4681,51 @@ dash.calc('attention', {
     node.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(key, value); } });
     return node;
   };
+  const LIST_BUILD = new Map();
+  const listable = (node, host, value, label, build) => {
+    if (!node || !host || !host.id) return node;
+    const key = 'list-' + host.id;
+    if (!DRILLS[key]) DRILLS[key] = { card: '#' + host.id, build: (v) => { const f = LIST_BUILD.get(key + '\u0001' + v); return f ? f() : null; } };
+    LIST_BUILD.set(key + '\u0001' + value, build);
+    const on = picked[key] === value;
+    node.classList.add('cc-clickable');
+    node.classList.toggle('cc-picked', on);
+    node.setAttribute('aria-pressed', String(on));
+    node.setAttribute('role', 'button');
+    if (label) node.setAttribute('aria-label', label);
+    if (!node.dataset.listKey) {
+      node.tabIndex = 0;
+      const go = (e) => { e.stopPropagation(); e.preventDefault(); const [k, v] = node.dataset.listKey.split('\u0001'); pick(k, v); };
+      node.addEventListener('click', go);
+      node.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') go(e); });
+    }
+    node.dataset.listKey = key + '\u0001' + value;
+    return node;
+  };
+  const markRow = (source, q) => (rowsOf(source) || []).find((x) => Object.entries(q).every(([k, v]) => String(x[k]) === v)) || null;
+  const MARK_SPEC = {
+    funnel: (q) => (META[q.campaign] && q.step ? stepSpec(q.campaign, q.step) : null),
+    funnel_drops: (q, f) => { const r = markRow('funnel_drops', q); return r ? stepSpec(q.campaign, f === 'to_value' ? r.to : r.from) : null; },
+    priority_mix: (q) => (META[q.campaign] && q.priority ? prioritySpec(q.campaign)(q.priority) : null),
+    campaign_monthly: (q) => (DRILLS['spark-hero-' + q.campaign] && q.month ? DRILLS['spark-hero-' + q.campaign].build(q.month) : null),
+    backlog: (q) => { const k = q.key || (q.campaign && q.item ? q.campaign + '|' + q.item : null); return k ? blSpec(k) : null; },
+  };
+  const markHost = (n) => n.closest('.cc-card[id]') || (n.closest('.cc-page') && n.closest('.cc-page').querySelector('.cc-card[id]'));
+  var CC_WIRE = () => {
+    root.querySelectorAll('[data-source][data-where][data-field]').forEach((n) => {
+      if (n.closest('table')) return;
+      const res = MARK_SPEC[n.dataset.source];
+      if (!res) return;
+      const target = n.querySelector('.cc-donut-n') || n;
+      if (target === n && n.querySelector('[role=button], a, button')) return;
+      if (target !== n.closest('[role=button]') && n.parentElement && n.parentElement.closest('[role=button]')) return;
+      const where = n.getAttribute('data-where');
+      const q = Object.fromEntries(new URLSearchParams(where));
+      const host = markHost(n);
+      if (!host) return;
+      listable(target, host, n.dataset.source + '?' + where + '#' + n.dataset.field, 'Show the records behind ' + (n.textContent || '').trim(), () => res(q, n.dataset.field));
+    });
+  };
   const DRILL_STAGE = {};
   const STAGE_FIELDS = ['stage_label', 'stage'];
   const STAGE_SEQ = ['Proposals', 'Discovery', 'Hold', 'Identify', 'Closed Won', 'Closed', 'Closed Lost', 'Closed Lost to Competition'];
@@ -4626,7 +4758,7 @@ dash.calc('attention', {
     const head = el('div', 'cc-drill-head');
     const h = el('h4');
     if (spec.swatch) { const sw = el('i', 'cc-sw'); sw.style.background = spec.swatch; h.append(sw); }
-    h.append(document.createTextNode(spec.title));
+    h.append(document.createTextNode(spec.title + (status(spec.source) === 'ok' ? ' (' + intF(spec.rows.length) + ')' : '')));
     const close = el('button', 'cc-go', 'Close');
     close.type = 'button';
     close.addEventListener('click', () => pick(key, value));
@@ -4688,7 +4820,8 @@ dash.calc('attention', {
     if (refocus) { const s = box.querySelector('.cc-thsel'); if (s) s.focus(); }
   };
 
-  function drawSized() {
+  function drawSized() { drawSizedInner(); if (typeof CC_WIRE === 'function') CC_WIRE(); }
+  function drawSizedInner() {
     drawFunnels();
     drawRiver();
     drawSparks();
@@ -4713,7 +4846,7 @@ dash.calc('attention', {
         const f = rowsOf('funnel');
         const deals = f && f.find((r) => r.campaign === 'icp' && r.step === 'deals');
         const hold = d3.sum(mine.filter((r) => r.stage === 'Hold'), (r) => r.deals);
-        if (deals) said(root.querySelector('#ins-icp-stages'), [b('funnel', 'value', { campaign: 'icp', step: 'deals' }, deals.value, 'int'), ' open ICP deals against a target of ', intF(deals.target), hold ? ', ' + intF(hold) + ' of them on hold.' : '.']);
+        if (deals) said(root.querySelector('#ins-icp-stages'), [b('funnel', 'value', { campaign: 'icp', step: 'deals' }, deals.value, 'int'), ' open ICP deals against a target of ', b('funnel', 'target', { campaign: 'icp', step: 'deals' }, deals.target, 'int'), hold ? ', ' + intF(hold) + ' of them on hold.' : '.']);
       },
     });
     drawStageChart('#chart-fn-stages', {
@@ -5417,6 +5550,26 @@ dash.calc('attention', {
         [icPct(meetT ? dealsT / meetT : null), 'of meetings must become deals to hit the target'],
       ]),
     );
+    {
+      const card = root.querySelector('#ic-math');
+      const icpOf = (keep, title, note) => () => campSpec('icp', 'ICP · ' + title, keep, note);
+      const conn = icpOf(CAMP_STEP.connected, 'Connected on LinkedIn');
+      const left = icpOf((r) => r.li_status !== 'Connected' && r.li_status !== 'Email Required', 'Executives not connected yet', 'Pending requests plus executives never asked: the people the remaining connections must come from.');
+      const never = icpOf((r) => !['Connected', 'Requested', 'Email Required'].includes(r.li_status), 'Executives never asked', 'No LinkedIn request recorded in Zoho yet.');
+      const met = icpOf(CAMP_STEP.met1, 'Executives met', 'The figure counts meetings logged in Zoho; the list shows the people they were with.');
+      const deals = () => stepSpec('icp', 'deals');
+      const plan = [
+        [[conn, 'connected executives'], [conn, 'connected executives this projection grows from'], [left, 'executives the projection assumes are asked'], [left, 'remaining executives'], [never, 'executives never asked']],
+        [[met, 'executives met'], [conn, 'connected executives'], [conn, 'connected executives']],
+        [[deals, 'open ICP client deals'], [deals, 'open ICP client deals']],
+      ];
+      if (card) box.querySelectorAll(':scope > .cc-ic-mrow').forEach((rowNode, i) => {
+        rowNode.querySelectorAll(':scope > .cc-ic-mgrid > div').forEach((cell, j) => {
+          const p = (plan[i] || [])[j];
+          if (p) listable(cell, card, 'math-' + i + '-' + j, 'Show the ' + p[1], p[0]);
+        });
+      });
+    }
     dlInsight('ins-ic-math', 'The connection target assumes far more acceptances than the list can give: ' + intF(m.target) + ' needs ' + (m.needRate == null ? '—' : m.needRate > 1 ? 'more people than the list holds' : icPct(m.needRate) + ' acceptance') + ' against ' + icPct(m.rate) + ' so far. Meetings, not connections, are the number to chase now.');
   };
   const liDayF = (s) => { const t = d3.utcParse('%Y-%m-%d')(String(s).slice(0, 10)); return t ? d3.utcFormat('%b %-d, %Y')(t) : String(s); };
@@ -5548,6 +5701,7 @@ dash.calc('attention', {
   const drawIcpCov = (d) => {
     const table = root.querySelector('#ic-cov-table');
     if (!table) return;
+    const covCard = root.querySelector('#ic-cov');
     const chips = root.querySelector('#ic-cov-chips');
     if (!icReady(table.querySelector('tbody'), d)) return;
     const opts = [['all', 'All accounts', d.accounts.length], ...Object.entries(IC_FLAGS).map(([k, [lab]]) => [k, lab, d.accounts.filter((a) => a.flags.includes(k)).length])];
@@ -5582,6 +5736,20 @@ dash.calc('attention', {
           if (!a.flags.length && !wb) td.textContent = '—';
         } else if (f === 'accept') td.textContent = a.accept == null ? '—' : pctF(a.accept);
         else td.textContent = fmt(a[f], num ? 'int' : null);
+        if (num && covCard) {
+          const at = (p) => p.account_id === a.id;
+          const lists = {
+            contacts: () => {
+              const spec = campSpec('icp', a.account + ' · executives tagged 2026ICP', (r) => r.account_id === a.id, null, campByName);
+              spec.note = (a.contacts === spec.rows.length ? '' : 'Zoho counts ' + intF(a.contacts) + ' contacts on this account; the ' + intF(spec.rows.length) + ' tagged 2026ICP are listed. ') + 'Select a name to open it in Zoho CRM.';
+              return spec;
+            },
+            sent: () => icPeopleSpec(a.account + ' · requests sent', d.ppl.filter((p) => at(p) && (p.li === 'Requested' || p.li === 'Connected'))),
+            connected: () => icPeopleSpec(a.account + ' · connected', d.ppl.filter((p) => at(p) && p.li === 'Connected')),
+            accept: () => icPeopleSpec(a.account + ' · requests sent', d.ppl.filter((p) => at(p) && (p.li === 'Requested' || p.li === 'Connected')), 'Acceptance is connected divided by requests sent.'),
+          };
+          if (lists[f] && td.textContent !== '—') listable(td, covCard, a.id + '|' + f, 'Show ' + a.account + ' ' + f, lists[f]);
+        }
         tr.append(td);
       });
       return tr;
@@ -6328,6 +6496,7 @@ dash.calc('attention', {
     drawIcp();
     wiDraw();
     drawSized();
+    CC_WIRE();
     Object.keys(DRILLS).forEach(drawDrill);
     drawTables();
   }
