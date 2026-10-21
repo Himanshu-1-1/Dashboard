@@ -173,6 +173,35 @@
       .sort((a, b) => b.strength - a.strength || String(a.name).localeCompare(String(b.name))),
   });
 
+  const P3Q_STEPS = [
+    ['Untouched', 'Send a connection request', '2'],
+    ['Connected', 'Start a conversation', '3'],
+    ['Met', 'Move to Priority 1 if it’s two-way', '3'],
+    ['Requested', 'Wait for them to accept', null],
+    ['Email Required', 'Blocked: LinkedIn needs their email', null],
+    ['Do not contact', 'Don’t contact', null],
+  ];
+  dash.calc('b2b_p3_queue', {
+    title: 'Priority 3 queue',
+    description: 'Every B2B prospect at Priority 3, grouped by what to do next from Zoho’s LI Connect: untouched (empty, send a request), connected and never met (start a conversation), connected and met (move to Priority 1 if two-way), requested (waiting), Email Required (blocked), and Do Not Contact last. Within a group, by the partner evidence on the record.',
+    inputs: ['b2b_people'],
+    fn: (b2b_people) => b2b_people
+      .filter((p) => p.priority === '3')
+      .map((p) => {
+        const li = p.li == null || p.li === '' || p.li === '-None-' ? null : String(p.li);
+        const status = p.dnc ? 'Do not contact' : li == null ? 'Untouched' : li === 'Connected' ? (p.met ? 'Met' : 'Connected') : li === 'Requested' ? 'Requested' : li === 'Email Required' ? 'Email Required' : 'Untouched';
+        const ev = [];
+        if (p.tier === 'Founder, owner or CEO') ev.push('Founder, owner or CEO');
+        if (p.fit === 'partner') ev.push('Consulting or IT firm');
+        if (p.account) ev.push('Company on record');
+        if (p.mack_old) ev.push('Known to Mack before 2026');
+        if (p.met) ev.push(`Met ${p.met === 1 ? 'once' : p.met + ' times'}`);
+        const step = P3Q_STEPS.findIndex((x) => x[0] === status);
+        return { id: p.id, name: p.name, title: p.title, account: p.account, li, status, order: step, next: P3Q_STEPS[step][1], sop: P3Q_STEPS[step][2], evidence: ev, strength: ev.length };
+      })
+      .sort((a, b) => a.order - b.order || b.strength - a.strength || String(a.name).localeCompare(String(b.name))),
+  });
+
   dash.calc('b2b_weeks', {
     title: 'B2B meetings by week',
     description: 'Meetings with B2B prospects in each of the last 12 weeks (Monday start, Central time), by meeting date. Meetings entered late raise past weeks after the fact.',
@@ -538,10 +567,11 @@
   const mailNote = el('p', 'cc-b2-insight');
   const mailFoot = el('p', 'cc-b2-mfoot');
   mailCard.append(mailStats, mailWeeks, mailKey, mailNote, mailTools, mailBody, mailFoot);
-  const monCard = card('b2-monday', 'Monday selection queue', `Up to ${MONDAY} P5 prospects to review each week. Ordered by the partner evidence on their record; the order is proposed, awaiting Mack. Select or skip each one in Zoho.`);
+  const monCard = card('b2-monday', 'Priority 3 queue', 'Everyone at Priority 3, grouped by what to do next from LI Connect: untouched first, then connected, then waiting. Within a group, the strongest partner evidence comes first.');
+  const monTools = el('div', 'cc-tools cc-b2-chips');
   const monBody = el('div', 'cc-b2-wrap');
   const monMore = el('div', 'cc-tools');
-  monCard.append(monBody, monMore);
+  monCard.append(monTools, monBody, monMore);
   const grid2 = el('div', 'cc-grid');
   const segCard = card('b2-seg', 'Where meetings and signings come from', 'Share of each group that has met us, and how many signed. It describes the past; it does not prove a cause, and small groups can mislead.');
   const segBody = el('div', 'cc-b2-seg');
@@ -656,6 +686,7 @@
   const daysF = (n) => (n == null ? '—' : n === 0 ? 'today' : n === 1 ? '1 day ago' : intF(n) + ' days ago');
   let picked = 0;
   let monPage = 0;
+  let monFilter = 'All';
 
   const drawNext = (a) => {
     nextBody.replaceChildren();
@@ -765,7 +796,7 @@
       [count('Agreement'), `Move ${intF(count('Agreement'))} agreement steps`, 'Signatures waiting and agreement tasks overdue. Each signed partner is a channel; an unsigned one is a conversation.', () => { queueFilter = 'Agreement'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '5'],
       [count('Meeting ask'), `Ask ${intF(count('Meeting ask'))} connected P1 and P3 prospects for a first meeting`, 'Top priority, already connected, never met and nothing scheduled. P1 prospects meet us far more often than P5.', () => { queueFilter = 'Meeting ask'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '4'],
       [count('First introduction'), `Ask ${intF(count('First introduction'))} signed partners for their first introduction`, 'A signed agreement earns nothing until it produces an introduction. Name one client problem we solve and ask who comes to mind.', () => { queueFilter = 'First introduction'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '6'],
-      [mon.length, `Pick ${MONDAY} from the Monday queue`, `${intF(strong)} P5 prospects show three or more partner signs. Select with evidence or skip with a reason.`, () => monCard.scrollIntoView({ behavior: 'smooth' }), '1'],
+      [mon.length, `Move ${MONDAY} from the Priority 5 backlog to Priority 3`, `${intF(strong)} P5 prospects show three or more partner signs. Select with evidence or skip with a reason.`, () => showP5(rows('b2b_p5_backlog')), '1'],
       [count('Revive deal'), `Revive ${intF(count('Revive deal'))} stalled partnership deals`, `Open deals untouched for ${STALE_DAYS} days or more, with no task set.`, () => { queueFilter = 'Revive deal'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '5'],
       [fixN, `Fix ${intF(fixN)} records`, `${intF(clients)} client prospects tagged B2B and ${intF(incomplete)} prospects with no company or title.`, () => showPeople('Records to fix', ppl.filter((p) => p.client_only || !p.complete), 'Client prospects: remove the B2B tag. No company or title: fill them, or the person can’t be judged as a partner.'), null],
     ].filter(([n]) => n > 0);
@@ -1306,28 +1337,44 @@
   };
 
   const drawMonday = () => {
-    const mon = rows('b2b_monday');
+    const st = state(['b2b_p3_queue']);
+    if (st !== 'ok') {
+      monTools.replaceChildren(); monMore.replaceChildren();
+      monBody.replaceChildren(el('p', st === 'error' ? 'cc-b2-bad' : 'cc-b2-insight', st === 'error' ? 'The B2B contacts didn’t load from Zoho, so the Priority 3 queue can’t be shown.' : 'Loading the Priority 3 queue…'));
+      return;
+    }
+    const all = rows('b2b_p3_queue');
+    const kinds = ['All', ...P3Q_STEPS.map((x) => x[0]).filter((k) => all.some((r) => r.status === k))];
+    if (!kinds.includes(monFilter)) monFilter = 'All';
+    monTools.replaceChildren(...kinds.map((k) => {
+      const b = el('button', 'cc-chip', `${k} (${intF(k === 'All' ? all.length : all.filter((r) => r.status === k).length)})`);
+      b.type = 'button'; b.setAttribute('aria-pressed', String(monFilter === k));
+      b.addEventListener('click', () => { monFilter = k; monPage = 0; drawMonday(); });
+      return b;
+    }));
+    const mon = all.filter((r) => monFilter === 'All' || r.status === monFilter);
+    if (!mon.length) { monBody.replaceChildren(el('p', 'cc-b2-insight', 'Nobody is at Priority 3 right now. The weekly transfer from Priority 5 fills this queue.')); monMore.replaceChildren(); return; }
     const pages = Math.max(1, Math.ceil(mon.length / MONDAY));
     if (monPage >= pages) monPage = 0;
     const list = mon.slice(monPage * MONDAY, monPage * MONDAY + MONDAY);
     const tbl = el('table', 'cc-tbl');
     const th = el('thead'); const hr = el('tr');
-    ['#', 'Candidate', 'Role', 'Why this person', 'In Zoho'].forEach((x) => { const c = el('th', null, x); c.scope = 'col'; hr.append(c); });
+    ['#', 'Contact', 'Role', 'LI Connect', 'Next step', 'Why this person'].forEach((x) => { const c = el('th', null, x); c.scope = 'col'; hr.append(c); });
     th.append(hr); tbl.append(th);
     const tb = el('tbody');
     list.forEach((m, i) => {
       const tr = el('tr');
-      const who = el('td'); who.append(el('b', null, m.name)); if (m.account) who.append(el('small', null, m.account));
+      const who = el('td'); who.append(link('Contacts', m.id, m.name)); if (m.account) who.append(el('small', null, m.account));
+      const nx = el('td', m.status === 'Untouched' ? 'cc-b2-late' : null); nx.append(document.createTextNode(m.next + ' ')); if (m.sop) nx.append(sopBtn(m.sop));
       const ev = el('td'); const chips = el('span', 'cc-b2-ev'); m.evidence.forEach((x) => chips.append(el('span', null, x))); if (!m.evidence.length) chips.append(el('span', 'cc-b2-none', 'No evidence on record')); ev.append(chips);
-      const z = el('td'); const zl = link('Contacts', m.id, 'Open to select or skip'); z.append(zl);
-      tr.append(el('td', null, String(monPage * MONDAY + i + 1)), who, el('td', null, m.title || 'No title'), ev, z);
+      tr.append(el('td', null, String(monPage * MONDAY + i + 1)), who, el('td', null, m.title || 'No title'), el('td', null, m.li || 'Empty'), nx, ev);
       tb.append(tr);
     });
     tbl.append(tb);
-    monBody.replaceChildren(tbl, el('p', 'cc-b2-insight', 'Select: set Priority to 3 in Zoho and write one line of evidence for each fit question. Skip: record the reason. Until Zoho stores skips, the same people return here until they are worked.'));
+    monBody.replaceChildren(tbl, el('p', 'cc-b2-insight', 'Untouched: send the connection request and set LI Connect to Requested. Connected: start a conversation; once they write back or talk with us, set Priority to 1.'));
     const prev = el('button', 'cc-go', 'Previous 10'); prev.type = 'button'; prev.disabled = monPage === 0; prev.addEventListener('click', () => { monPage -= 1; drawMonday(); });
     const next = el('button', 'cc-go', 'Next 10'); next.type = 'button'; next.disabled = monPage >= pages - 1; next.addEventListener('click', () => { monPage += 1; drawMonday(); });
-    monMore.replaceChildren(prev, next, el('span', 'cc-b2-insight', `${intF(mon.length)} candidates, page ${monPage + 1} of ${pages}`));
+    monMore.replaceChildren(prev, next, el('span', 'cc-b2-insight', `${intF(mon.length)} at Priority 3${monFilter === 'All' ? '' : ', ' + monFilter.toLowerCase()}, page ${monPage + 1} of ${pages}`));
   };
 
   dash.onData(draw);
