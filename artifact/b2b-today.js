@@ -248,6 +248,8 @@
   const ADD_TARGET = 50;
   const ADD_SOP_URL = 'https://docs.google.com/document/d/1aM7zseZMzA-5N3OUFKW8tzAdXjXRnYSlyRwVfETHa3A/edit?tab=t.0#heading=h.xxylwzgeyofk';
   const ADD_MONTHS = 4;
+  const P5_WEAK = 100;
+  const P5_STRONG = 350;
   const ctDate = (iso) => new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
   const liKey = (u) => {
     const m = /linkedin\.com\/in\/([^/?#]+)/i.exec(String(u || ''));
@@ -1136,12 +1138,26 @@
     fact(monthF(sc.prev_month) + ' total', intF(sc.prev_actual), diff === 0 ? `${monthF(sc.month)} has matched it so far` : `${monthF(sc.month)} is ${intF(Math.abs(diff))} ${diff > 0 ? 'ahead' : 'behind'} so far`, () => showAdded(`Counted toward ${monthF(sc.prev_month)}`, all.filter((r) => r.month === sc.prev_month && r.counted)));
     const p5st = state(['b2b_p5_backlog']);
     const p5 = p5st === 'ok' ? rows('b2b_p5_backlog') : [];
-    const p5card = el('div', 'cc-b2-scorefact cc-b2-p5');
-    p5card.append(el('dt', null, 'Priority 5 backlog'), el('dd', null, p5st === 'ok' ? intF(p5.length) : p5st === 'loading' ? '…' : 'Unavailable'), el('small', null, p5st === 'error' ? 'The contact list didn’t load from Zoho.' : 'Waiting for selection. Not part of the 50.'));
-    if (p5st === 'ok') press(p5card, () => showP5(p5));
-    facts.append(p5card);
+    const level = p5st !== 'ok' ? null : p5.length < P5_WEAK ? ['weak', '▼ Weak'] : p5.length <= P5_STRONG ? ['building', 'Building'] : ['strong', '▲ Strong'];
+    const p5card = el('article', 'cc-b2-p5card' + (level ? ' cc-b2-p5-' + level[0] : ''));
+    p5card.id = 'b2-p5';
+    const p5head = el('header', 'cc-b2-p5head');
+    const badgeIcon = el('span', 'cc-b2-p5icon');
+    badgeIcon.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18l-7 8.5V19l-4 2v-8.5z"/></svg>';
+    const p5titles = el('div');
+    p5titles.append(el('h3', null, 'Priority 5 Backlog'), el('p', null, 'Top-of-funnel strength'));
+    p5head.append(badgeIcon, p5titles);
+    if (level) p5head.append(el('span', 'cc-b2-p5badge', level[1]));
+    const p5num = el('p', 'cc-b2-p5num', p5st === 'ok' ? intF(p5.length) : p5st === 'loading' ? '…' : 'Unavailable');
+    const p5sub = el('p', 'cc-b2-p5sub', p5st === 'error' ? 'The contact list didn’t load from Zoho, so the backlog can’t be counted.' : p5st === 'loading' ? 'Counting from Zoho…' : 'Waiting for selection. Not part of the 50.');
+    const p5legend = el('p', 'cc-b2-p5legend');
+    p5legend.append(el('b', null, 'Backlog strength:'), document.createTextNode(` under ${P5_WEAK} = Weak, ${P5_WEAK}–${P5_STRONG} = Building, over ${P5_STRONG} = Strong`));
+    p5card.append(p5head, p5num, p5sub, p5legend);
+    if (p5st === 'ok') { press(p5card, () => showP5(p5)); p5card.setAttribute('aria-label', `Priority 5 backlog: ${p5.length}, ${level[1].replace(/[▼▲] /, '')}. Open the list.`); }
+    const side = el('div', 'cc-b2-scoreside');
+    side.append(p5card, facts);
     const top = el('div', 'cc-b2-scoretop');
-    top.append(main, facts);
+    top.append(main, side);
 
     /* Supporting: the monthly trend. */
     const sub = el('div', 'cc-b2-scoresub');
