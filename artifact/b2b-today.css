@@ -130,3 +130,4 @@
 .cc-b2-mk { color: var(--color-fg); }
 .cc-b2-mfoot { color: var(--color-fg-muted); font-size: 12px; }
 @media (max-width: 640px) { .cc-b2-mnums { display: none; } .cc-b2-mcol small { font-size: 9px; } }
+.cc-b2-mstats:empty, .cc-b2-mweeks:empty, .cc-b2-mkey:empty, .cc-b2-chips:empty, .cc-b2-mfoot:empty { display: none; }

@@ -691,7 +691,7 @@
       [mailStats, mailWeeks, mailTools, mailBody].forEach((n) => n.replaceChildren());
       mailKey.textContent = '';
       mailFoot.textContent = '';
-      mailNote.textContent = 'Email history isn’t in this build of the page. It appears after the next daily refresh; the private Claude Dashboard always has it.';
+      mailNote.textContent = 'Email history isn’t on this page yet. The private Claude Dashboard has it.';
       return;
     }
     const st = state(['b2b_mail_people']);
