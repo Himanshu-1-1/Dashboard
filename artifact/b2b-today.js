@@ -740,7 +740,7 @@
   drill.querySelector('.cc-card-head').append(drillClose);
   drill.append(drillBody);
 
-  root.append(score, p3, mailCard, mtg, grid1, drill, nextCard, queueCard, monCard, grid2, stagesCard, sopCard, dqCard);
+  root.append(score, p3, mtg, mailCard, grid1, drill, nextCard, queueCard, monCard, grid2, stagesCard, sopCard, dqCard);
   root.addEventListener('click', (e) => {
     const b = e.target.closest('[data-sop]');
     if (!b) return;
