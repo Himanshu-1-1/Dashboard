@@ -244,6 +244,117 @@
     },
   });
 
+  /* Monthly acquisition scorecard: new partner prospects added to Zoho (dataset b2b_added). */
+  const ADD_TARGET = 50;
+  const ADD_SOP_URL = 'https://docs.google.com/document/d/1aM7zseZMzA-5N3OUFKW8tzAdXjXRnYSlyRwVfETHa3A/edit?tab=t.0#heading=h.xxylwzgeyofk';
+  const ADD_MONTHS = 4;
+  const ctDate = (iso) => new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+  const liKey = (u) => {
+    const m = /linkedin\.com\/in\/([^/?#]+)/i.exec(String(u || ''));
+    return m ? decodeURIComponent(m[1]).toLowerCase() : null;
+  };
+  const nameKey = (r) => String(r.Full_Name || [r.First_Name, r.Last_Name].filter(Boolean).join(' ')).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const workdays = (from, to) => {
+    let n = 0;
+    const d = new Date(from + 'T00:00:00Z');
+    const end = new Date(to + 'T00:00:00Z');
+    while (d <= end) { const w = d.getUTCDay(); if (w !== 0 && w !== 6) n += 1; d.setUTCDate(d.getUTCDate() + 1); }
+    return n;
+  };
+
+  dash.loader('b2b_added', {
+    description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text.',
+    fn: ({ answer }) => {
+      const a = typeof answer === 'string' ? (answer.trim() ? JSON.parse(answer) : {}) : (answer || {});
+      if (a.status === 'error' || (a.code && !a.data)) throw new Error(a.message || a.code || 'Zoho CRM refused the query');
+      const body = a.data && !Array.isArray(a.data) ? a.data : a;
+      const list = Array.isArray(body.data) ? body.data : [];
+      const rows = list.map((r) => {
+        const o = {};
+        for (const [k, v] of Object.entries(r)) {
+          if (Array.isArray(v)) o[k] = v.map((x) => (x && typeof x === 'object' ? x.name : x)).filter((x) => x != null && x !== '').join(', ');
+          else if (v && typeof v === 'object') { o[k] = v.name ?? null; o[k + '_id'] = v.id ?? null; }
+          else o[k] = v;
+        }
+        return o;
+      });
+      return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
+    },
+  });
+
+  dash.calc('b2b_added_rows', {
+    title: 'B2B prospects added to Zoho, one row each',
+    description: 'Every contact tagged “May 2026 - 100 B2B” (Priority 9 and 11 left out), by the month Zoho created it (Central time). A contact counts toward the monthly target when it has a first and last name, a company and a LinkedIn profile (the SOP’s required fields), is not labeled only Client, and is not a repeat of an earlier contact (same LinkedIn profile, or same name at the same company).',
+    inputs: ['b2b_added'],
+    fn: (b2b_added) => {
+      const seen = new Map();
+      return b2b_added
+        .filter((r) => r.Created_Time)
+        .slice()
+        .sort((a, b) => String(a.Created_Time).localeCompare(String(b.Created_Time)))
+        .map((r) => {
+          const day = ctDate(r.Created_Time);
+          const missing = [];
+          if (!r.First_Name || !r.Last_Name) missing.push('full name');
+          if (!r.Account_Name) missing.push('company');
+          if (!liKey(r.LinkedIn)) missing.push('LinkedIn profile');
+          const rel = String(r.Relationship_Type || '');
+          const clientOnly = /client/i.test(rel) && !/referral partner|founder network|partner/i.test(rel);
+          const keys = [liKey(r.LinkedIn) && 'li:' + liKey(r.LinkedIn), nameKey(r) && r.Account_Name && 'nm:' + nameKey(r) + '|' + String(r.Account_Name).toLowerCase()].filter(Boolean);
+          const dupOf = keys.map((k) => seen.get(k)).find(Boolean) || null;
+          keys.forEach((k) => { if (!seen.has(k)) seen.set(k, r.Full_Name || 'an earlier contact'); });
+          const reason = dupOf ? 'Repeat of ' + dupOf : missing.length ? 'Missing ' + missing.join(', ') : clientOnly ? 'Labeled Client, not a partner' : null;
+          return {
+            id: String(r.id), name: r.Full_Name || [r.First_Name, r.Last_Name].filter(Boolean).join(' ') || '—', account: r.Account_Name || null, account_id: r.Account_Name_id || null,
+            day, month: day.slice(0, 7), linkedin: liKey(r.LinkedIn) ? r.LinkedIn : null, assigned: r.Assigned || null,
+            source: /founder network/i.test(rel) ? 'Founder network' : 'Other sources', counted: !reason, reason,
+          };
+        });
+    },
+  });
+
+  dash.calc('b2b_scorecard', {
+    title: 'Monthly partner acquisition scorecard',
+    description: 'This calendar month (Central time) against the target of 50 qualified B2B partner prospects added to Zoho: counted so far, this week (Monday start), last month, the pace needed over the remaining weekdays, and whether the month is on track (counted so far at least the target’s share of weekdays gone). Months are the last four.',
+    inputs: ['b2b_added_rows'],
+    fn: (rows) => {
+      const today = todayCT();
+      const month = today.slice(0, 7);
+      const [y, m] = month.split('-').map(Number);
+      const first = month + '-01';
+      const lastDay = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+      const prev = new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 7);
+      const t = new Date(today + 'T00:00:00Z');
+      const monday = new Date(t); monday.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7));
+      const weekStart = monday.toISOString().slice(0, 10);
+      const lastWeekStart = new Date(monday.getTime() - 7 * 864e5).toISOString().slice(0, 10);
+      const counted = rows.filter((r) => r.counted);
+      const inMonth = counted.filter((r) => r.month === month);
+      const actual = inMonth.length;
+      const remaining = Math.max(0, ADD_TARGET - actual);
+      const totalDays = workdays(first, lastDay);
+      const elapsed = workdays(first, today);
+      const tomorrow = new Date(t.getTime() + 864e5).toISOString().slice(0, 10);
+      const daysLeft = today >= lastDay ? 0 : workdays(tomorrow, lastDay);
+      const todayIsWork = workdays(today, today) === 1;
+      const daysLeftIncl = daysLeft + (todayIsWork ? 1 : 0);
+      const expected = totalDays ? Math.round((ADD_TARGET * elapsed) / totalDays) : ADD_TARGET;
+      const status = actual >= ADD_TARGET ? 'Target met' : actual >= expected ? 'On track' : 'Behind';
+      const months = Array.from({ length: ADD_MONTHS }, (_, i) => new Date(Date.UTC(y, m - ADD_MONTHS + i, 1)).toISOString().slice(0, 7));
+      return [{
+        key: month, month, today, target: ADD_TARGET, actual, remaining, pct: actual / ADD_TARGET,
+        week: inMonth.filter((r) => r.day >= weekStart).length,
+        last_week: counted.filter((r) => r.day >= lastWeekStart && r.day < weekStart).length,
+        prev_month: prev, prev_actual: counted.filter((r) => r.month === prev).length,
+        added_all: rows.filter((r) => r.month === month).length,
+        not_counted: rows.filter((r) => r.month === month && !r.counted).length,
+        workdays_total: totalDays, workdays_elapsed: elapsed, workdays_left: daysLeftIncl, expected, status,
+        per_day: daysLeftIncl ? remaining / daysLeftIncl : null, per_week: daysLeftIncl ? Math.ceil((remaining / daysLeftIncl) * 5) : null,
+        trend: months.map((mo) => ({ month: mo, actual: counted.filter((r) => r.month === mo).length, added: rows.filter((r) => r.month === mo).length })),
+      }];
+    },
+  });
+
   /* ---------- view ---------- */
   const root = document.querySelector('#b2-root');
   if (!root) return;
@@ -279,6 +390,19 @@
 
   /* Static structure, built once. */
   root.replaceChildren();
+  const score = el('section', 'cc-card cc-b2-score');
+  score.id = 'b2-score';
+  score.setAttribute('aria-labelledby', 'b2-score-title');
+  const scoreHead = el('div', 'cc-b2-scorehead');
+  const scoreTitle = el('h2', null, 'New B2B partners added to Zoho');
+  scoreTitle.id = 'b2-score-title';
+  const sopLink = el('a', 'cc-b2-soplink', 'SOP: how to find and add partners');
+  sopLink.href = ADD_SOP_URL; sopLink.target = '_blank'; sopLink.rel = 'noopener';
+  const scoreState = el('span', 'cc-b2-state');
+  scoreHead.append(scoreTitle, scoreState, sopLink);
+  const scoreBody = el('div', 'cc-b2-scorebody');
+  const scoreFoot = el('p', 'cc-b2-insight cc-b2-scorefoot');
+  score.append(scoreHead, scoreBody, scoreFoot);
   const head = el('div', 'cc-b2-head');
   const t = el('div', 'cc-wi-title');
   t.append(el('h2', null, 'B2B Today'), el('p', null, 'What the B2B referral-partner campaign needs next, who to work today, and how to do it right.'));
@@ -383,7 +507,7 @@
   drill.querySelector('.cc-card-head').append(drillClose);
   drill.append(drillBody);
 
-  root.append(head, tiles, grid1, drill, nextCard, queueCard, mailCard, monCard, grid2, stagesCard, sopCard, dqCard);
+  root.append(score, head, tiles, grid1, drill, nextCard, queueCard, mailCard, monCard, grid2, stagesCard, sopCard, dqCard);
   root.addEventListener('click', (e) => {
     const b = e.target.closest('[data-sop]');
     if (!b) return;
@@ -449,6 +573,7 @@
   };
 
   const draw = () => {
+    drawScore();
     const st = state(['b2b_people', 'b2b_actions', 'b2b_monday', 'b2b_funnel', 'b2b_segments']);
     if (st !== 'ok') {
       const msg = st === 'loading' ? 'Loading from Zoho…' : 'Some Zoho data did not load, so this page cannot be worked out. Reload, or check the source in the dashboard menu.';
@@ -487,11 +612,11 @@
     const incomplete = ppl.filter((p) => !p.complete).length;
     const fixN = ppl.filter((p) => p.client_only || !p.complete).length;
     const clients = ppl.filter((p) => p.client_only).length;
-    tile('1', 'Add', 'Target awaiting confirmation', 'cc-b2-wait', intF(ppl.length), 'B2B prospects, including ' + intF(fnN) + ' from the founder network', [
-      'Campaign additions cannot yet be measured reliably: Zoho records when a contact was created, not when it joined the campaign.',
+    const scN = state(['b2b_scorecard']) === 'ok' ? (rows('b2b_scorecard')[0] || null) : null;
+    tile('1', 'Add', `Target: ${ADD_TARGET} a month`, scN && scN.status !== 'Behind' ? 'cc-b2-ok' : 'cc-b2-wait', intF(ppl.length), 'B2B prospects, including ' + intF(fnN) + ' from the founder network', [
+      scN ? `${intF(scN.actual)} of ${intF(ADD_TARGET)} added this month; ${intF(scN.remaining)} to go (scorecard above).` : 'This month’s additions show in the scorecard above once Zoho loads.',
       `${intF(incomplete)} have no company or no title, so they can’t be judged as partners yet.`,
       `${intF(clients)} tagged B2B are client prospects (a client deal, no partner deal). Partners refer buyers; they aren’t buyers.`,
-      'Monthly target: 10 or 50 new partners, awaiting Mack.',
     ], [['1', 'SOP 1 Add']]);
     tile('2', 'Select', `Confirmed: ${MONDAY} every Monday`, 'cc-b2-ok', intF(ppl.filter((p) => p.priority === '5').length), 'in the P5 backlog', [
       `${intF(mon.length)} can be offered in the Monday queue; ${intF(strong)} show three or more signs of a good partner.`,
@@ -633,7 +758,7 @@
       if (n) press(li, () => showPeople(label[0].toUpperCase() + label.slice(1), ppl.filter(keep), fix));
       dqBody.append(li);
     });
-    [['Not recorded', 'when a contact joined the campaign, when its stage changed, when a LinkedIn request was sent or accepted, and who did each piece of work.'], ['Awaiting Mack', 'the monthly acquisition target (10 or 50), per-rep targets, stage definitions, follow-up cadence, skip cooldown and status colors.']].forEach(([k, v]) => {
+    [['Not recorded', 'when a contact joined the campaign, when its stage changed, when a LinkedIn request was sent or accepted, and who did each piece of work.'], ['Awaiting Mack', 'per-rep targets, stage definitions, follow-up cadence, skip cooldown and status colors.']].forEach(([k, v]) => {
       const li = el('li', 'cc-b2-dqi cc-b2-note'); li.append(el('b', null, k), el('span', null, v)); dqBody.append(li);
     });
   };
@@ -812,6 +937,119 @@
     const first = rows('b2b_mail')[0] || {};
     const boxes = first.mailboxes || 'info@, hemang@';
     mailFoot.textContent = `Mail as of ${first.as_of ? dayF(ctDay(first.as_of)) + ' (CT)' : 'the last refresh'}. Covers ${boxes}; mail sent only from another mailbox, a personal address or LinkedIn won’t show, so “they wrote last” can mean someone already answered elsewhere. Check before replying.`;
+  };
+
+  const monthF = (mo, style) => new Date(mo + '-01T00:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', month: style || 'long' });
+  const showAdded = (title, list, note) => {
+    drill.querySelector('h3').textContent = title + ' (' + intF(list.length) + ')';
+    const tbl = el('table', 'cc-tbl');
+    const th = el('thead'); const hr = el('tr');
+    ['Name', 'Company', 'Added', 'LinkedIn', 'Source', 'Assigned to', 'Counts toward 50'].forEach((x) => { const c = el('th', null, x); c.scope = 'col'; hr.append(c); });
+    th.append(hr); tbl.append(th);
+    const tb = el('tbody');
+    list.slice().sort((a, b) => b.day.localeCompare(a.day) || String(a.name).localeCompare(String(b.name))).forEach((r) => {
+      const tr = el('tr');
+      const n = el('td'); n.append(link('Contacts', r.id, r.name)); tr.append(n);
+      const a = el('td'); if (r.account_id) a.append(link('Accounts', r.account_id, r.account)); else a.textContent = 'No company'; tr.append(a);
+      tr.append(el('td', null, dayF(r.day)));
+      const li = el('td'); if (r.linkedin) { const x = el('a', 'cc-zlink', 'Profile'); x.href = r.linkedin; x.target = '_blank'; x.rel = 'noopener'; li.append(x); } else li.textContent = 'Missing'; tr.append(li);
+      tr.append(el('td', null, r.source), el('td', null, r.assigned || 'Not assigned'), el('td', r.counted ? null : 'cc-b2-late', r.counted ? 'Yes' : r.reason));
+      tb.append(tr);
+    });
+    tbl.append(tb);
+    drillBody.replaceChildren(tbl);
+    if (note) drillBody.prepend(el('p', 'cc-b2-insight', note));
+    drill.hidden = false;
+    drill.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const drawScore = () => {
+    const st = state(['b2b_scorecard']);
+    scoreBody.replaceChildren();
+    scoreFoot.textContent = '';
+    scoreState.className = 'cc-b2-state';
+    scoreState.textContent = '';
+    if (st !== 'ok') {
+      scoreBody.append(el('p', st === 'error' ? 'cc-b2-bad' : 'cc-b2-insight', st === 'error' ? 'The B2B contact list didn’t load from Zoho, so this month’s additions can’t be counted. Reload, or check the source in the dashboard menu.' : 'Counting this month’s additions from Zoho…'));
+      return;
+    }
+    const sc = rows('b2b_scorecard')[0];
+    const all = rows('b2b_added_rows');
+    if (!sc || !all.length) {
+      scoreBody.append(el('p', 'cc-b2-insight', 'No contacts carry the “May 2026 - 100 B2B” tag yet. Add the first one with the SOP; it shows here once Zoho has it.'));
+      return;
+    }
+    const inMonth = all.filter((r) => r.month === sc.month);
+    const counted = inMonth.filter((r) => r.counted);
+    scoreState.textContent = sc.status;
+    scoreState.classList.add(sc.status === 'Behind' ? 'cc-b2-wait' : 'cc-b2-ok');
+
+    /* Focal number, bar and pace. */
+    const main = el('div', 'cc-b2-scoremain');
+    const big = el('p', 'cc-b2-scorebig');
+    big.classList.add(sc.actual >= sc.target ? 'cc-b2-scoremet' : 'cc-b2-scoreshort');
+    big.append(el('b', null, intF(sc.actual)), el('span', null, 'of ' + intF(sc.target)));
+    const bigLabel = el('p', 'cc-b2-scorelabel', `qualified partner prospects added in ${monthF(sc.month)}`);
+    press(big, () => showAdded(`Counted toward ${monthF(sc.month)}’s target`, counted, 'Tagged “May 2026 - 100 B2B” and created in Zoho this month, with name, company and LinkedIn filled, not labeled only Client and not a repeat.'));
+    big.title = 'List the contacts in this count';
+    const bar = el('div', 'cc-b2-scorebar');
+    bar.setAttribute('role', 'img');
+    bar.setAttribute('aria-label', `${sc.actual} of ${sc.target} added; ${sc.expected} expected by today`);
+    const fill = el('i'); fill.style.width = Math.min(100, sc.pct * 100) + '%'; bar.append(fill);
+    const mark = el('span', 'cc-b2-scoremark'); mark.style.left = Math.min(100, (sc.expected / sc.target) * 100) + '%'; mark.title = `Where the month should be by today: ${sc.expected}`; bar.append(mark);
+    const barKey = el('p', 'cc-b2-scorekey');
+    barKey.textContent = `${Math.round(sc.pct * 100)}% of the target. The tick marks where the month should be by today: ${intF(sc.expected)} after ${intF(sc.workdays_elapsed)} of ${intF(sc.workdays_total)} weekdays.`;
+    main.append(big, bigLabel, bar, barKey);
+
+    const facts = el('dl', 'cc-b2-scorefacts');
+    const fact = (k, v, sub, go) => {
+      const d = el('div', 'cc-b2-scorefact');
+      d.append(el('dt', null, k), el('dd', null, v));
+      if (sub) d.append(el('small', null, sub));
+      if (go) press(d, go);
+      facts.append(d);
+    };
+    fact('Still needed', intF(sc.remaining), sc.remaining ? (sc.workdays_left ? `${intF(sc.workdays_left)} weekdays left` : 'The month is over') : 'Target met');
+    fact('Pace needed', sc.remaining && sc.per_week != null ? intF(sc.per_week) + ' a week' : '—', sc.remaining && sc.per_day != null ? `About ${sc.per_day < 1 ? sc.per_day.toFixed(1) : intF(Math.ceil(sc.per_day))} each weekday` : 'No more needed this month');
+    fact('This week', intF(sc.week), `${intF(sc.last_week)} last week. Weeks start Monday, CT.`, () => showAdded('Counted this week', counted.filter((r) => r.day >= (() => { const t = new Date(sc.today + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); })())));
+    const diff = sc.actual - sc.prev_actual;
+    fact(monthF(sc.prev_month) + ' total', intF(sc.prev_actual), diff === 0 ? `${monthF(sc.month)} has matched it so far` : `${monthF(sc.month)} is ${intF(Math.abs(diff))} ${diff > 0 ? 'ahead' : 'behind'} so far`, () => showAdded(`Counted toward ${monthF(sc.prev_month)}`, all.filter((r) => r.month === sc.prev_month && r.counted)));
+    const top = el('div', 'cc-b2-scoretop');
+    top.append(main, facts);
+
+    /* Supporting: the monthly trend. */
+    const sub = el('div', 'cc-b2-scoresub');
+    const trend = el('figure', 'cc-b2-trend');
+    trend.append(el('figcaption', null, `Counted per month, last four months. The dashed line is the target of ${ADD_TARGET}.`));
+    const cols = el('div', 'cc-b2-trendcols');
+    cols.style.gridTemplateColumns = `repeat(${sc.trend.length}, minmax(0, 1fr))`;
+    const scale = Math.max(ADD_TARGET * 1.25, ...sc.trend.map((t2) => t2.actual));
+    sc.trend.forEach((t2) => {
+      const c = el('div', 'cc-b2-trendcol' + (t2.month === sc.month ? ' cc-b2-trendnow' : '') + (t2.actual >= ADD_TARGET ? ' cc-b2-trendmet' : ''));
+      const b = el('span', 'cc-b2-trendbar');
+      const i = el('i'); i.style.height = Math.min(100, (t2.actual / scale) * 100) + '%';
+      const tl = el('span', 'cc-b2-trendtl'); tl.style.bottom = (ADD_TARGET / scale) * 100 + '%';
+      b.append(i, tl);
+      if (t2.actual > scale) b.classList.add('cc-b2-trendclip');
+      c.append(el('b', null, intF(t2.actual)), b, el('small', null, monthF(t2.month, 'short')));
+      c.title = `${monthF(t2.month)}: ${t2.actual} counted of ${t2.added} added`;
+      press(c, () => showAdded(`Added in ${monthF(t2.month)}`, all.filter((r) => r.month === t2.month)));
+      cols.append(c);
+    });
+    trend.append(cols);
+    sub.append(trend);
+
+    scoreBody.append(top, sub);
+    const notCounted = inMonth.filter((r) => !r.counted);
+    const foot = [];
+    if (notCounted.length) foot.push(`${intF(notCounted.length)} more ${notCounted.length === 1 ? 'was' : 'were'} added this month but ${notCounted.length === 1 ? 'doesn’t' : 'don’t'} count yet (missing fields, labeled Client or a repeat).`);
+    foot.push('Counted by the date Zoho created the contact; contacts tagged later don’t count as new.');
+    scoreFoot.replaceChildren(document.createTextNode(foot.join(' ') + ' '));
+    if (notCounted.length) {
+      const fix = el('button', 'cc-go', 'List the ones to fix'); fix.type = 'button';
+      fix.addEventListener('click', () => showAdded(`Added in ${monthF(sc.month)} but not counted`, notCounted, 'Fill the missing fields in Zoho, remove the B2B tag from clients, and merge repeats; they count once fixed.'));
+      scoreFoot.append(fix);
+    }
   };
 
   const drawMonday = () => {
