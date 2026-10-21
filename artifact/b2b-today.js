@@ -740,6 +740,30 @@
     if (d) { d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); const s = d.querySelector('summary'); if (s) s.focus({ preventScroll: true }); }
   });
 
+  /* Any list of rows (drill): cols are [header, (row) => text or Node]. */
+  const showTable = (title, cols, list, note) => {
+    drill.querySelector('h3').textContent = title + ' (' + intF(list.length) + ')';
+    const tbl = el('table', 'cc-tbl');
+    const th = el('thead'); const hr = el('tr');
+    cols.forEach(([x]) => { const c = el('th', null, x); c.scope = 'col'; hr.append(c); });
+    th.append(hr); tbl.append(th);
+    const tb = el('tbody');
+    list.forEach((r) => { const tr = el('tr'); cols.forEach(([, f]) => { const v = f(r); const td = el('td'); if (v instanceof Node) td.append(v); else td.textContent = v == null || v === '' ? '—' : v; tr.append(td); }); tb.append(tr); });
+    tbl.append(tb);
+    drillBody.replaceChildren(list.length ? tbl : el('p', 'cc-b2-insight', 'Nobody here.'));
+    if (note) drillBody.prepend(el('p', 'cc-b2-insight', note));
+    drill.hidden = false;
+    drill.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  const rowOpens = (tr, id) => {
+    if (!id) return tr;
+    tr.classList.add('cc-b2-rowlink');
+    tr.title = 'Open the contact in Zoho CRM';
+    tr.addEventListener('click', (e) => { if (e.target.closest('a, button, input, select')) return; window.open(ZOHO + 'Contacts/' + id, '_blank', 'noopener'); });
+    return tr;
+  };
+  const peopleById = () => new Map(rows('b2b_people').map((p) => [p.id, p]));
+
   /* People list (drill). */
   const showPeople = (title, list, note) => {
     drill.querySelector('h3').textContent = title + ' (' + intF(list.length) + ')';
@@ -946,7 +970,19 @@
         const b = el('i'); b.style.height = (w.meetings / peak) * 100 + '%';
         col.append(el('b', null, intF(w.meetings)), el('span', 'cc-b2-wbar'), el('small', null, dayF(w.week)));
         col.querySelector('.cc-b2-wbar').append(b);
-        col.title = `Week of ${dayF(w.week)}: ${w.meetings} meetings`;
+        col.title = `Week of ${dayF(w.week)}: ${w.meetings} meetings. Select to list them.`;
+        press(col, () => {
+          const ids = peopleById();
+          const end = new Date(new Date(w.week + 'T00:00:00Z').getTime() + 7 * 864e5).toISOString().slice(0, 10);
+          const list = rows('meetings').filter((m) => m.Start_DateTime && m.Who_Id_id && ids.has(String(m.Who_Id_id)) && ctDay(m.Start_DateTime) >= w.week && ctDay(m.Start_DateTime) < end)
+            .sort((a, b2) => String(a.Start_DateTime).localeCompare(String(b2.Start_DateTime)));
+          showTable(`Meetings with B2B prospects, week of ${dayF(w.week)}`, [
+            ['When (CT)', (m) => new Date(m.Start_DateTime).toLocaleString('en-US', { timeZone: 'America/Chicago', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })],
+            ['Meeting', (m) => m.Event_Title],
+            ['With', (m) => link('Contacts', m.Who_Id_id, m.Who_Id || ids.get(String(m.Who_Id_id)).name)],
+            ['Company', (m) => { const p = ids.get(String(m.Who_Id_id)); return p && p.account_id ? link('Accounts', p.account_id, p.account) : (p && p.account) || 'No company'; }],
+          ], list, 'Every meeting logged in Zoho against a B2B prospect that week, by meeting date.');
+        });
         weekBody.append(col);
       });
       const last4 = wk.slice(-4).reduce((t, w) => t + w.meetings, 0);
@@ -1039,6 +1075,20 @@
     return `Email: ${intF(a.people_sent)} prospects emailed this week (${intF(b.people_sent)} last week); ${intF(a.received)} emails from prospects this week (${intF(b.received)} last week). LinkedIn messages and calls are not recorded yet.`;
   };
 
+  const MAIL_COLS = [
+    ['Name', (m) => link('Contacts', m.id, m.name)],
+    ['Company', (m) => (m.account_id ? link('Accounts', m.account_id, m.account) : m.account || 'No company')],
+    ['Their last email', (m) => (m.last_in ? dayF(ctDay(m.last_in)) : 'Never')],
+    ['Our last email', (m) => (m.last_out ? dayF(ctDay(m.last_out)) + (m.last_out_by ? ', ' + m.last_out_by : '') : 'Never')],
+    ['Emails out / in', (m) => intF(m.n_out) + ' / ' + intF(m.n_in)],
+    ['Status', (m) => m.status],
+  ];
+  const showMailPeople = (title, list, note) => showTable(title, MAIL_COLS, list.slice().sort((a, b) => String(a.name).localeCompare(String(b.name))), note);
+  const showMailWeek = (w) => {
+    const ids = new Set((w._people || []).map(String));
+    const list = rows('b2b_mail_people').filter((m) => ids.has(String(m.id)));
+    showMailPeople(`Prospects we emailed, week of ${dayF(w.week)}`, list, `${intF(w.sent)} emails went to ${intF(w.people_sent)} prospects that week and ${intF(w.received)} came back. Who wrote to us in a given week isn’t kept, only the count; “They wrote last” lists who wrote most recently.`);
+  };
   const drawMail = () => {
     if (mailMissing()) {
       [mailStats, mailWeeks, mailTools, mailBody].forEach((n) => n.replaceChildren());
@@ -1080,9 +1130,9 @@
     stat(intF(waiting.length), 'waiting on our reply', `They wrote last, in the last ${MAIL_RECENT} days. ${intF(by('They wrote last').length - waiting.length)} older.`, pick('They wrote last'), waiting.length ? 'cc-b2-mwarn' : null);
     if (thisW) {
       const d = lastW ? thisW.people_sent - lastW.people_sent : null;
-      stat(intF(thisW.people_sent), 'prospects emailed this week', lastW ? `${intF(lastW.people_sent)} last week (${d > 0 ? '+' : ''}${intF(d)}). Week starts Monday, CT.` : null, null);
+      stat(intF(thisW.people_sent), 'prospects emailed this week', lastW ? `${intF(lastW.people_sent)} last week (${d > 0 ? '+' : ''}${intF(d)}). Week starts Monday, CT.` : null, () => showMailWeek(thisW));
     }
-    stat(pct(wroteBack.length, emailed.length), 'of the prospects we emailed wrote back', `${intF(wroteBack.length)} of ${intF(emailed.length)}. Automatic replies and meeting responses don’t count.`, pick('No reply yet'));
+    stat(pct(wroteBack.length, emailed.length), 'of the prospects we emailed wrote back', `${intF(wroteBack.length)} of ${intF(emailed.length)}. Automatic replies and meeting responses don’t count.`, () => showMailPeople('Emailed by us and wrote back', wroteBack, `${intF(wroteBack.length)} of the ${intF(emailed.length)} prospects we emailed have written back.`));
     stat(intF(withAddr.length), 'of ' + intF(mp.length) + ' prospects have an email address in Zoho', `${intF(mp.length - withAddr.length)} can’t be matched.`, pick('No address'));
 
     /* Weeks: sent and received, paired bars. */
@@ -1097,7 +1147,8 @@
         bars.append(bs, br);
         const nums = el('span', 'cc-b2-mnums'); nums.append(el('b', null, intF(w.sent)), document.createTextNode(' / '), el('b', null, intF(w.received)));
         col.append(nums, bars, el('small', null, dayF(w.week)));
-        col.title = `Week of ${dayF(w.week)}: ${w.sent} emails sent to ${w.people_sent} prospects, ${w.received} received`;
+        col.title = `Week of ${dayF(w.week)}: ${w.sent} emails sent to ${w.people_sent} prospects, ${w.received} received. Select to list the prospects we emailed.`;
+        press(col, () => showMailWeek(w));
         mailWeeks.append(col);
       });
       mailKey.replaceChildren();
@@ -1138,7 +1189,7 @@
     th.append(hr); tbl.append(th);
     const tb = el('tbody');
     list.slice(0, mailAll ? 300 : 12).forEach((m) => {
-      const tr = el('tr');
+      const tr = rowOpens(el('tr'), m.id);
       const n = el('td'); n.append(link('Contacts', m.id, m.name)); tr.append(n);
       const ac = el('td'); if (m.account_id) ac.append(link('Accounts', m.account_id, m.account)); else ac.textContent = 'No company'; tr.append(ac);
       if (noMail) {
@@ -1257,8 +1308,9 @@
       if (go) press(d, go);
       facts.append(d);
     };
-    fact('Still needed', intF(sc.remaining), sc.remaining ? (sc.workdays_left ? `${intF(sc.workdays_left)} weekdays left` : 'The month is over') : 'Target met');
-    fact('Pace needed', sc.remaining && sc.per_week != null ? intF(sc.per_week) + ' a week' : '—', sc.remaining && sc.per_day != null ? `About ${sc.per_day < 1 ? sc.per_day.toFixed(1) : intF(Math.ceil(sc.per_day))} each weekday` : 'No more needed this month');
+    const soFar = () => showAdded(`Counted toward ${monthF(sc.month)}’s target`, counted, `${intF(sc.actual)} counted so far against ${intF(sc.target)}: ${sc.remaining ? intF(sc.remaining) + ' still needed over ' + intF(sc.workdays_left) + ' weekdays left, about ' + (sc.per_week != null ? intF(sc.per_week) : '—') + ' a week.' : 'the target is met.'}`);
+    fact('Still needed', intF(sc.remaining), sc.remaining ? (sc.workdays_left ? `${intF(sc.workdays_left)} weekdays left` : 'The month is over') : 'Target met', soFar);
+    fact('Pace needed', sc.remaining && sc.per_week != null ? intF(sc.per_week) + ' a week' : '—', sc.remaining && sc.per_day != null ? `About ${sc.per_day < 1 ? sc.per_day.toFixed(1) : intF(Math.ceil(sc.per_day))} each weekday` : 'No more needed this month', soFar);
     fact('This week', intF(sc.week), `${intF(sc.last_week)} last week. Weeks start Monday, CT.`, () => showAdded('Counted this week', counted.filter((r) => r.day >= (() => { const t = new Date(sc.today + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); })())));
     const diff = sc.actual - sc.prev_actual;
     fact(monthF(sc.prev_month) + ' total', intF(sc.prev_actual), diff === 0 ? `${monthF(sc.month)} has matched it so far` : `${monthF(sc.month)} is ${intF(Math.abs(diff))} ${diff > 0 ? 'ahead' : 'behind'} so far`, () => showAdded(`Counted toward ${monthF(sc.prev_month)}`, all.filter((r) => r.month === sc.prev_month && r.counted)));
@@ -1457,7 +1509,7 @@
     th.append(hr); tbl.append(th);
     const tb = el('tbody');
     list.forEach((m, i) => {
-      const tr = el('tr');
+      const tr = rowOpens(el('tr'), m.id);
       const who = el('td'); who.append(link('Contacts', m.id, m.name)); if (m.account) who.append(el('small', null, m.account));
       const nx = el('td', m.status === 'Untouched' ? 'cc-b2-late' : null); nx.append(document.createTextNode(m.next + ' ')); if (m.sop) nx.append(sopBtn(m.sop));
       const ev = el('td'); const chips = el('span', 'cc-b2-ev'); m.evidence.forEach((x) => chips.append(el('span', null, x))); if (!m.evidence.length) chips.append(el('span', 'cc-b2-none', 'No evidence on record')); ev.append(chips);
@@ -1561,11 +1613,18 @@
     }
     const byStage = (k) => stages.find((s) => s.stage === k) || { total: 0, today: 0, week: 0, month: 0, spark: [] };
 
+    const stageList = (k) => ppl.filter((p) => p.cat === k).slice().sort((a, b) => (k === 0 ? String(a.name).localeCompare(String(b.name)) : String(b.last || '').localeCompare(String(a.last || '')) || String(a.name).localeCompare(String(b.name))));
+    const ownerNote = ' Owner shows Zoho’s Assigned field, since Contact Owner is the shared Transpire login.';
     mtgBar.replaceChildren(...MTG_STAGES.map((s) => {
       const li = el('li', 'cc-mt-step cc-mt-s' + s.k);
       li.append(el('span', null, s.label), el('b', null, intF(byStage(s.k).total)));
+      press(li, () => showMtg(s.label, stageList(s.k), s.def + '.' + ownerNote));
+      li.setAttribute('aria-label', `${s.label}: ${intF(byStage(s.k).total)} prospects. Open the list.`);
       return li;
     }));
+    const tday = todayCT();
+    const tmon = (() => { const t = new Date(tday + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); })();
+    const periodStart = { Today: tday, 'This week': tmon, 'This month': tday.slice(0, 8) + '01' };
 
     const unmarked = ppl.flatMap((p) => p.unmarked.map((u) => ({ p, u }))).sort((a, b) => b.u.at.localeCompare(a.u.at));
     if (unmarked.length) {
@@ -1601,7 +1660,18 @@
       top.append(delta);
       if (prevDay && (r.change != null || r.prev === 0)) top.append(el('span', 'cc-mt-vs', 'vs ' + dayF(prevDay)));
       const dl = el('dl', 'cc-mt-periods');
-      [['Today', r.today], ['This week', r.week], ['This month', r.month]].forEach(([k, v]) => { const d = el('div'); d.append(el('dt', null, k), el('dd', null, intF(v))); dl.append(d); });
+      [['Today', r.today], ['This week', r.week], ['This month', r.month]].forEach(([k, v]) => {
+        const d = el('div', 'cc-mt-pcell'); d.append(el('dt', null, k), el('dd', null, intF(v)));
+        const from = periodStart[k];
+        const go = (e) => {
+          e.stopPropagation(); e.preventDefault();
+          const list = ppl.filter((p) => p.entered[s.k] && p.entered[s.k] >= from && p.entered[s.k] <= tday).sort((a, b) => String(b.entered[s.k]).localeCompare(String(a.entered[s.k])) || String(a.name).localeCompare(String(b.name)));
+          showMtg(`${s.label}: newly reached ${k.toLowerCase()}`, list, (s.k === 0 ? 'Added to Zoho in the period and not met yet.' : `Reached ${s.label.toLowerCase()} with a completed meeting in the period.`) + ownerNote);
+        };
+        d.tabIndex = 0; d.setAttribute('role', 'button'); d.setAttribute('aria-label', `${s.label}, ${k.toLowerCase()}: ${intF(v)} newly reached. Open the list.`);
+        d.addEventListener('click', go); d.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') go(e); });
+        dl.append(d);
+      });
       c.append(h, top, el('p', 'cc-mt-def', s.def), el('p', 'cc-mt-ptitle', s.k === 0 ? 'Newly added, not met yet' : 'Newly reached this stage'), dl);
       const pts = r.spark || [];
       const real = pts.filter((x) => x.n != null);

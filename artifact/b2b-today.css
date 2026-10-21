@@ -300,3 +300,13 @@
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .cc-mt { --mt-red: #ff5a66; --mt-orange: #ff8a3d; --mt-amber: #f5c542; --mt-lime: #93d66c; --mt-green: #3ccf7a; --mt-red-ink: #ff7a84; --mt-orange-ink: #ffa264; --mt-amber-ink: #f7cf63; --mt-lime-ink: #a6e083; --mt-green-ink: #5ddb92; } }
 :root[data-theme="dark"] .cc-mt { --mt-red: #ff5a66; --mt-orange: #ff8a3d; --mt-amber: #f5c542; --mt-lime: #93d66c; --mt-green: #3ccf7a; --mt-red-ink: #ff7a84; --mt-orange-ink: #ffa264; --mt-amber-ink: #f7cf63; --mt-lime-ink: #a6e083; --mt-green-ink: #5ddb92; }
 @media (prefers-reduced-motion: reduce) { .cc-mt-kpi { transition: none; } }
+.cc-mt-step { cursor: pointer; }
+.cc-mt-step:hover { filter: brightness(0.97); }
+.cc-mt-step:focus-visible { outline: 2px solid var(--mt-c); outline-offset: 2px; }
+.cc-mt-pcell { cursor: pointer; border-radius: 6px; padding: 2px 4px; margin: -2px -4px; }
+.cc-mt-pcell:hover { background: color-mix(in oklab, var(--mt-c) 14%, transparent); }
+.cc-mt-pcell:focus-visible { outline: 2px solid var(--mt-c); outline-offset: 1px; }
+.cc-b2-rowlink { cursor: pointer; }
+.cc-b2-rowlink:hover td { background: color-mix(in oklab, var(--color-fg) 5%, transparent); }
+.cc-b2-wcol, .cc-b2-mcol { cursor: pointer; }
+.cc-b2-wcol:hover, .cc-b2-mcol:hover { background: color-mix(in oklab, var(--color-fg) 5%, transparent); border-radius: 6px; }
