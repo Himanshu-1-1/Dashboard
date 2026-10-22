@@ -466,7 +466,7 @@
 .cc-mp-list .cc-b2-sop { margin: 0 0 6px; }
 
 /* SOP links as an animated playbook page. */
-.cc-sop-btn { --sop-ink: var(--color-fg); --sop-accent: var(--color-ok); display: inline-grid; place-items: center; width: 42px; height: 42px; padding: 0; border-radius: 12px; flex: none;
+.cc-sop-btn { --sop-ink: var(--color-fg); --sop-accent: var(--b2-c1, #3987e5); display: inline-grid; place-items: center; width: 42px; height: 42px; padding: 0; border-radius: 12px; flex: none;
   background: color-mix(in oklab, var(--sop-accent) 7%, var(--color-panel)); border-color: color-mix(in oklab, var(--sop-accent) 30%, var(--color-border-line)); overflow: visible; }
 .cc-sop-ico { width: 26px; height: 30px; overflow: visible; }
 .cc-sop-page { transform-origin: 16px 32px; transition: transform .35s cubic-bezier(.34, 1.56, .64, 1); }
