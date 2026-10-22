@@ -4,7 +4,8 @@
 Zoho contact IDs, meeting times, flags and our own mailbox names only. The inputs (contact names and addresses, raw
 calendar events with subjects) live in a scratch folder and are never committed, uploaded or pushed.
 
-  build   DIR   DIR/contacts.csv + DIR/events.jsonl -> DIR/b2b_cal.json
+  build   DIR   DIR/contacts.csv + DIR/events.jsonl -> DIR/b2b_cal.json: one row per meeting {Zoho_Id, at, cancelled,
+                cals, by, as_of}, plus one row with at = null for each contact searched with no meeting found
   jsfile  DIR   DIR/b2b_cal.json -> DIR/cal.js (window.__CAL__), the file the cal-snapshot branch carries for the
                 locked public site; refuses any field that isn't an ID, time, flag or mailbox name
 
@@ -20,7 +21,9 @@ search that failed; build then stops without writing anything):
 An event counts for a contact when
   - the contact's address is the organizer, an attendee, or the booking customer ("Email : x" in the body), or
   - the subject names them: their last name plus their first name (or a name starting with it, or a nickname it starts
-    with, at least 3 letters), and the subject isn't an internal note (prep, review, reminder, placeholder, travel).
+    with, at least 3 letters), and the subject isn't an internal note (prep, review, reminder, placeholder, travel), or
+  - it is a booking ("30-Min Meeting with X") where X is just their first name, at least 4 letters and shared by no
+    other contact in contacts.csv.
 All-day events never count. Copies of one meeting on several calendars (same contact, same start minute) are one
 meeting; it is cancelled only when every copy is cancelled.
 """
@@ -38,8 +41,8 @@ WINDOWS_TZ = {
     'india standard time': 'Asia/Kolkata',
 }
 INTERNAL = re.compile(r'\b(prep|prepare|preparation|review|reminder|placeholder|travel|drive|block|need to set|hold)\b', re.I)
-BOOKING_SUFFIXES = {'jr', 'sr', 'ii', 'iii', 'phd', 'md', 'mba', 'ed', 'd', 'dr', 'cpa', 'pmp'}
-EMAIL = re.compile(r'Email\s*:\s*([^\s<>"\']+@[^\s<>"\']+)', re.I)
+SUFFIXES = {'jr', 'sr', 'ii', 'iii', 'phd', 'md', 'mba', 'ed', 'd', 'dr', 'cpa', 'pmp'}
+BOOKING_EMAIL = re.compile(r'Email\s*:\s*([^\s<>"\']+@[^\s<>"\']+)', re.I)
 EMAIL = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
 
@@ -97,7 +100,10 @@ def names_match(c, subject):
     return any(x == f or (len(f) >= 3 and x.startswith(f)) or (len(x) >= 3 and f.startswith(x)) for x in t if x not in c['last'])
 
 
-def counts_for(c, e):
+BOOKING_SUBJECT = re.compile(r'^\s*\d+\s*-?\s*min(ute)?s?\s+meeting\s+with\s+(.+?)\s*$', re.I)
+
+
+def counts_for(c, e, unique_first):
     people = {(e.get('organizer') or '').lower()} | {(a or '').lower() for a in (e.get('attendees') or [])}
     people |= {m.lower().rstrip('.,;') for m in BOOKING_EMAIL.findall(e.get('summary') or '')}
     if c['emails'] & people:
@@ -105,11 +111,18 @@ def counts_for(c, e):
     subject = e.get('subject') or ''
     if names_match(c, subject) and not INTERNAL.search(subject):
         return 'name'
+    b = BOOKING_SUBJECT.match(subject)
+    if b and c['first'] and len(c['first']) >= 4 and unique_first.get(c['first']) == 1 and tokens(b.group(2)) == [c['first']]:
+        return 'name'
     return None
 
 
 def build(d):
     contacts = load_contacts(d)
+    unique_first = {}
+    for c in contacts.values():
+        if c['first']:
+            unique_first[c['first']] = unique_first.get(c['first'], 0) + 1
     meets = {cid: {} for cid in contacts}
     seen = set()
     errors = []
@@ -131,7 +144,7 @@ def build(d):
             seen.add(cid)
             if e.get('all_day'):
                 continue
-            how = counts_for(contacts[cid], e)
+            how = counts_for(contacts[cid], e, unique_first)
             if not how:
                 continue
             start = to_utc(e.get('start'), e.get('start_tz'))
@@ -149,22 +162,22 @@ def build(d):
     rows = []
     for cid in contacts:
         ms = sorted(meets[cid].values(), key=lambda m: m['at'])
-        rows.append({
-            'Zoho_Id': cid,
-            'meetings': [{'at': m['at'], 'cancelled': m['cancelled'], 'cals': ','.join(c for c in CALS if c in m['cals']), 'by': m['by']} for m in ms],
-            'as_of': stamp(now),
-        })
+        for m in ms:
+            rows.append({'Zoho_Id': cid, 'at': m['at'], 'cancelled': m['cancelled'],
+                         'cals': ','.join(c for c in CALS if c in m['cals']), 'by': m['by'], 'as_of': stamp(now)})
+        if not ms:
+            rows.append({'Zoho_Id': cid, 'at': None, 'cancelled': False, 'cals': '', 'by': None, 'as_of': stamp(now)})
     with open(d + '/b2b_cal.json', 'w') as f:
         json.dump(rows, f)
-    held = sum(1 for r in rows for m in r['meetings'] if not m['cancelled'] and m['at'] <= stamp(now))
-    ahead = sum(1 for r in rows for m in r['meetings'] if not m['cancelled'] and m['at'] > stamp(now))
-    met = sum(1 for r in rows if any(not m['cancelled'] and m['at'] <= stamp(now) for m in r['meetings']))
-    print(json.dumps({'contacts': len(rows), 'contacts_with_hits': len(seen), 'contacts_met': met,
+    t = stamp(now)
+    held = sum(1 for r in rows if r['at'] and not r['cancelled'] and r['at'] <= t)
+    ahead = sum(1 for r in rows if r['at'] and not r['cancelled'] and r['at'] > t)
+    met = len({r['Zoho_Id'] for r in rows if r['at'] and not r['cancelled'] and r['at'] <= t})
+    print(json.dumps({'contacts': len(contacts), 'contacts_with_hits': len(seen), 'contacts_met': met,
                       'meetings_held': held, 'meetings_ahead': ahead}))
 
 
-ROW_FIELDS = {'Zoho_Id', 'meetings', 'as_of'}
-MEET_FIELDS = {'at', 'cancelled', 'cals', 'by'}
+ROW_FIELDS = {'Zoho_Id', 'at', 'cancelled', 'cals', 'by', 'as_of'}
 ISO = re.compile(r'^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$')
 
 
@@ -174,12 +187,15 @@ def jsfile(d):
     if not rows:
         sys.exit('b2b_cal.json is empty')
     for r in rows:
-        if set(r) - ROW_FIELDS or not re.fullmatch(r'\d+', str(r.get('Zoho_Id'))) or not ISO.match(r.get('as_of') or ''):
-            sys.exit('unexpected row, not publishing (extra fields, or a bad Zoho_Id or as_of)')
-        for m in r['meetings']:
-            if set(m) - MEET_FIELDS or not ISO.match(m.get('at') or '') or not isinstance(m.get('cancelled'), bool) \
-                    or m.get('by') not in ('email', 'name') or any(c not in CALS for c in m.get('cals', '').split(',')):
-                sys.exit('unexpected meeting field or value, not publishing')
+        if set(r) != ROW_FIELDS or not re.fullmatch(r'\d+', str(r.get('Zoho_Id'))) or not ISO.match(r.get('as_of') or ''):
+            sys.exit('unexpected row, not publishing (wrong fields, or a bad Zoho_Id or as_of)')
+        if r['at'] is None:
+            if r['cals'] or r['by'] is not None:
+                sys.exit('a no-meeting row carries meeting values, not publishing')
+            continue
+        if not ISO.match(r['at']) or not isinstance(r['cancelled'], bool) or r['by'] not in ('email', 'name') \
+                or any(c not in CALS for c in r['cals'].split(',')):
+            sys.exit('unexpected meeting value, not publishing')
     body = {'generated_at': stamp(datetime.now(timezone.utc)), 'datasets': {'b2b_cal': rows}}
     with open(d + '/cal.js', 'w') as f:
         f.write('window.__CAL__ = ' + json.dumps(body) + ';\n')

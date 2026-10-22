@@ -540,11 +540,11 @@
      A meeting counts only when Meeting Status is Completed and it has started; one per contact per start minute.
      Everything over time is rebuilt from meeting dates and the day Zoho created each contact; nothing is estimated. */
   const MTG_STAGES = [
-    { k: 0, label: 'Never Met', def: 'No completed meetings', icon: 'person' },
-    { k: 1, label: 'Met Once', def: 'One completed meeting', icon: 'person' },
-    { k: 2, label: 'Met Twice', def: 'Two completed meetings', icon: 'group' },
-    { k: 3, label: 'Met Thrice', def: 'Three completed meetings', icon: 'group' },
-    { k: 4, label: 'Met 4+ Times', def: '4 or more completed meetings', icon: 'group' },
+    { k: 0, label: 'Never Met', def: 'No meeting held', icon: 'person' },
+    { k: 1, label: 'Met Once', def: 'One meeting held', icon: 'person' },
+    { k: 2, label: 'Met Twice', def: 'Two meetings held', icon: 'group' },
+    { k: 3, label: 'Met Thrice', def: 'Three meetings held', icon: 'group' },
+    { k: 4, label: 'Met 4+ Times', def: '4 or more meetings held', icon: 'group' },
   ];
   const MTG_WEEKS = 12;
   /* The meeting-frequency section covers Priority 1 (two-way conversation) only. */
@@ -561,7 +561,12 @@
     fn: (b2b_people, b2b_added, b2b_meetings, b2b_cal) => {
       const now = Date.now();
       const added = new Map(b2b_added.map((r) => [String(r.id), r]));
-      const cal = new Map((b2b_cal || []).map((r) => [String(r.Zoho_Id), r]));
+      const cal = new Map();
+      (b2b_cal || []).forEach((r) => {
+        const k = String(r.Zoho_Id);
+        if (!cal.has(k)) cal.set(k, { as_of: r.as_of || null, meetings: [] });
+        if (r.at) cal.get(k).meetings.push(r);
+      });
       const by = new Map();
       b2b_meetings.forEach((m) => {
         const id = m.Who_Id_id ? String(m.Who_Id_id) : null;
@@ -589,10 +594,10 @@
         b.done.forEach((t) => mark(t, 'zoho'));
         let next = b.next;
         let cancelled = 0;
-        (c ? c.meetings || [] : []).forEach((m) => {
+        (c ? c.meetings : []).forEach((m) => {
           const t = Date.parse(m.at);
           if (!Number.isFinite(t)) return;
-          if (m.cancelled) { if (t <= now) cancelled += 1; return; }
+          if (m.cancelled === true || m.cancelled === 'true') { if (t <= now) cancelled += 1; return; }
           if (t > now) { if (next == null || t < next) next = t; return; }
           mark(t, 'outlook', m.cals);
         });
@@ -672,7 +677,7 @@
      contact, doesn't count; it is shown on the row so the link can be fixed. */
   dash.calc('b2b_partner_deals', {
     title: 'Met B2B prospects and their Referral Partner deals',
-    description: 'One row per B2B prospect with at least one completed meeting (Meeting Status Completed, start time passed): most recent completed meeting, Assigned, the Referral Partner deals whose Contact Name is this person (created) and any Referral Partner deal on their company that is linked to someone else or to no contact (not counted, shown for fixing).',
+    description: 'One row per B2B prospect with at least one meeting held (Zoho Meeting Status Completed with start time passed, or a past uncancelled meeting on a team Outlook calendar): most recent meeting, Assigned, the Referral Partner deals whose Contact Name is this person (created) and any Referral Partner deal on their company that is linked to someone else or to no contact (not counted, shown for fixing).',
     inputs: ['mtg_people', 'deals_tagged'],
     fn: (mtg_people, deals_tagged) => {
       const rp = deals_tagged.filter((d) => d.kind === 'Partnership');
@@ -719,7 +724,7 @@
         if (!p.dnc) {
           const why = [];
           if (p.priority === '1') why.push('Priority 1');
-          if (m.n) why.push(`${m.n} completed meeting${m.n === 1 ? '' : 's'}`);
+          if (m.n) why.push(`${m.n} meeting${m.n === 1 ? '' : 's'} held`);
           if (m.next) why.push('meeting scheduled');
           if (m.unmarked.length) why.push(`${m.unmarked.length} past meeting${m.unmarked.length === 1 ? '' : 's'} not marked Completed`);
           if (!m.n && !m.next && !m.unmarked.length && p.met > 0) why.push(`Zoho counts ${p.met} meeting${p.met === 1 ? '' : 's'}`);
@@ -2056,7 +2061,7 @@
         const go = (e) => {
           e.stopPropagation(); e.preventDefault();
           const list = ppl.filter((p) => p.entered[s.k] && p.entered[s.k] >= from && p.entered[s.k] <= tday).sort((a, b) => String(b.entered[s.k]).localeCompare(String(a.entered[s.k])) || String(a.name).localeCompare(String(b.name)));
-          showMtg(`${s.label}: newly reached ${k.toLowerCase()}`, list, (s.k === 0 ? 'Added to Zoho in the period and not met yet.' : `Reached ${s.label.toLowerCase()} with a completed meeting in the period.`) + ownerNote);
+          showMtg(`${s.label}: newly reached ${k.toLowerCase()}`, list, (s.k === 0 ? 'Added to Zoho in the period and not met yet.' : `Reached ${s.label.toLowerCase()} with a meeting held in the period.`) + ownerNote);
         };
         d.tabIndex = 0; d.setAttribute('role', 'button'); d.setAttribute('aria-label', `${s.label}, ${k.toLowerCase()}: ${intF(v)} newly reached. Open the list.`);
         d.addEventListener('click', go); d.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') go(e); });
@@ -2072,11 +2077,11 @@
       if (s.k === 0 && r.total) c.append(el('p', 'cc-mt-flag', 'Action required: no meeting yet'));
       const members = ppl.filter((p) => p.cat === s.k).slice().sort((a, b) => (s.k === 0 ? String(a.name).localeCompare(String(b.name)) : String(b.last || '').localeCompare(String(a.last || '')) || String(a.name).localeCompare(String(b.name))));
       const notes = {
-        0: 'No completed meeting in Zoho. Ask connected prospects for a first meeting (SOP 4); past meetings not marked Completed are listed above the cards.',
-        1: 'One completed meeting. Follow up and book the second.',
-        2: 'Two completed meetings: early repeat engagement.',
-        3: 'Three completed meetings: a developing relationship.',
-        4: 'Four or more completed meetings: our deepest relationships.',
+        0: 'No meeting held in Zoho or on a team calendar. Ask connected prospects for a first meeting (SOP 4); past meetings not marked Completed are listed above the cards.',
+        1: 'One meeting held. Follow up and book the second.',
+        2: 'Two meetings held: early repeat engagement.',
+        3: 'Three meetings held: a developing relationship.',
+        4: 'Four or more meetings held: our deepest relationships.',
       };
       press(c, () => showMtg(s.label, members, notes[s.k] + ' Owner shows Zoho’s Assigned field, since Contact Owner is the shared Transpire login.'));
       c.setAttribute('aria-label', `${s.label}: ${intF(r.total)} prospects, ${spoken}. Today ${intF(r.today)}, this week ${intF(r.week)}, this month ${intF(r.month)} newly entered. Open the list.`);
@@ -2189,8 +2194,8 @@
       c.setAttribute('aria-label', aria);
       return c;
     };
-    const met = tile('cc-pm-main', 'Partners Met', everyone.length, 'Unique contacts with a completed meeting, all time',
-      () => showTable('Partners met', pmCols, pmSort(everyone), 'Every May 2026 - 100 B2B contact with at least one meeting marked Completed in Zoho, most recent meeting first. ' + PM_OWNER_NOTE),
+    const met = tile('cc-pm-main', 'Partners Met', everyone.length, 'Unique contacts with a meeting held, all time',
+      () => showTable('Partners met', pmCols, pmSort(everyone), 'Every May 2026 - 100 B2B contact with at least one meeting held (Zoho Completed, or on a team Outlook calendar for Priority 1 and 99), most recent meeting first. ' + PM_OWNER_NOTE),
       `Partners met, all time: ${intF(everyone.length)}. Open the list.`);
     const allMade = everyone.filter((r) => r.created).length;
     met.append(el('p', 'cc-pm-sub cc-pm-split', `${intF(allMade)} with a deal, ${intF(everyone.length - allMade)} without`));
@@ -2272,7 +2277,7 @@
       right.append(chart);
     }
     const loose = missing.filter((r) => r.company_deals.length).length;
-    pmNote.textContent = `Met means at least one meeting marked Completed in Zoho${from ? `; ${periodName.toLowerCase()} counts partners whose first completed meeting falls in it (Central time${pmPeriod === 'week' ? ', weeks start Monday' : ''}), and their deals as they stand today` : ''}; ${intF(all.length)} = ${intF(made.length)} created + ${intF(missing.length)} not created. A deal counts only when its Deal Type is Referral Partner and its Contact Name is the person we met; a deal on the same company linked to someone else, or to no contact, doesn’t count${loose ? ` (${intF(loose)} met ${loose === 1 ? 'partner has' : 'partners have'} one; the list shows it so the link can be fixed)` : ''}.`;
+    pmNote.textContent = `Met means at least one meeting held: marked Completed in Zoho, or (for Priority 1 and 99) a past uncancelled meeting on a team Outlook calendar${from ? `; ${periodName.toLowerCase()} counts partners whose first meeting falls in it (Central time${pmPeriod === 'week' ? ', weeks start Monday' : ''}), and their deals as they stand today` : ''}; ${intF(all.length)} = ${intF(made.length)} created + ${intF(missing.length)} not created. A deal counts only when its Deal Type is Referral Partner and its Contact Name is the person we met; a deal on the same company linked to someone else, or to no contact, doesn’t count${loose ? ` (${intF(loose)} met ${loose === 1 ? 'partner has' : 'partners have'} one; the list shows it so the link can be fixed)` : ''}.`;
   };
 
   /* Account gaps: Priority 1 and met partners without an Account, and Referral Partner deals on the wrong Account. */
@@ -2317,7 +2322,7 @@
     ['Contact Name', (r) => link('Contacts', r.id, r.name)],
     ['Priority', naPriority],
     ['Why listed', (r) => r.why.join(', ')],
-    ['Last completed meeting', (r) => (r.last ? fullDayF(r.last) : 'None')],
+    ['Last meeting', (r) => (r.last ? fullDayF(r.last) : 'None')],
     ['Next meeting', (r) => (r.next ? whenF(r.next) : 'None scheduled')],
     ['CRM Owner', (r) => r.assigned || 'Not assigned'],
     ['Referral Partner deal', naDealCell],
