@@ -751,7 +751,7 @@
   const pmTools = el('div', 'cc-tools cc-b2-chips cc-pm-chips');
   pmTools.setAttribute('role', 'group');
   pmTools.setAttribute('aria-label', 'Period');
-  pmCard.append(pmHead, pmTools, pmBody, pmNote);
+  pmCard.append(pmHead, pmBody, pmNote);
   const monCard = card('b2-monday', 'Priority 3 queue', 'Everyone at Priority 3, grouped by what to do next from LI Connect: untouched first, then connected, then waiting. Within a group, the strongest partner evidence comes first.');
   const monTools = el('div', 'cc-tools cc-b2-chips');
   const monBody = el('div', 'cc-b2-wrap');
@@ -1909,9 +1909,11 @@
       c.setAttribute('aria-label', aria);
       return c;
     };
-    const met = tile('cc-pm-main', 'Partners Met' + (from ? ' · ' + periodName : ''), all.length, from ? `Unique campaign contacts whose first completed meeting was ${periodName.toLowerCase()}` : 'Unique campaign contacts with at least one completed meeting',
-      () => showTable('Partners met' + (from ? ', ' + periodName.toLowerCase() : ''), pmCols, pmSort(all), `Every May 2026 - 100 B2B contact with at least one meeting marked Completed in Zoho${scope}, most recent meeting first. ` + PM_OWNER_NOTE),
-      `Partners met: ${intF(all.length)}. Open the list.`);
+    const met = tile('cc-pm-main', 'Partners Met', everyone.length, 'Unique campaign contacts with at least one completed meeting, all time',
+      () => showTable('Partners met', pmCols, pmSort(everyone), 'Every May 2026 - 100 B2B contact with at least one meeting marked Completed in Zoho, most recent meeting first. ' + PM_OWNER_NOTE),
+      `Partners met, all time: ${intF(everyone.length)}. Open the list.`);
+    const allMade = everyone.filter((r) => r.created).length;
+    met.append(el('p', 'cc-pm-sub cc-pm-split', `${intF(allMade)} with a Referral Partner deal, ${intF(everyone.length - allMade)} without`));
     const ok = tile('cc-pm-ok', 'Referral Partner Deal Created', made.length, 'Met, with a Referral Partner deal linked to the contact',
       () => showTable('Referral Partner deal created' + (from ? ', ' + periodName.toLowerCase() : ''), pmCols, pmSort(made), `${from ? 'Partners' : 'Met partners'}${scope} whose Referral Partner deal names them as the contact. ` + PM_OWNER_NOTE),
       `Referral Partner deal created: ${intF(made.length)}. Open the list.`);
@@ -1925,7 +1927,16 @@
     if (!missing.length) gap.append(el('p', 'cc-pm-sub', all.length ? (from ? `All partners first met ${periodName.toLowerCase()} have Referral Partner Deals created.` : 'All met partners have Referral Partner Deals created.') : `Nobody was met for the first time ${periodName.toLowerCase()}.`));
     const pair = el('div', 'cc-pm-pair');
     pair.append(ok, gap);
-    pmBody.replaceChildren(met, pair);
+    const right = el('div', 'cc-pm-right');
+    const periodLine = el('p', 'cc-pm-period');
+    if (from) {
+      const b = el('button', 'cc-pm-prev', `${intF(all.length)} ${all.length === 1 ? 'partner' : 'partners'} first met ${periodName.toLowerCase()}`);
+      b.type = 'button';
+      b.addEventListener('click', () => showTable('Partners met, ' + periodName.toLowerCase(), pmCols, pmSort(all), `Partners${scope}, most recent meeting first. ` + PM_OWNER_NOTE));
+      periodLine.append(b, document.createTextNode(` (since ${fullDayF(from)}). Their deals as they stand today:`));
+    } else periodLine.textContent = 'Every partner met so far. Their deals as they stand today:';
+    right.append(pmTools, periodLine, pair);
+    pmBody.replaceChildren(met, right);
     if (from) {
       const series = pmSeries(pmPeriod).map(([a, b, label], i, arr) => {
         const list = everyone.filter((r) => r.first && r.first >= a && r.first <= b);
@@ -1974,7 +1985,7 @@
       const nowX = series[series.length - 1];
       const d = nowX.list.length - prevX.list.length;
       chart.append(el('p', 'cc-b2-insight', `${periodName}: ${intF(nowX.list.length)} first met against ${intF(prevX.list.length)} in ${prevX.label.toLowerCase().startsWith('week') ? 'the ' + prevX.label.toLowerCase() : prevX.label} (${d === 0 ? 'no change' : (d > 0 ? '+' : '−') + intF(Math.abs(d))}). ${periodName} runs to today, so it can read low until the period ends. Select a bar, a color or a total for its list.`));
-      pmBody.append(chart);
+      right.append(chart);
     }
     const loose = missing.filter((r) => r.company_deals.length).length;
     pmNote.textContent = `Met means at least one meeting marked Completed in Zoho${from ? `; ${periodName.toLowerCase()} counts partners whose first completed meeting falls in it (Central time${pmPeriod === 'week' ? ', weeks start Monday' : ''}), and their deals as they stand today` : ''}; ${intF(all.length)} = ${intF(made.length)} created + ${intF(missing.length)} not created. A deal counts only when its Deal Type is Referral Partner and its Contact Name is the person we met; a deal on the same company linked to someone else, or to no contact, doesn’t count${loose ? ` (${intF(loose)} met ${loose === 1 ? 'partner has' : 'partners have'} one; the list shows it so the link can be fixed)` : ''}.`;
