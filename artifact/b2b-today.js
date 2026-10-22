@@ -1031,7 +1031,7 @@
   const mqTitleBox = el('div');
   const mqTitle = el('h2', null, 'Meeting data check');
   mqTitle.id = 'b2-mq-title';
-  mqTitleBox.append(mqTitle, el('p', 'cc-b2-insight', 'Every 2026 meeting with a B2B prospect, checked against the team’s Outlook calendars and Fireflies recordings. Meeting counts on this page are only as good as this list is short.'));
+  mqTitleBox.append(mqTitle, el('p', 'cc-b2-insight', 'Every meeting with a B2B prospect last month and this month, checked against the team’s Outlook calendars and Fireflies recordings. Meeting counts on this page are only as good as this list is short.'));
   const mqState = el('span', 'cc-b2-state');
   mqHead.append(mqTitleBox, mqState);
   const mqRecent = el('div', 'cc-mq-recent');
@@ -2214,7 +2214,7 @@
     const periodStart = { Today: tday, 'This week': tmon, 'This month': tday.slice(0, 8) + '01' };
 
     const p1ids = new Set(ppl.map((p) => String(p.id)));
-    const p1fix = rows('meet_audit').filter((r) => p1ids.has(String(r.contact_id)));
+    const p1fix = rows('meet_audit').filter((r) => p1ids.has(String(r.contact_id)) && r.day >= mqFrom());
     if (p1fix.length) {
       const who = new Set(p1fix.map((r) => String(r.contact_id))).size;
       const txt = el('p');
@@ -2568,6 +2568,9 @@
     const linkedB2b = r.linked_id && people.has(String(r.linked_id));
     return linkedB2b ? `Linked to ${r.linked_name}, but the recording or calendar shows ${name}: check who was on it and fix Contact Name.` : `Linked to ${r.linked_name || 'someone else'}: set Contact Name to ${name}.`;
   };
+  /* The check covers last month and this month (Central time), e.g. Sep 1 to today in October. */
+  const mqFrom = () => { const t = todayCT(); const y = Number(t.slice(0, 4)); const m = Number(t.slice(5, 7)); return (m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`) + '-01'; };
+  const mqMonthName = (k) => new Date(k + '-15T12:00:00Z').toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' });
   const drawMq = () => {
     const st = state(['meet_audit', 'mtg_people']);
     mq.classList.remove('cc-na-bad', 'cc-na-good');
@@ -2579,19 +2582,26 @@
       mqList.replaceChildren(el('p', st === 'error' ? 'cc-b2-bad' : 'cc-b2-insight', st === 'error' ? 'Zoho meetings, the calendar sync or the Fireflies sync didn’t load, so meetings can’t be checked. Reload, or check the sources in the dashboard menu.' : 'Checking Zoho meetings against calendars and recordings…'));
       return;
     }
-    const all = rows('meet_audit');
+    const from = mqFrom();
+    const all = rows('meet_audit').filter((r) => r.day >= from);
     const people = new Map(rows('b2b_people').map((p) => [String(p.id), p]));
     const open = all.length;
     mq.classList.add(open ? 'cc-na-bad' : 'cc-na-good');
     mqState.textContent = open ? `${intF(open)} to fix` : 'All clean';
     mqState.classList.add(open ? 'cc-b2-bad' : 'cc-b2-ok');
-    /* Mack's two-week check: who did we actually meet? */
-    const since = (() => { const t = new Date(todayCT() + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() - 13); return t.toISOString().slice(0, 10); })();
-    const recent = rows('mtg_people').flatMap((p) => (p.sources || []).filter((x) => x.day >= since).map((x) => ({ ...p, day: x.day, src: x }))).sort((a, b) => b.day.localeCompare(a.day) || String(a.name).localeCompare(String(b.name)));
-    const inZoho = recent.filter((r) => r.src.zoho).length;
-    const fixes14 = all.filter((r) => r.day >= since).length;
-    const line = el('p', 'cc-mq-line');
-    line.append(el('b', null, `Last 14 days: ${intF(recent.length)} meeting${recent.length === 1 ? '' : 's'} held with ${intF(new Set(recent.map((r) => r.id)).size)} B2B prospect${new Set(recent.map((r) => r.id)).size === 1 ? '' : 's'}`), document.createTextNode(`; Zoho shows ${intF(inZoho)} of them as Completed, and ${intF(fixes14)} fix${fixes14 === 1 ? '' : 'es'} below ${fixes14 === 1 ? 'is' : 'are'} from these two weeks.`));
+    /* Who did we actually meet, month by month? */
+    const recent = rows('mtg_people').flatMap((p) => (p.sources || []).filter((x) => x.day >= from).map((x) => ({ ...p, day: x.day, src: x }))).sort((a, b) => b.day.localeCompare(a.day) || String(a.name).localeCompare(String(b.name)));
+    const months = [from.slice(0, 7), todayCT().slice(0, 7)];
+    const line = el('div', 'cc-mq-months');
+    months.forEach((mk) => {
+      const inM = recent.filter((r) => r.day.slice(0, 7) === mk);
+      const who = new Set(inM.map((r) => r.id)).size;
+      const done = inM.filter((r) => r.src.zoho).length;
+      const fixes = all.filter((r) => r.day.slice(0, 7) === mk).length;
+      const p = el('p', 'cc-mq-line');
+      p.append(el('b', null, `${mqMonthName(mk)}${mk === months[1] ? ' so far' : ''}: ${intF(inM.length)} meeting${inM.length === 1 ? '' : 's'} held with ${intF(who)} prospect${who === 1 ? '' : 's'}`), document.createTextNode(`; Zoho shows ${intF(done)} as Completed; ${intF(fixes)} fix${fixes === 1 ? '' : 'es'} to make.`));
+      line.append(p);
+    });
     const lb = el('button', 'cc-go', 'List who we met'); lb.type = 'button';
     lb.setAttribute('aria-expanded', String(mqTab === 'recent'));
     lb.addEventListener('click', () => show(mqTab === 'recent' ? null : 'recent'));
@@ -2611,7 +2621,7 @@
         const tb = el('tbody');
         recent.forEach((r) => { const tr = el('tr'); cols.forEach(([, f]) => { const v = f(r); const td = el('td'); if (v instanceof Node) td.append(v); else td.textContent = v == null || v === '' ? '—' : v; tr.append(td); }); tb.append(tr); });
         tbl.append(tb);
-        mqList.replaceChildren(el('p', 'cc-na-cap', `Met in the last 14 days (${intF(recent.length)})`), recent.length ? tbl : el('p', 'cc-pm-done', 'No meetings held with B2B prospects in the last 14 days.'));
+        mqList.replaceChildren(el('p', 'cc-na-cap', `Met in ${mqMonthName(months[0])} and ${mqMonthName(months[1])} (${intF(recent.length)})`), recent.length ? tbl : el('p', 'cc-pm-done', 'No meetings held with B2B prospects in these two months.'));
         return;
       }
       const [, label, sub] = MQ_KINDS.find((x) => x[0] === k);
@@ -2646,7 +2656,8 @@
     }));
     show(mqTab === 'recent' || MQ_KINDS.some((x) => x[0] === mqTab) ? mqTab : null);
     const ffAsOf = rows('b2b_ff').reduce((m, r) => (r.as_of && r.as_of > m ? r.as_of : m), '');
-    mqNote.textContent = 'Covers 2026 meetings with B2B prospects (May 2026 - 100 B2B). Evidence a meeting happened: a Fireflies recording of 5+ minutes whose summary names the prospect or their company, or an uncancelled past event on the info@, mack@, hemang@ or shruti@ Outlook calendar (searched for Priority 1 and 99 prospects), within 45 minutes of the Zoho start time. A prospect is matched to a recording by their email among the attendees, their company’s email domain, or their name in the title. Zoho meetings with no contact, or linked to someone else, count when a recording or calendar event at that time shows exactly one B2B prospect.'
+    mqNote.textContent = `Covers meetings with B2B prospects (May 2026 - 100 B2B) from ${fullDayF(from)} to today, Central time: last month and this month.`
+      + '  Evidence a meeting happened: a Fireflies recording of 5+ minutes whose summary names the prospect or their company, or an uncancelled past event on the info@, mack@, hemang@ or shruti@ Outlook calendar (searched for Priority 1 and 99 prospects), within 45 minutes of the Zoho start time. A prospect is matched to a recording by their email among the attendees, their company’s email domain, or their name in the title. Zoho meetings with no contact, or linked to someone else, count when a recording or calendar event at that time shows exactly one B2B prospect.'
       + (ffAsOf ? ` Fireflies checked ${whenF(ffAsOf)}.` : '') + ' Fix it in Zoho and it drops off at the next refresh.';
   };
 
