@@ -337,3 +337,4 @@
 .cc-pm-missing b { color: var(--color-bad); font-weight: var(--cds-font-weight-medium); }
 .cc-pm-missing small { display: block; margin-top: 2px; color: var(--color-fg-muted); }
 .cc-pm-done { color: var(--color-ok); font-weight: var(--cds-font-weight-medium); }
+.cc-pm-chips { margin: 0; }
