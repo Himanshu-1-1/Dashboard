@@ -452,3 +452,4 @@
 .cc-pf .cc-b2-scorehead { align-items: flex-start; }
 .cc-pf-reset { margin-left: auto; flex: none; }
 .cc-pf-reset:disabled { opacity: .45; cursor: default; }
+.cc-pf .cc-b2-scorehead .cc-b2-soplink { margin-left: 0; }

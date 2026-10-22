@@ -463,6 +463,7 @@
   /* Priority 3, relationship development. Current balances come from b2b_people (Zoho's Priority and LI Connect);
      Today / This week / This month come only from field-change history (dataset p3_events: one row per change,
      {contact_id, field: 'Priority' | 'LI_Connect', from, to, at}), never inferred from current values. */
+  const PF_SOP_URL = 'https://docs.google.com/presentation/d/17n-PLV-UEFCugsglo2oQMh9UTNomi8_a7xLEw6lj03k/edit';
   const PM_SOP_URL = 'https://docs.google.com/document/d/1fGux7OzBHHh6BB-zqMPMyeMG7fQ0oCA_oQEE3rxqHHc/edit?tab=t.0#heading=h.4iets7th6uj';
   const P3_SOP_URL = 'https://docs.google.com/document/d/1ocLD2VXVnVrZAVz91FaocBRpqU8Tm8w8-9qUKvMztu8/edit?tab=t.0#heading=h.2n9bebp463et';
   const liOf = (v) => (v == null || v === '' || v === '-None-' ? null : String(v));
@@ -752,7 +753,10 @@
     drawPf();
     pf.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
-  pfHead.append(pfTitleBox, pfReset);
+  const pfSop = el('a', 'cc-b2-soplink', 'SOP');
+  pfSop.href = PF_SOP_URL; pfSop.target = '_blank'; pfSop.rel = 'noopener'; pfSop.title = 'B2B Priority Definition: what each Priority means';
+  pfSop.setAttribute('aria-label', 'SOP: B2B Priority Definition (opens in a new tab)');
+  pfHead.append(pfTitleBox, pfReset, pfSop);
   const pfBody = el('div', 'cc-pf-body');
   const pfNote = el('p', 'cc-b2-insight cc-pf-note');
   pf.append(pfHead, pfBody, pfNote);
