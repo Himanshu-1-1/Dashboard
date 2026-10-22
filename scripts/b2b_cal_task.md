@@ -31,6 +31,8 @@ For each contact, run these searches on each of the four calendars. Every search
 
 If a response ends with a `nextOffset` item, page with `offset` = nextOffset, up to 4 pages per search.
 
+A search only looks through about 1,000 events per window. If a response warns that later matches may be missing, run the same search again starting from the date the warning gives, and keep going until no warning remains.
+
 On a rate limit (429), wait and retry until it succeeds. If a search still fails after 3 tries for any other reason, record it: `{"contact_id": "<id>", "cal": "<cal>", "error": "<short reason>"}`.
 
 ## Output
