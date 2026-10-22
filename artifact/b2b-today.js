@@ -463,7 +463,7 @@
   /* Priority 3, relationship development. Current balances come from b2b_people (Zoho's Priority and LI Connect);
      Today / This week / This month come only from field-change history (dataset p3_events: one row per change,
      {contact_id, field: 'Priority' | 'LI_Connect', from, to, at}), never inferred from current values. */
-  const PF_SOP_URL = 'https://docs.google.com/presentation/d/17n-PLV-UEFCugsglo2oQMh9UTNomi8_a7xLEw6lj03k/edit';
+  const PF_SOP_URL = 'https://docs.google.com/spreadsheets/d/1QFWrhHd5ZnbNn-UmdNVZ3KfqUGp4Ru9R84ztd5Mtx-0/edit?usp=drive_link';
   const PM_SOP_URL = 'https://docs.google.com/document/d/1fGux7OzBHHh6BB-zqMPMyeMG7fQ0oCA_oQEE3rxqHHc/edit?tab=t.0#heading=h.4iets7th6uj';
   const P3_SOP_URL = 'https://docs.google.com/document/d/1ocLD2VXVnVrZAVz91FaocBRpqU8Tm8w8-9qUKvMztu8/edit?tab=t.0#heading=h.2n9bebp463et';
   const liOf = (v) => (v == null || v === '' || v === '-None-' ? null : String(v));
