@@ -904,7 +904,7 @@
   const mtgTitleBox = el('div');
   const mtgTitle = el('h2', null, 'P1 Meeting Frequency & Relationship Depth');
   mtgTitle.id = 'b2-mtg-title';
-  mtgTitleBox.append(mtgTitle, el('p', 'cc-b2-insight', 'Priority 1 partners (two-way conversation): how often we have met each, who to ask for a first meeting, and who to talk to again. Meetings come from Zoho and the team’s Outlook calendars.'));
+  mtgTitleBox.append(mtgTitle, el('p', 'cc-b2-insight', 'Priority 1 partners (two-way conversation): how often we have met each. Meetings come from Zoho and the team’s Outlook calendars. Who to talk to next is at the bottom of this page.'));
   mtgHead.append(mtgTitleBox);
   const mtgPath = el('div', 'cc-mt-path');
   const mtgBar = el('ol', 'cc-mt-bar');
@@ -916,10 +916,15 @@
   mtgGap.hidden = true;
   const mtgGrid = el('div', 'cc-mt-grid');
   const mtgNote = el('p', 'cc-b2-insight cc-mt-note');
-  const plan = el('div', 'cc-mp');
+  const plan = el('section', 'cc-card cc-mp');
   plan.id = 'b2-mp';
-  const planHead = el('div', 'cc-mp-head');
-  planHead.append(el('h3', null, 'Who to talk to next'), el('p', 'cc-b2-insight', `Priority 1 only, from Zoho and the team’s Outlook calendars. Select a count to list the people; select it again to close.`));
+  plan.setAttribute('aria-labelledby', 'b2-mp-title');
+  const planHead = el('div', 'cc-b2-scorehead');
+  const planTitleBox = el('div');
+  const planTitle = el('h2', null, 'Who to talk to next');
+  planTitle.id = 'b2-mp-title';
+  planTitleBox.append(planTitle, el('p', 'cc-b2-insight', 'Priority 1 partners, from Zoho and the team’s Outlook calendars: who to ask for a first meeting, who is booked, and who to talk to again. Select a count to list the people; select it again to close.'));
+  planHead.append(planTitleBox);
   const planTiles = el('div', 'cc-mp-tiles');
   planTiles.setAttribute('role', 'group');
   planTiles.setAttribute('aria-label', 'Who to talk to next');
@@ -927,7 +932,7 @@
   planList.id = 'b2-mp-list';
   planList.hidden = true;
   plan.append(planHead, planTiles, planList);
-  mtg.append(mtgHead, mtgPath, mtgGap, mtgGrid, plan, mtgNote);
+  mtg.append(mtgHead, mtgPath, mtgGap, mtgGrid, mtgNote);
   const pmCard = el('section', 'cc-card cc-pm');
   pmCard.id = 'b2-pm';
   pmCard.setAttribute('aria-labelledby', 'b2-pm-title');
@@ -1022,7 +1027,7 @@
     if (drillFrom && drillFrom !== drill && drillFrom.parentElement === root && drillFrom.nextElementSibling !== drill) drillFrom.after(drill);
   };
 
-  root.append(pf, score, p3, na, mtg, pmCard, mailCard, grid1, drill, nextCard, queueCard, monCard, grid2, sopCard, dqCard);
+  root.append(pf, score, p3, na, mtg, pmCard, mailCard, grid1, drill, nextCard, queueCard, monCard, grid2, sopCard, dqCard, plan);
   /* SOP links: an animated playbook page instead of the word. The link keeps its title and aria-label. */
   const SOP_ICON = '<svg class="cc-sop-ico" viewBox="0 0 32 36" aria-hidden="true" focusable="false">'
     + '<g class="cc-sop-spark"><circle cx="27" cy="5" r="1.4"/><circle cx="4" cy="9" r="1"/><circle cx="29" cy="15" r="1"/><path d="M24 2.5v3M22.5 4h3"/></g>'
