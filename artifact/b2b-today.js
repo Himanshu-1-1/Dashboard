@@ -642,6 +642,63 @@
     },
   });
 
+  /* Account gaps: a Referral Partner deal needs an Account in Zoho, so every B2B prospect at Priority 1 or with any meeting
+     (completed, scheduled or not marked) should have one. Our own company as the Account counts as none. Do Not Contact
+     records are left out: no deal will follow. Separately, Referral Partner deals linked to a prospect whose Account is
+     missing, ours, or not the prospect's. */
+  const OWN_CO = /tech\s*-?\s*transpire|true\s*lean/i;
+  dash.calc('b2b_account_gaps', {
+    title: 'B2B prospects and deals with a missing or wrong Account',
+    description: 'Rows of kind "no_account": B2B prospects (not Do Not Contact) at Priority 1 or with at least one meeting in Zoho (completed, scheduled, or past and not marked Completed, or counted in Total Meetings) whose contact has no Account, or has our own company as its Account; with why they are in the list, meetings, next scheduled meeting, Assigned and any Referral Partner deal. Rows of kind "wrong_deal": Referral Partner deals linked to a B2B prospect whose deal Account is missing, is our own company, or differs from the contact\'s Account (including a contact with no Account).',
+    inputs: ['b2b_people', 'mtg_people', 'deals_tagged'],
+    fn: (b2b_people, mtg_people, deals_tagged) => {
+      const mtg = new Map(mtg_people.map((m) => [m.id, m]));
+      const rp = deals_tagged.filter((d) => d.kind === 'Partnership');
+      const byContact = new Map();
+      rp.forEach((d) => { if (!d.contact_id) return; const k = String(d.contact_id); if (!byContact.has(k)) byContact.set(k, []); byContact.get(k).push(d); });
+      const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      const loose = new Map();
+      rp.filter((d) => !d.contact_id && d.account).forEach((d) => { const k = norm(d.account); if (!loose.has(k)) loose.set(k, []); loose.get(k).push(d); });
+      const own = (name) => OWN_CO.test(String(name || ''));
+      const brief = (d) => ({ id: String(d.id), deal: d.deal || 'Referral Partner deal', stage: d.stage || null, account: d.account || null, account_id: d.account_id ? String(d.account_id) : null });
+      const out = [];
+      b2b_people.forEach((p) => {
+        const m = mtg.get(p.id) || { n: 0, next: null, unmarked: [], last: null, assigned: null };
+        const accOk = Boolean(p.account_id) && !own(p.account);
+        const deals = (byContact.get(p.id) || []).map(brief);
+        if (!p.dnc) {
+          const why = [];
+          if (p.priority === '1') why.push('Priority 1');
+          if (m.n) why.push(`${m.n} completed meeting${m.n === 1 ? '' : 's'}`);
+          if (m.next) why.push('meeting scheduled');
+          if (m.unmarked.length) why.push(`${m.unmarked.length} past meeting${m.unmarked.length === 1 ? '' : 's'} not marked Completed`);
+          if (!m.n && !m.next && !m.unmarked.length && p.met > 0) why.push(`Zoho counts ${p.met} meeting${p.met === 1 ? '' : 's'}`);
+          if (why.length && !accOk) {
+            out.push({
+              kind: 'no_account', key: 'n' + p.id, id: p.id, name: p.name, priority: p.priority, why,
+              account: p.account_id ? p.account : null, account_id: p.account_id || null, own_account: Boolean(p.account_id) && own(p.account),
+              meetings: m.n, last: m.last || null, next: m.next || null, unmarked: m.unmarked.length, assigned: m.assigned || null,
+              deals, loose: (loose.get(norm(p.name)) || []).map(brief),
+            });
+          }
+        }
+        deals.forEach((d) => {
+          let problem = null;
+          if (!d.account_id) problem = 'Deal has no Account';
+          else if (own(d.account)) problem = 'Deal is on our own company';
+          else if (!accOk) problem = p.account_id ? 'Contact’s Account is our own company' : 'Contact has no Account';
+          else if (String(d.account_id) !== String(p.account_id)) problem = 'Deal and contact are on different Accounts';
+          if (!problem) return;
+          out.push({
+            kind: 'wrong_deal', key: 'd' + d.id + '|' + p.id, id: p.id, name: p.name, priority: p.priority, problem,
+            account: p.account_id ? p.account : null, account_id: p.account_id || null, deal: d, assigned: m.assigned || null,
+          });
+        });
+      });
+      return out;
+    },
+  });
+
   /* ---------- view ---------- */
   const root = document.querySelector('#b2-root');
   if (!root) return;
@@ -718,6 +775,26 @@
   const p3Grid = el('div', 'cc-p3-grid');
   const p3Note = el('p', 'cc-b2-insight cc-p3-note');
   p3.append(p3Head, p3Grid, p3Note);
+  const na = el('section', 'cc-card cc-na');
+  na.id = 'b2-na';
+  na.setAttribute('aria-labelledby', 'b2-na-title');
+  const naHead = el('div', 'cc-b2-scorehead');
+  const naTitleBox = el('div');
+  const naTitle = el('h2', null, 'Priority 1 and met partners without an Account');
+  naTitle.id = 'b2-na-title';
+  naTitleBox.append(naTitle, el('p', 'cc-b2-insight', 'A Referral Partner deal can only be created in Zoho on an Account, so every Priority 1 partner and everyone we have a meeting with needs one.'));
+  const naState = el('span', 'cc-b2-state');
+  const naSop = el('a', 'cc-b2-soplink', 'SOP');
+  naSop.href = PM_SOP_URL; naSop.target = '_blank'; naSop.rel = 'noopener'; naSop.title = 'SOP 002: Referral Partner deal creation in Zoho';
+  naSop.setAttribute('aria-label', 'SOP 002: Referral Partner deal creation (opens in a new tab)');
+  naHead.append(naTitleBox, naState, naSop);
+  const naTiles = el('div', 'cc-na-tiles');
+  naTiles.setAttribute('role', 'tablist');
+  naTiles.setAttribute('aria-label', 'Account gaps');
+  const naList = el('div', 'cc-b2-wrap cc-na-list');
+  naList.setAttribute('role', 'tabpanel');
+  const naNote = el('p', 'cc-b2-insight cc-na-note');
+  na.append(naHead, naTiles, naList, naNote);
   const head = el('div', 'cc-b2-head');
   const t = el('div', 'cc-wi-title');
   t.append(el('h2', null, 'B2B Today'), el('p', null, 'What the B2B referral-partner campaign needs next, who to work today, and how to do it right.'));
@@ -853,7 +930,7 @@
   drill.querySelector('.cc-card-head').append(drillClose);
   drill.append(drillBody);
 
-  root.append(pf, score, p3, mtg, pmCard, mailCard, grid1, drill, nextCard, queueCard, monCard, grid2, sopCard, dqCard);
+  root.append(pf, score, p3, na, mtg, pmCard, mailCard, grid1, drill, nextCard, queueCard, monCard, grid2, sopCard, dqCard);
   root.addEventListener('click', (e) => {
     const b = e.target.closest('[data-sop]');
     if (!b) return;
@@ -967,6 +1044,7 @@
     drawPf();
     drawScore();
     drawP3();
+    drawNa();
     drawMtg();
     drawPm();
     const st = state(['b2b_people', 'b2b_actions', 'b2b_monday', 'b2b_funnel', 'b2b_segments']);
@@ -2031,6 +2109,122 @@
     }
     const loose = missing.filter((r) => r.company_deals.length).length;
     pmNote.textContent = `Met means at least one meeting marked Completed in Zoho${from ? `; ${periodName.toLowerCase()} counts partners whose first completed meeting falls in it (Central time${pmPeriod === 'week' ? ', weeks start Monday' : ''}), and their deals as they stand today` : ''}; ${intF(all.length)} = ${intF(made.length)} created + ${intF(missing.length)} not created. A deal counts only when its Deal Type is Referral Partner and its Contact Name is the person we met; a deal on the same company linked to someone else, or to no contact, doesn’t count${loose ? ` (${intF(loose)} met ${loose === 1 ? 'partner has' : 'partners have'} one; the list shows it so the link can be fixed)` : ''}.`;
+  };
+
+  /* Account gaps: Priority 1 and met partners without an Account, and Referral Partner deals on the wrong Account. */
+  let naTab = 'none';
+  const NA_FIX = {
+    'Deal is on our own company': (r) => 'Change the deal’s Account Name to ' + (r.account_id ? r.account : 'the partner’s company') + '.',
+    'Deal has no Account': (r) => 'Set the deal’s Account Name to ' + (r.account_id ? r.account : 'the partner’s company') + '.',
+    'Contact has no Account': (r) => `Set the contact’s Account to ${r.deal.account} if that is their company; otherwise move the deal to the right Account.`,
+    'Contact’s Account is our own company': (r) => `Set the contact’s Account to ${r.deal.account} if that is their company.`,
+    'Deal and contact are on different Accounts': () => 'Point the contact and the deal at the same Account: the partner’s company.',
+  };
+  const NA_ORDER = Object.keys(NA_FIX);
+  const naPriority = (r) => (r.priority ? 'P' + r.priority : 'Not set');
+  const naFix = (r) => {
+    const box = el('span', 'cc-na-fix');
+    const before = r.next ? ` Before the meeting on ${whenF(r.next)}.` : '';
+    if (r.own_account) { box.append(document.createTextNode('The Account is our own company. Set it to the partner’s company.' + before)); return box; }
+    const onAcc = r.deals.filter((d) => d.account_id && !OWN_CO.test(String(d.account || '')));
+    if (onAcc.length) {
+      box.append(document.createTextNode('Their Referral Partner deal is on '), link('Accounts', onAcc[0].account_id, onAcc[0].account), document.createTextNode('. Set that as the contact’s Account if it is their company.' + before));
+      return box;
+    }
+    if (r.deals.length) {
+      box.append(document.createTextNode('Their Referral Partner deal is on our own company or no Account. Find or create their company’s Account, then set it on the contact and on the deal.' + before));
+      return box;
+    }
+    if (r.loose.length) {
+      const d = r.loose[0];
+      box.append(document.createTextNode('A Referral Partner deal with their name has no contact: '), link('Potentials', d.id, d.deal), document.createTextNode('. Link this contact to it and set its Account on the contact.' + before));
+      return box;
+    }
+    box.append(document.createTextNode('Find or create their company’s Account and set it on the contact.' + before));
+    return box;
+  };
+  const naDealCell = (r) => {
+    if (!r.deals.length) return 'None';
+    const box = el('span', 'cc-pm-deals');
+    r.deals.forEach((d, i) => { if (i) box.append(document.createTextNode(', ')); box.append(link('Potentials', d.id, d.deal + (d.stage ? ' (' + d.stage + ')' : ''))); });
+    return box;
+  };
+  const NA_PEOPLE_COLS = [
+    ['Contact Name', (r) => link('Contacts', r.id, r.name)],
+    ['Priority', naPriority],
+    ['Why listed', (r) => r.why.join(', ')],
+    ['Last completed meeting', (r) => (r.last ? fullDayF(r.last) : 'None')],
+    ['Next meeting', (r) => (r.next ? whenF(r.next) : 'None scheduled')],
+    ['CRM Owner', (r) => r.assigned || 'Not assigned'],
+    ['Referral Partner deal', naDealCell],
+    ['Fix in Zoho', naFix],
+  ];
+  const NA_DEAL_COLS = [
+    ['Contact Name', (r) => link('Contacts', r.id, r.name)],
+    ['Contact’s Account', (r) => (r.account_id ? link('Accounts', r.account_id, r.account) : 'None')],
+    ['Referral Partner deal', (r) => link('Potentials', r.deal.id, r.deal.deal + (r.deal.stage ? ' (' + r.deal.stage + ')' : ''))],
+    ['Deal’s Account', (r) => (r.deal.account_id ? link('Accounts', r.deal.account_id, r.deal.account) : 'None')],
+    ['What’s wrong', (r) => { const b = el('b', 'cc-na-problem', r.problem); return b; }],
+    ['Fix in Zoho', (r) => (NA_FIX[r.problem] || (() => ''))(r)],
+  ];
+  const naSortPeople = (list) => list.slice().sort((a, b) =>
+    (a.next ? 0 : 1) - (b.next ? 0 : 1) || String(a.next || '').localeCompare(String(b.next || ''))
+    || (a.priority === '1' ? 0 : 1) - (b.priority === '1' ? 0 : 1)
+    || String(b.last || '').localeCompare(String(a.last || '')) || String(a.name).localeCompare(String(b.name)));
+  const drawNa = () => {
+    const st = state(['b2b_account_gaps']);
+    na.classList.remove('cc-na-bad', 'cc-na-good');
+    naState.className = 'cc-b2-state';
+    naState.textContent = '';
+    naNote.classList.toggle('cc-b2-bad', st === 'error');
+    if (st !== 'ok') {
+      naTiles.replaceChildren();
+      naList.replaceChildren(el('p', st === 'error' ? 'cc-b2-bad' : 'cc-b2-insight', st === 'error' ? 'B2B contacts, meetings or deals didn’t load from Zoho, so the Account check can’t be worked out. Reload, or check the source in the dashboard menu.' : 'Loading contacts, meetings and deals from Zoho…'));
+      naNote.textContent = '';
+      return;
+    }
+    const all = rows('b2b_account_gaps');
+    const none = naSortPeople(all.filter((r) => r.kind === 'no_account'));
+    const soon = none.filter((r) => r.next);
+    const wrong = all.filter((r) => r.kind === 'wrong_deal').sort((a, b) => NA_ORDER.indexOf(a.problem) - NA_ORDER.indexOf(b.problem) || String(a.name).localeCompare(String(b.name)));
+    const open = none.length + wrong.length;
+    na.classList.add(open ? 'cc-na-bad' : 'cc-na-good');
+    naState.textContent = open ? `${intF(open)} to fix` : 'All linked';
+    naState.classList.add(open ? 'cc-b2-bad' : 'cc-b2-ok');
+    const TABS = [
+      ['none', 'No Account', none, 'Priority 1, or any meeting in Zoho, and the contact has no Account', 'Every Priority 1 and met partner has an Account.'],
+      ['soon', 'Upcoming meeting, no Account', soon, 'Meeting scheduled; set the Account before it', 'Nobody with a scheduled meeting is missing an Account.'],
+      ['wrong', 'Referral Partner deal on the wrong Account', wrong, 'Deal Account missing, ours, or not the contact’s', 'Every Referral Partner deal sits on its partner’s Account.'],
+    ];
+    const show = (k) => {
+      naTab = k;
+      const [, label, list, , ok] = TABS.find((x) => x[0] === k);
+      naTiles.querySelectorAll('[role="tab"]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.k === k)));
+      naList.setAttribute('aria-label', label);
+      if (!list.length) { naList.replaceChildren(el('p', 'cc-pm-done', ok)); return; }
+      const cols = k === 'wrong' ? NA_DEAL_COLS : NA_PEOPLE_COLS;
+      const tbl = el('table', 'cc-tbl cc-na-tbl');
+      const th = el('thead'); const hr = el('tr');
+      cols.forEach(([x]) => { const c = el('th', null, x); c.scope = 'col'; hr.append(c); });
+      th.append(hr); tbl.append(th);
+      const tb = el('tbody');
+      list.forEach((r) => { const tr = rowOpens(el('tr'), r.id); cols.forEach(([, f]) => { const v = f(r); const td = el('td'); if (v instanceof Node) td.append(v); else td.textContent = v == null || v === '' ? '—' : v; tr.append(td); }); tb.append(tr); });
+      tbl.append(tb);
+      naList.replaceChildren(el('p', 'cc-na-cap', `${label} (${intF(list.length)})`), tbl);
+    };
+    naTiles.replaceChildren(...TABS.map(([k, label, list, sub]) => {
+      const b = el('button', 'cc-pm-tile cc-na-tile ' + (list.length ? 'cc-pm-bad' : 'cc-pm-ok'));
+      b.type = 'button'; b.dataset.k = k; b.setAttribute('role', 'tab');
+      b.append(el('p', 'cc-pm-label', label), el('p', 'cc-pm-num', intF(list.length)), el('p', 'cc-pm-target', 'Target: 0'), el('p', 'cc-pm-sub', sub));
+      b.setAttribute('aria-label', `${label}: ${intF(list.length)}, target 0. Show the list.`);
+      b.addEventListener('click', () => show(k));
+      return b;
+    }));
+    const firstOpen = TABS.find((x) => x[2].length);
+    show(TABS.some((x) => x[0] === naTab) ? naTab : (firstOpen || TABS[0])[0]);
+    const dnc = rows('b2b_people').filter((p) => p.dnc && (p.priority === '1' || p.met > 0) && !p.account_id).length;
+    naNote.textContent = 'Counts B2B prospects (May 2026 - 100 B2B, Priority 9 and 11 left out) at Priority 1 or with any meeting in Zoho: completed, scheduled, past and not marked Completed, or counted in Total Meetings. An Account that is our own company (Tech Transpire, True Lean) counts as none. Upcoming is the part of No Account with a meeting still to come. The deal check covers every Referral Partner deal whose Contact Name is a B2B prospect, any stage.'
+      + (dnc ? ` ${intF(dnc)} Do Not Contact ${dnc === 1 ? 'record is' : 'records are'} left out, since no deal will follow.` : '') + ' Fix it in Zoho and it drops off at the next refresh.';
   };
 
   /* Partner Funnel Overview. */
