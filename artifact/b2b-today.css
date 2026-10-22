@@ -572,13 +572,6 @@
 @media (prefers-reduced-motion: reduce) { .cc-crm-move { transition: none; } }
 
 /* Meeting data check. */
-.cc-mq-recent { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--color-border-line); background: color-mix(in oklab, var(--b2-c1, #3987e5) 6%, var(--color-panel)); }
-.cc-mq-months { display: grid; gap: 2px; }
-.cc-mq-line { margin: 0; font-size: 13px; line-height: 1.5; }
-.cc-mq-line b { font-weight: var(--cds-font-weight-medium); }
-.cc-mq-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-@media (max-width: 900px) { .cc-mq-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 560px) { .cc-mq-tiles { grid-template-columns: 1fr; } }
 
 /* Partner meeting briefs. */
 .cc-br { gap: var(--cds-gap-md); }
