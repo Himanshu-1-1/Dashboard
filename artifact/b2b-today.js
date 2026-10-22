@@ -547,6 +547,8 @@
     { k: 4, label: 'Met 4+ Times', def: '4 or more completed meetings', icon: 'group' },
   ];
   const MTG_WEEKS = 12;
+  /* The meeting-frequency section covers Priority 1 (two-way conversation) only. */
+  const MTG_PRIORITY = '1';
   const minuteOf = (t) => Math.floor(t / 6e4);
 
   dash.calc('mtg_people', {
@@ -578,7 +580,7 @@
         const days = done.map((t) => ctDate(t));
         const startT = hasCreated ? (done.length ? Math.min(created, done[0]) : created) : done.length ? done[0] : null;
         return {
-          id: p.id, name: p.name, account: p.account, account_id: p.account_id, assigned: a.Assigned || null,
+          id: p.id, name: p.name, account: p.account, account_id: p.account_id, assigned: a.Assigned || null, priority: p.priority,
           n: done.length, cat: Math.min(4, done.length), days, last: days.length ? days[days.length - 1] : null,
           next: b.next == null ? null : new Date(b.next).toISOString(),
           start: startT == null ? null : ctDate(startT), created: hasCreated ? ctDate(created) : null,
@@ -590,10 +592,11 @@
   });
 
   dash.calc('mtg_depth', {
-    title: 'Meeting frequency stages',
-    description: 'For each stage (Never Met, Met Once, Twice, Thrice, 4+): prospects in it now; unique prospects who newly entered it today, this week (Monday start) and this calendar month (Central time); the count on the same day last month with the change since; and the count at the end of each of the last 12 weeks. Never Met is entered on the day Zoho created the contact; each later stage on the day of the meeting that reached it.',
+    title: 'Meeting frequency stages, Priority 1',
+    description: 'B2B prospects at Priority 1 now. For each stage (Never Met, Met Once, Twice, Thrice, 4+): prospects in it now; unique prospects who newly entered it today, this week (Monday start) and this calendar month (Central time); the count on the same day last month with the change since; and the count at the end of each of the last 12 weeks. Never Met is entered on the day Zoho created the contact; each later stage on the day of the meeting that reached it.',
     inputs: ['mtg_people'],
-    fn: (ppl) => {
+    fn: (everyone) => {
+      const ppl = everyone.filter((p) => p.priority === MTG_PRIORITY);
       const today = todayCT();
       const t = new Date(today + 'T00:00:00Z');
       const mon = new Date(t); mon.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7));
@@ -848,9 +851,9 @@
   mtg.setAttribute('aria-labelledby', 'b2-mtg-title');
   const mtgHead = el('div', 'cc-b2-scorehead');
   const mtgTitleBox = el('div');
-  const mtgTitle = el('h2', null, 'Prospect Meeting Frequency & Relationship Depth');
+  const mtgTitle = el('h2', null, 'P1 Meeting Frequency & Relationship Depth');
   mtgTitle.id = 'b2-mtg-title';
-  mtgTitleBox.append(mtgTitle, el('p', 'cc-b2-insight', 'Track how frequently we meet prospects and how relationships develop over time.'));
+  mtgTitleBox.append(mtgTitle, el('p', 'cc-b2-insight', 'Priority 1 partners (two-way conversation): how often we have met each, and who still needs a first meeting.'));
   mtgHead.append(mtgTitleBox);
   const mtgPath = el('div', 'cc-mt-path');
   const mtgBar = el('ol', 'cc-mt-bar');
@@ -1847,12 +1850,12 @@
       mtgNote.textContent = st === 'loading' ? 'Loading meetings and B2B contacts from Zoho…' : 'Zoho meetings or B2B contacts didn’t load, so the stages can’t be worked out. Reload, or check the source in the dashboard menu.';
       return;
     }
-    const ppl = rows('mtg_people');
+    const ppl = rows('mtg_people').filter((p) => p.priority === MTG_PRIORITY);
     const stages = rows('mtg_depth');
     if (!ppl.length) {
       mtgGap.hidden = true;
       mtgBar.replaceChildren();
-      mtgGrid.replaceChildren(el('p', 'cc-b2-insight', 'No B2B prospects in Zoho yet. Contacts tagged “May 2026 - 100 B2B” appear here with their meeting history.'));
+      mtgGrid.replaceChildren(el('p', 'cc-b2-insight', 'No B2B prospect is at Priority 1 yet. Contacts tagged “May 2026 - 100 B2B” appear here once Zoho sets them to Priority 1.'));
       mtgNote.textContent = '';
       return;
     }
@@ -1864,7 +1867,7 @@
       const li = el('li', 'cc-mt-step cc-mt-s' + s.k);
       li.append(el('span', null, s.label), el('b', null, intF(byStage(s.k).total)));
       press(li, () => showMtg(s.label, stageList(s.k), s.def + '.' + ownerNote));
-      li.setAttribute('aria-label', `${s.label}: ${intF(byStage(s.k).total)} prospects. Open the list.`);
+      li.setAttribute('aria-label', `${s.label}: ${intF(byStage(s.k).total)} Priority 1 prospects. Open the list.`);
       return li;
     }));
     const tday = todayCT();
@@ -1875,7 +1878,7 @@
     if (unmarked.length) {
       const who = new Set(unmarked.map((x) => x.p.id)).size;
       const txt = el('p');
-      txt.append(el('b', null, `${intF(unmarked.length)} past meeting${unmarked.length === 1 ? '' : 's'} with ${intF(who)} prospect${who === 1 ? '' : 's'} ${unmarked.length === 1 ? 'isn’t' : 'aren’t'} marked Completed in Zoho`), document.createTextNode(' (Meeting Status is Scheduled or blank), so they don’t count in the stages below. Set Meeting Status to Completed for meetings that happened. Zoho has no Cancelled or No-show value, so a meeting that didn’t happen can only stay uncounted.'));
+      txt.append(el('b', null, `${intF(unmarked.length)} past meeting${unmarked.length === 1 ? '' : 's'} with ${intF(who)} Priority 1 prospect${who === 1 ? '' : 's'} ${unmarked.length === 1 ? 'isn’t' : 'aren’t'} marked Completed in Zoho`), document.createTextNode(' (Meeting Status is Scheduled or blank), so they don’t count in the stages below. Set Meeting Status to Completed for meetings that happened. Zoho has no Cancelled or No-show value, so a meeting that didn’t happen can only stay uncounted.'));
       const b = el('button', 'cc-go', 'List them'); b.type = 'button';
       b.addEventListener('click', () => showMtg('Past meetings not marked Completed', unmarked, 'Newest first. Each one stays out of the counts until Meeting Status says Completed.', 'unmarked'));
       mtgGap.replaceChildren(txt, b);
@@ -1938,7 +1941,7 @@
       return c;
     }));
     const from = (stages[0] || {}).history_from;
-    mtgNote.textContent = `Counts unique B2B prospects by completed meetings in Zoho (Meeting Status Completed, start time passed); future and unmarked meetings don’t count, and each prospect sits in one stage. Today, This week (from Monday) and This month count prospects who newly reached a stage, in Central time; Never Met is reached when Zoho creates the contact. The change compares today’s total with ${prevDay ? fullDayF(prevDay) : 'the same day last month'}. Trends are rebuilt from meeting dates and contact creation dates${from ? ' since ' + fullDayF(from) : ''}; prospects later removed from the campaign aren’t in past weeks.`;
+    mtgNote.textContent = `Counts B2B prospects at Priority 1 today (${intF(ppl.length)}) by completed meetings in Zoho (Meeting Status Completed, start time passed); future and unmarked meetings don’t count, and each prospect sits in one stage. Today, This week (from Monday) and This month count prospects who newly reached a stage, in Central time; Never Met is reached when Zoho creates the contact. The change compares today’s total with ${prevDay ? fullDayF(prevDay) : 'the same day last month'}. Trends are rebuilt from meeting dates and contact creation dates${from ? ' since ' + fullDayF(from) : ''}; Zoho doesn’t keep Priority history, so past weeks show today’s Priority 1 prospects only, and anyone who has since moved to another Priority (signed partners at P99 included) isn’t in them.`;
   };
 
   /* B2B Partner Meetings: met partners and their Referral Partner deals. */
