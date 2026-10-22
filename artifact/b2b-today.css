@@ -449,3 +449,6 @@
 .cc-na-problem { color: var(--color-bad); font-weight: var(--cds-font-weight-medium); }
 .cc-na-note { margin: 0; }
 .cc-na-tbl td:nth-child(3) { min-width: 170px; }
+.cc-pf .cc-b2-scorehead { align-items: flex-start; }
+.cc-pf-reset { margin-left: auto; flex: none; }
+.cc-pf-reset:disabled { opacity: .45; cursor: default; }

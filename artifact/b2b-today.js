@@ -742,7 +742,17 @@
   const pfTitle = el('h2', null, 'Partner Funnel Overview');
   pfTitle.id = 'b2-pf-title';
   pfTitleBox.append(pfTitle, el('p', 'cc-b2-insight', 'Campaign: May 2026 - 100 B2B. Every tagged contact by Priority, Priority 9 and 11 included.'));
-  pfHead.append(pfTitleBox);
+  const pfReset = el('button', 'cc-go cc-pf-reset', 'Reset view');
+  pfReset.type = 'button';
+  pfReset.title = 'Clear the highlighted priority and show the whole funnel';
+  pfReset.addEventListener('click', () => {
+    if (!pfPick) return;
+    pfPick = null;
+    if (drill.dataset.from === 'pf') drill.hidden = true;
+    drawPf();
+    pf.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  pfHead.append(pfTitleBox, pfReset);
   const pfBody = el('div', 'cc-pf-body');
   const pfNote = el('p', 'cc-b2-insight cc-pf-note');
   pf.append(pfHead, pfBody, pfNote);
@@ -942,6 +952,7 @@
   /* Any list of rows (drill): cols are [header, (row) => text or Node]. */
   const showTable = (title, cols, list, note, empty) => {
     drill.querySelector('h3').textContent = title + ' (' + intF(list.length) + ')';
+    drill.dataset.from = '';
     const tbl = el('table', 'cc-tbl');
     const th = el('thead'); const hr = el('tr');
     cols.forEach(([x]) => { const c = el('th', null, x); c.scope = 'col'; hr.append(c); });
@@ -2248,6 +2259,7 @@
     drawPf();
     showTable(g ? g.label : 'All campaign contacts', pfCols, list.slice().sort((a, b) => String(a.name).localeCompare(String(b.name))),
       g ? `${intF(list.length)} of ${intF(total)} contacts tagged “May 2026 - 100 B2B” (${total ? Math.round((list.length / total) * 1000) / 10 : 0}%). Select a name to open it in Zoho CRM.` : 'Every contact tagged “May 2026 - 100 B2B”, Priority 9 and 11 included. Select a name to open it in Zoho CRM.');
+    drill.dataset.from = 'pf';
   };
   const pfArc = (cx, cy, r0, r1, a0, a1) => {
     const p = (r, a) => [cx + r * Math.sin(a), cy - r * Math.cos(a)];
@@ -2258,6 +2270,8 @@
   };
   const drawPf = () => {
     const st = state(['b2b_priority_all']);
+    pfReset.disabled = !pfPick || st !== 'ok';
+    pfReset.setAttribute('aria-label', pfPick ? 'Reset view: clear the highlighted priority and show the whole funnel' : 'Reset view: nothing is highlighted');
     pfNote.classList.toggle('cc-b2-bad', st === 'error');
     if (st !== 'ok') {
       pfBody.replaceChildren(el('p', st === 'error' ? 'cc-b2-bad' : 'cc-b2-insight', st === 'error' ? 'Campaign contacts didn’t load from Zoho, so the funnel can’t be drawn. Reload, or check the source in the dashboard menu.' : 'Loading campaign contacts from Zoho…'));
@@ -2304,7 +2318,7 @@
     const donut = el('div', 'cc-pf-left');
     const ring = el('div', 'cc-pf-ring');
     ring.append(svg, center);
-    donut.append(ring, el('p', 'cc-pf-hint', pfPick ? 'Select the center or the same priority again to show everyone.' : 'Select a slice or a priority to highlight it and list the contacts.'));
+    donut.append(ring, el('p', 'cc-pf-hint', pfPick ? 'Reset view, or select the same priority again, to show everyone.' : 'Select a slice or a priority to highlight it and list the contacts.'));
 
     /* Rows. */
     const rowsFor = (side, title, sub) => {
@@ -2318,7 +2332,7 @@
         top.append(el('i', 'cc-pf-sw'), el('span', 'cc-pf-name', g.label), el('b', null, intF(g.list.length)), el('small', null, pctF(g.list.length)), el('span', 'cc-pf-chev', '›'));
         const bar = el('div', 'cc-pf-bar'); const fill = el('i'); fill.style.width = (total ? (g.list.length / total) * 100 : 0) + '%'; bar.append(fill);
         r.append(top, bar);
-        press(r, () => (pfPick === g.key ? (pfPick = null, drawPf(), drill.hidden = true) : pfOpen(g, g.list, total)));
+        press(r, () => (pfPick === g.key ? (pfPick = null, drawPf(), drill.dataset.from === 'pf' && (drill.hidden = true)) : pfOpen(g, g.list, total)));
         r.setAttribute('aria-label', `${g.label}: ${intF(g.list.length)} contacts, ${pctF(g.list.length)}. Open the list.`);
         r.setAttribute('aria-pressed', String(pfPick === g.key));
         box.append(r);
