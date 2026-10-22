@@ -2311,9 +2311,9 @@
     return null;
   };
   const pmSort = (list) => list.slice().sort((a, b) => String(b.last || '').localeCompare(String(a.last || '')) || String(a.name).localeCompare(String(b.name)));
-  /* Referral Partner Deals — Closed Won: three boxes (Founder Network, Other Partners, Combined), each with its signed
+  /* Referral Partner Deals — Closed Won: three boxes (Combined, Other Partners, Founder Network), each with its signed
      total and the 1 / 2 / 3 / 4+ meetings breakdown (0 only when a signed partner has none). Every number opens its list. */
-  const RW_GROUPS = [['fn', 'Founder Network', (p) => p.fn === true], ['other', 'Other Partners', (p) => p.fn !== true], ['all', 'Combined', () => true]];
+  const RW_GROUPS = [['all', 'Combined', () => true], ['other', 'Other Partners', (p) => p.fn !== true], ['fn', 'Founder Network', (p) => p.fn === true]];
   const rwSrc = (p) => (p.fn === true ? 'Founder Network' : p.fn === false ? 'Other' : 'Not known (no contact on the deal)');
   const rwDayF = (d) => (d ? fullDayF(d) : '—');
   const rwSeen = (x) => [x.zoho && 'Zoho (Completed)', x.outlook && ('Outlook' + (x.cals ? ' (' + String(x.cals).split(',').filter(Boolean).map((c) => CAL_NAMES[c] || c).join(', ') + ')' : '')), x.fireflies && 'Fireflies recording'].filter(Boolean).join(', ');
