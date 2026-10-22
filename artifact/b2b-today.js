@@ -438,6 +438,7 @@
   /* Priority 3, relationship development. Current balances come from b2b_people (Zoho's Priority and LI Connect);
      Today / This week / This month come only from field-change history (dataset p3_events: one row per change,
      {contact_id, field: 'Priority' | 'LI_Connect', from, to, at}), never inferred from current values. */
+  const PM_SOP_URL = 'https://docs.google.com/document/d/1fGux7OzBHHh6BB-zqMPMyeMG7fQ0oCA_oQEE3rxqHHc/edit?tab=t.0#heading=h.4iets7th6uj';
   const P3_SOP_URL = 'https://docs.google.com/document/d/1ocLD2VXVnVrZAVz91FaocBRpqU8Tm8w8-9qUKvMztu8/edit?tab=t.0#heading=h.2n9bebp463et';
   const liOf = (v) => (v == null || v === '' || v === '-None-' ? null : String(v));
   const prOf = (v) => (v == null || v === '' || v === '-None-' ? null : String(v));
@@ -591,6 +592,31 @@
     },
   });
 
+  /* B2B partner meetings: every prospect with a completed meeting (mtg_people) and the Referral Partner deals linked to
+     them by the deal's Contact Name. A Referral Partner deal on their company but linked to another contact, or to no
+     contact, doesn't count; it is shown on the row so the link can be fixed. */
+  dash.calc('b2b_partner_deals', {
+    title: 'Met B2B prospects and their Referral Partner deals',
+    description: 'One row per B2B prospect with at least one completed meeting (Meeting Status Completed, start time passed): most recent completed meeting, Assigned, the Referral Partner deals whose Contact Name is this person (created) and any Referral Partner deal on their company that is linked to someone else or to no contact (not counted, shown for fixing).',
+    inputs: ['mtg_people', 'deals_tagged'],
+    fn: (mtg_people, deals_tagged) => {
+      const rp = deals_tagged.filter((d) => d.kind === 'Partnership');
+      const byContact = new Map();
+      const byAccount = new Map();
+      rp.forEach((d) => {
+        if (d.contact_id) { const k = String(d.contact_id); if (!byContact.has(k)) byContact.set(k, []); byContact.get(k).push(d); }
+        if (d.account_id) { const k = String(d.account_id); if (!byAccount.has(k)) byAccount.set(k, []); byAccount.get(k).push(d); }
+      });
+      const brief = (d) => ({ id: String(d.id), deal: d.deal || 'Referral Partner deal', stage: d.stage || null, contact: d.contact || null });
+      return mtg_people.filter((p) => p.n > 0).map((p) => {
+        const mine = (byContact.get(p.id) || []).map(brief);
+        const mineIds = new Set(mine.map((d) => d.id));
+        const companyOnly = p.account_id ? (byAccount.get(String(p.account_id)) || []).filter((d) => !mineIds.has(String(d.id))).map(brief) : [];
+        return { id: p.id, name: p.name, account: p.account, account_id: p.account_id, assigned: p.assigned, last: p.last, meetings: p.n, deals: mine, company_deals: companyOnly, created: mine.length > 0 };
+      });
+    },
+  });
+
   /* ---------- view ---------- */
   const root = document.querySelector('#b2-root');
   if (!root) return;
@@ -708,6 +734,21 @@
   const mtgGrid = el('div', 'cc-mt-grid');
   const mtgNote = el('p', 'cc-b2-insight cc-mt-note');
   mtg.append(mtgHead, mtgPath, mtgGap, mtgGrid, mtgNote);
+  const pmCard = el('section', 'cc-card cc-pm');
+  pmCard.id = 'b2-pm';
+  pmCard.setAttribute('aria-labelledby', 'b2-pm-title');
+  const pmHead = el('div', 'cc-b2-scorehead');
+  const pmTitleBox = el('div');
+  const pmTitle = el('h2', null, 'B2B Partner Meetings');
+  pmTitle.id = 'b2-pm-title';
+  pmTitleBox.append(pmTitle, el('p', 'cc-b2-insight', 'Campaign: May 2026 - 100 B2B. Every partner we have met should have a Referral Partner deal in Zoho.'));
+  const pmSop = el('a', 'cc-b2-soplink', 'SOP');
+  pmSop.href = PM_SOP_URL; pmSop.target = '_blank'; pmSop.rel = 'noopener'; pmSop.title = 'SOP 002: Referral Partner deal creation in Zoho';
+  pmSop.setAttribute('aria-label', 'SOP 002: how to create a Referral Partner deal (opens in a new tab)');
+  pmHead.append(pmTitleBox, pmSop);
+  const pmBody = el('div', 'cc-pm-body');
+  const pmNote = el('p', 'cc-b2-insight cc-pm-note');
+  pmCard.append(pmHead, pmBody, pmNote);
   const monCard = card('b2-monday', 'Priority 3 queue', 'Everyone at Priority 3, grouped by what to do next from LI Connect: untouched first, then connected, then waiting. Within a group, the strongest partner evidence comes first.');
   const monTools = el('div', 'cc-tools cc-b2-chips');
   const monBody = el('div', 'cc-b2-wrap');
@@ -772,7 +813,7 @@
   drill.querySelector('.cc-card-head').append(drillClose);
   drill.append(drillBody);
 
-  root.append(score, p3, mtg, mailCard, grid1, drill, nextCard, queueCard, monCard, grid2, sopCard, dqCard);
+  root.append(score, p3, mtg, pmCard, mailCard, grid1, drill, nextCard, queueCard, monCard, grid2, sopCard, dqCard);
   root.addEventListener('click', (e) => {
     const b = e.target.closest('[data-sop]');
     if (!b) return;
@@ -781,7 +822,7 @@
   });
 
   /* Any list of rows (drill): cols are [header, (row) => text or Node]. */
-  const showTable = (title, cols, list, note) => {
+  const showTable = (title, cols, list, note, empty) => {
     drill.querySelector('h3').textContent = title + ' (' + intF(list.length) + ')';
     const tbl = el('table', 'cc-tbl');
     const th = el('thead'); const hr = el('tr');
@@ -790,7 +831,7 @@
     const tb = el('tbody');
     list.forEach((r) => { const tr = el('tr'); cols.forEach(([, f]) => { const v = f(r); const td = el('td'); if (v instanceof Node) td.append(v); else td.textContent = v == null || v === '' ? '—' : v; tr.append(td); }); tb.append(tr); });
     tbl.append(tb);
-    drillBody.replaceChildren(list.length ? tbl : el('p', 'cc-b2-insight', 'Nobody here.'));
+    drillBody.replaceChildren(list.length ? tbl : el('p', empty ? 'cc-pm-done' : 'cc-b2-insight', empty || 'Nobody here.'));
     if (note) drillBody.prepend(el('p', 'cc-b2-insight', note));
     drill.hidden = false;
     drill.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -886,6 +927,7 @@
     drawScore();
     drawP3();
     drawMtg();
+    drawPm();
     const st = state(['b2b_people', 'b2b_actions', 'b2b_monday', 'b2b_funnel', 'b2b_segments']);
     if (st !== 'ok') {
       const msg = st === 'loading' ? 'Loading from Zoho…' : 'Some Zoho data did not load, so this page cannot be worked out. Reload, or check the source in the dashboard menu.';
@@ -1762,6 +1804,77 @@
     }));
     const from = (stages[0] || {}).history_from;
     mtgNote.textContent = `Counts unique B2B prospects by completed meetings in Zoho (Meeting Status Completed, start time passed); future and unmarked meetings don’t count, and each prospect sits in one stage. Today, This week (from Monday) and This month count prospects who newly reached a stage, in Central time; Never Met is reached when Zoho creates the contact. The change compares today’s total with ${prevDay ? fullDayF(prevDay) : 'the same day last month'}. Trends are rebuilt from meeting dates and contact creation dates${from ? ' since ' + fullDayF(from) : ''}; prospects later removed from the campaign aren’t in past weeks.`;
+  };
+
+  /* B2B Partner Meetings: met partners and their Referral Partner deals. */
+  const PM_OWNER_NOTE = 'CRM Owner shows Zoho’s Assigned field, since Contact Owner is the shared Transpire login.';
+  const pmDealCell = (r) => {
+    if (r.deals.length) {
+      const box = el('span', 'cc-pm-deals');
+      r.deals.forEach((d, i) => { if (i) box.append(document.createTextNode(', ')); box.append(link('Potentials', d.id, d.deal + (d.stage ? ' (' + d.stage + ')' : ''))); });
+      return box;
+    }
+    const box = el('span', 'cc-pm-missing');
+    box.append(el('b', null, 'Not created'));
+    if (r.company_deals.length) {
+      const why = el('small');
+      why.append(document.createTextNode('A Referral Partner deal on this company isn’t linked to this contact: '));
+      r.company_deals.forEach((d, i) => { if (i) why.append(document.createTextNode(', ')); why.append(link('Potentials', d.id, d.deal), document.createTextNode(d.contact ? ' (linked to ' + d.contact + ')' : ' (no contact)')); });
+      box.append(why);
+    }
+    return box;
+  };
+  const pmCols = [
+    ['Contact Name', (r) => link('Contacts', r.id, r.name)],
+    ['Company', (r) => (r.account_id ? link('Accounts', r.account_id, r.account) : r.account || 'No company')],
+    ['Meeting Date', (r) => (r.last ? fullDayF(r.last) : '—')],
+    ['CRM Owner', (r) => r.assigned || 'Not assigned'],
+    ['Referral Partner Deal', pmDealCell],
+  ];
+  const pmSort = (list) => list.slice().sort((a, b) => String(b.last || '').localeCompare(String(a.last || '')) || String(a.name).localeCompare(String(b.name)));
+  const drawPm = () => {
+    const st = state(['b2b_partner_deals']);
+    pmNote.classList.toggle('cc-b2-bad', st === 'error');
+    if (st !== 'ok') {
+      pmBody.replaceChildren(el('p', st === 'error' ? 'cc-b2-bad' : 'cc-b2-insight', st === 'error' ? 'Meetings or deals didn’t load from Zoho, so this can’t be worked out. Reload, or check the source in the dashboard menu.' : 'Loading meetings and deals from Zoho…'));
+      pmNote.textContent = '';
+      return;
+    }
+    const all = rows('b2b_partner_deals');
+    const made = all.filter((r) => r.created);
+    const missing = all.filter((r) => !r.created);
+    if (!all.length) {
+      pmBody.replaceChildren(el('p', 'cc-b2-insight', 'No campaign contacts have been recorded as met yet. A contact counts once a meeting with them is marked Completed in Zoho.'));
+      pmNote.textContent = '';
+      return;
+    }
+    const tile = (cls, label, value, sub, go, aria) => {
+      const c = el('div', 'cc-pm-tile ' + cls);
+      c.append(el('p', 'cc-pm-label', label), el('p', 'cc-pm-num', intF(value)));
+      if (sub) c.append(el('p', 'cc-pm-sub', sub));
+      press(c, go);
+      c.setAttribute('aria-label', aria);
+      return c;
+    };
+    const met = tile('cc-pm-main', 'Partners Met', all.length, 'Unique campaign contacts with at least one completed meeting',
+      () => showTable('Partners met', pmCols, pmSort(all), 'Every May 2026 - 100 B2B contact with at least one meeting marked Completed in Zoho, most recent meeting first. ' + PM_OWNER_NOTE),
+      `Partners met: ${intF(all.length)}. Open the list.`);
+    const ok = tile('cc-pm-ok', 'Referral Partner Deal Created', made.length, 'Met, with a Referral Partner deal linked to the contact',
+      () => showTable('Referral Partner deal created', pmCols, pmSort(made), 'Met partners whose Referral Partner deal names them as the contact. ' + PM_OWNER_NOTE),
+      `Referral Partner deal created: ${intF(made.length)}. Open the list.`);
+    const gap = tile(missing.length ? 'cc-pm-bad' : 'cc-pm-ok', 'Referral Partner Deal Not Created', missing.length, null,
+      () => (missing.length
+        ? showTable('Referral Partner deal not created', pmCols, pmSort(missing), 'Met partners with no Referral Partner deal linked to them. Create the deal in Zoho as SOP 002 sets out (Deal Type Reseller/ Referral Partner, Stage Identify, Amount $0.00, their company as Account Name and this person as Contact Name); they drop off this list at the next refresh. ' + PM_OWNER_NOTE)
+        : showTable('Referral Partner deal not created', pmCols, [], null, 'All met partners have Referral Partner Deals created.')),
+      `Referral Partner deal not created: ${intF(missing.length)}, target 0. Open the list.`);
+    const tgt = el('p', 'cc-pm-target', 'Target: 0');
+    gap.insertBefore(tgt, gap.children[2] || null);
+    if (!missing.length) gap.append(el('p', 'cc-pm-sub', 'All met partners have Referral Partner Deals created.'));
+    const pair = el('div', 'cc-pm-pair');
+    pair.append(ok, gap);
+    pmBody.replaceChildren(met, pair);
+    const loose = missing.filter((r) => r.company_deals.length).length;
+    pmNote.textContent = `Met means at least one meeting marked Completed in Zoho; ${intF(all.length)} = ${intF(made.length)} created + ${intF(missing.length)} not created. A deal counts only when its Deal Type is Referral Partner and its Contact Name is the person we met; a deal on the same company linked to someone else, or to no contact, doesn’t count${loose ? ` (${intF(loose)} met ${loose === 1 ? 'partner has' : 'partners have'} one; the list shows it so the link can be fixed)` : ''}.`;
   };
 
   dash.onData(draw);

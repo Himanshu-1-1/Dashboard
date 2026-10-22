@@ -313,3 +313,27 @@
 .cc-b2-more { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
 .cc-b2-qtbl td small { display: block; color: var(--color-fg-muted); font-size: 11px; }
 .cc-b2-closecell { color: var(--color-fg-muted); }
+
+/* B2B Partner Meetings. */
+.cc-pm { gap: var(--cds-gap-md); }
+.cc-pm .cc-b2-scorehead h2 { margin: 0; }
+.cc-pm .cc-b2-scorehead .cc-b2-insight { margin: 2px 0 0; }
+.cc-pm-body { display: grid; gap: var(--cds-gap-sm); max-width: 760px; }
+.cc-pm-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--cds-gap-sm); }
+@media (max-width: 520px) { .cc-pm-pair { grid-template-columns: 1fr; } }
+.cc-pm-tile { --pm-c: var(--color-fg); display: grid; align-content: start; gap: 4px; padding: 14px 16px; border: 1px solid var(--color-border-line); border-radius: 12px; background: var(--color-panel); cursor: pointer; min-width: 0; }
+.cc-pm-tile:hover { box-shadow: 0 0 0 3px color-mix(in oklab, var(--pm-c) 16%, transparent); }
+.cc-pm-tile:focus-visible { outline: 2px solid var(--pm-c); outline-offset: 2px; }
+.cc-pm-main { --pm-c: var(--b2-c1); border-color: color-mix(in oklab, var(--pm-c) 40%, var(--color-border-line)); background: color-mix(in oklab, var(--pm-c) 6%, var(--color-panel)); }
+.cc-pm-ok { --pm-c: var(--color-ok); border-color: color-mix(in oklab, var(--pm-c) 45%, var(--color-border-line)); background: color-mix(in oklab, var(--pm-c) 9%, var(--color-panel)); }
+.cc-pm-bad { --pm-c: var(--color-bad); border-color: color-mix(in oklab, var(--pm-c) 50%, var(--color-border-line)); background: color-mix(in oklab, var(--pm-c) 11%, var(--color-panel)); }
+.cc-pm-label { margin: 0; font-size: var(--cds-font-size-caption); font-weight: var(--cds-font-weight-medium); }
+.cc-pm-num { margin: 4px 0 0; font-family: var(--font-anthropic-serif); font-size: 40px; line-height: 1; font-variant-numeric: tabular-nums; color: var(--pm-c); }
+.cc-pm-main .cc-pm-num { font-size: 56px; color: var(--color-fg); }
+.cc-pm-target { margin: 2px 0 0; justify-self: start; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: var(--cds-font-weight-medium); color: var(--pm-c); background: color-mix(in oklab, var(--pm-c) 14%, transparent); }
+.cc-pm-sub { margin: 0; font-size: 12px; color: var(--color-fg-muted); }
+.cc-pm-ok .cc-pm-sub { color: var(--pm-c); }
+.cc-pm-note { margin: 0; }
+.cc-pm-missing b { color: var(--color-bad); font-weight: var(--cds-font-weight-medium); }
+.cc-pm-missing small { display: block; margin-top: 2px; color: var(--color-fg-muted); }
+.cc-pm-done { color: var(--color-ok); font-weight: var(--cds-font-weight-medium); }
