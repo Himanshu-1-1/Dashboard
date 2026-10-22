@@ -464,6 +464,7 @@
      Today / This week / This month come only from field-change history (dataset p3_events: one row per change,
      {contact_id, field: 'Priority' | 'LI_Connect', from, to, at}), never inferred from current values. */
   const PF_SOP_URL = 'https://docs.google.com/spreadsheets/d/1QFWrhHd5ZnbNn-UmdNVZ3KfqUGp4Ru9R84ztd5Mtx-0/edit?usp=drive_link';
+  const PM_DEALS_URL = 'https://crm.zoho.com/crm/org899412015/tab/Potentials/custom-view/6988700000001932032/kanban?layout_id=6988700000000091023&kvId=6988700000000581518';
   const PM_SOP_URL = 'https://docs.google.com/document/d/1fGux7OzBHHh6BB-zqMPMyeMG7fQ0oCA_oQEE3rxqHHc/edit?tab=t.0#heading=h.4iets7th6uj';
   const P3_SOP_URL = 'https://docs.google.com/document/d/1ocLD2VXVnVrZAVz91FaocBRpqU8Tm8w8-9qUKvMztu8/edit?tab=t.0#heading=h.2n9bebp463et';
   const liOf = (v) => (v == null || v === '' || v === '-None-' ? null : String(v));
@@ -944,7 +945,20 @@
   const pmSop = el('a', 'cc-b2-soplink', 'SOP');
   pmSop.href = PM_SOP_URL; pmSop.target = '_blank'; pmSop.rel = 'noopener'; pmSop.title = 'SOP 002: Referral Partner deal creation in Zoho';
   pmSop.setAttribute('aria-label', 'SOP 002: how to create a Referral Partner deal (opens in a new tab)');
-  pmHead.append(pmTitleBox, pmSop);
+  const pmCrm = el('a', 'cc-sop-btn cc-crm-btn');
+  pmCrm.href = PM_DEALS_URL; pmCrm.target = '_blank'; pmCrm.rel = 'noopener'; pmCrm.title = 'Open the Deals board in Zoho CRM';
+  pmCrm.setAttribute('aria-label', 'Deals board in Zoho CRM (opens in a new tab)');
+  pmCrm.innerHTML = '<svg class="cc-crm-ico" viewBox="0 0 32 32" aria-hidden="true" focusable="false">'
+    + '<rect class="cc-crm-board" x="2.5" y="4" width="27" height="24" rx="3.5"/>'
+    + '<path class="cc-crm-rule" d="M11.5 8v16.5M20.5 8v16.5"/>'
+    + '<rect class="cc-crm-card" x="5" y="8" width="4.5" height="3.6" rx="1"/><rect class="cc-crm-card" x="5" y="13.4" width="4.5" height="3.6" rx="1"/>'
+    + '<rect class="cc-crm-card" x="14" y="8" width="4.5" height="3.6" rx="1"/>'
+    + '<rect class="cc-crm-card" x="23" y="8" width="4.5" height="3.6" rx="1"/><rect class="cc-crm-card" x="23" y="13.4" width="4.5" height="3.6" rx="1"/>'
+    + '<rect class="cc-crm-move" x="5" y="18.8" width="4.5" height="3.6" rx="1"/>'
+    + '</svg><span class="cc-b2-sr">Deals in Zoho CRM</span>';
+  const pmLinks = el('div', 'cc-link-stack');
+  pmLinks.append(pmSop, pmCrm);
+  pmHead.append(pmTitleBox, pmLinks);
   const pmBody = el('div', 'cc-pm-body');
   const pmNote = el('p', 'cc-b2-insight cc-pm-note');
   const pmTools = el('div', 'cc-tools cc-b2-chips cc-pm-chips');

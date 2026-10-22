@@ -558,3 +558,15 @@
   .cc-pf-slice { transition: opacity .2s ease; }
   .cc-pf-slice:hover, .cc-pf-slice.cc-pf-on { transform: none; }
 }
+/* Deals board link under the SOP icon: a kanban whose bottom card moves a column on hover. */
+.cc-link-stack { margin-left: auto; display: flex; flex-direction: column; align-items: center; gap: 8px; flex: none; }
+.cc-link-stack .cc-b2-soplink { margin-left: 0; }
+.cc-crm-ico { width: 28px; height: 28px; overflow: visible; }
+.cc-crm-board { fill: var(--color-panel); stroke: var(--sop-ink); stroke-width: 1.6; }
+.cc-crm-rule { fill: none; stroke: color-mix(in oklab, var(--sop-ink) 35%, transparent); stroke-width: 1.2; stroke-linecap: round; }
+.cc-crm-card { fill: color-mix(in oklab, var(--sop-ink) 45%, transparent); }
+.cc-crm-move { fill: var(--sop-accent); transition: transform .45s cubic-bezier(.34, 1.56, .64, 1); }
+.cc-crm-btn:hover .cc-crm-move, .cc-crm-btn:focus-visible .cc-crm-move { transform: translate(9px, -5.4px); }
+.cc-crm-btn:active .cc-crm-ico { transform: scale(.94); }
+@media (max-width: 520px) { .cc-link-stack { margin-left: 0; flex-direction: row; } }
+@media (prefers-reduced-motion: reduce) { .cc-crm-move { transition: none; } }
