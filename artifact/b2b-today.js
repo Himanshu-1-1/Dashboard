@@ -789,10 +789,11 @@
   naSop.setAttribute('aria-label', 'SOP 002: Referral Partner deal creation (opens in a new tab)');
   naHead.append(naTitleBox, naState, naSop);
   const naTiles = el('div', 'cc-na-tiles');
-  naTiles.setAttribute('role', 'tablist');
+  naTiles.setAttribute('role', 'group');
   naTiles.setAttribute('aria-label', 'Account gaps');
   const naList = el('div', 'cc-b2-wrap cc-na-list');
-  naList.setAttribute('role', 'tabpanel');
+  naList.id = 'b2-na-list';
+  naList.hidden = true;
   const naNote = el('p', 'cc-b2-insight cc-na-note');
   na.append(naHead, naTiles, naList, naNote);
   const head = el('div', 'cc-b2-head');
@@ -2112,7 +2113,7 @@
   };
 
   /* Account gaps: Priority 1 and met partners without an Account, and Referral Partner deals on the wrong Account. */
-  let naTab = 'none';
+  let naTab = null;
   const NA_FIX = {
     'Deal is on our own company': (r) => 'Change the deal’s Account Name to ' + (r.account_id ? r.account : 'the partner’s company') + '.',
     'Deal has no Account': (r) => 'Set the deal’s Account Name to ' + (r.account_id ? r.account : 'the partner’s company') + '.',
@@ -2198,8 +2199,11 @@
     ];
     const show = (k) => {
       naTab = k;
+      naTiles.querySelectorAll('.cc-na-tile').forEach((b) => b.setAttribute('aria-expanded', String(b.dataset.k === k)));
+      naList.hidden = !k;
+      naNote.hidden = !k;
+      if (!k) { naList.replaceChildren(); return; }
       const [, label, list, , ok] = TABS.find((x) => x[0] === k);
-      naTiles.querySelectorAll('[role="tab"]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.k === k)));
       naList.setAttribute('aria-label', label);
       if (!list.length) { naList.replaceChildren(el('p', 'cc-pm-done', ok)); return; }
       const cols = k === 'wrong' ? NA_DEAL_COLS : NA_PEOPLE_COLS;
@@ -2214,14 +2218,16 @@
     };
     naTiles.replaceChildren(...TABS.map(([k, label, list, sub]) => {
       const b = el('button', 'cc-pm-tile cc-na-tile ' + (list.length ? 'cc-pm-bad' : 'cc-pm-ok'));
-      b.type = 'button'; b.dataset.k = k; b.setAttribute('role', 'tab');
-      b.append(el('p', 'cc-pm-label', label), el('p', 'cc-pm-num', intF(list.length)), el('p', 'cc-pm-target', 'Target: 0'), el('p', 'cc-pm-sub', sub));
-      b.setAttribute('aria-label', `${label}: ${intF(list.length)}, target 0. Show the list.`);
-      b.addEventListener('click', () => show(k));
+      b.type = 'button'; b.dataset.k = k; b.setAttribute('aria-controls', 'b2-na-list');
+      const txt = el('span', 'cc-na-txt');
+      txt.append(el('span', 'cc-pm-label', label), el('span', 'cc-pm-sub', sub + '. Target 0.'));
+      b.append(el('span', 'cc-pm-num', intF(list.length)), txt, el('span', 'cc-na-chev'));
+      b.setAttribute('aria-label', `${label}: ${intF(list.length)}, target 0. ${naTab === k ? 'Hide' : 'Show'} the list.`);
+      b.title = sub + '. Target 0. Select to show or hide the list.';
+      b.addEventListener('click', () => show(naTab === k ? null : k));
       return b;
     }));
-    const firstOpen = TABS.find((x) => x[2].length);
-    show(TABS.some((x) => x[0] === naTab) ? naTab : (firstOpen || TABS[0])[0]);
+    show(TABS.some((x) => x[0] === naTab) ? naTab : null);
     const dnc = rows('b2b_people').filter((p) => p.dnc && (p.priority === '1' || p.met > 0) && !p.account_id).length;
     naNote.textContent = 'Counts B2B prospects (May 2026 - 100 B2B, Priority 9 and 11 left out) at Priority 1 or with any meeting in Zoho: completed, scheduled, past and not marked Completed, or counted in Total Meetings. An Account that is our own company (Tech Transpire, True Lean) counts as none. Upcoming is the part of No Account with a meeting still to come. The deal check covers every Referral Partner deal whose Contact Name is a B2B prospect, any stage.'
       + (dnc ? ` ${intF(dnc)} Do Not Contact ${dnc === 1 ? 'record is' : 'records are'} left out, since no deal will follow.` : '') + ' Fix it in Zoho and it drops off at the next refresh.';
