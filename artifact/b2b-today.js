@@ -351,6 +351,31 @@
   };
   dash.loader('b2b_added', { description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text.', fn: coqlRows });
   dash.loader('b2b_meetings', { description: 'Zoho’s COQL answer as rows: the linked contact becomes Who_Id (name) and Who_Id_id.', fn: coqlRows });
+  dash.loader('b2b_all', { description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text.', fn: coqlRows });
+
+  /* Partner funnel overview: every contact tagged for the campaign, Priority 9 and 11 included, one group each by Priority. */
+  const PF_GROUPS = [
+    { key: '5', label: 'P5 · Backlog / Future Outreach', short: 'P5 Backlog', side: 'funnel', tone: 1 },
+    { key: '3', label: 'P3 · Priority Outreach', short: 'P3 Priority outreach', side: 'funnel', tone: 2 },
+    { key: '1', label: 'P1 · Active Partnership Pursuit', short: 'P1 Active pursuit', side: 'funnel', tone: 3 },
+    { key: '99', label: 'P99 · Signed Partners / Closed Won', short: 'P99 Signed', side: 'funnel', tone: 4 },
+    { key: '9', label: 'P9 · Inactive / Disqualified', short: 'P9 Inactive', side: 'out', tone: 'warn' },
+    { key: '11', label: 'P11 · Do Not Contact', short: 'P11 Do not contact', side: 'out', tone: 'bad' },
+    { key: 'none', label: 'No Priority set', short: 'No Priority', side: 'funnel', tone: 'none' },
+  ];
+  dash.calc('b2b_priority_all', {
+    title: 'Campaign contacts by Priority',
+    description: 'Every contact tagged “May 2026 - 100 B2B”, Priority 9 and 11 included, one row each with their Priority group (5, 3, 1, 99, 9, 11 or not set), company, LinkedIn status, Assigned and the day Zoho created them.',
+    inputs: ['b2b_all'],
+    fn: (b2b_all) => [...new Map(b2b_all.map((r) => [String(r.id), r])).values()].map((r) => {
+      const pr = r.Priority != null && r.Priority !== '' && r.Priority !== '-None-' ? String(r.Priority) : null;
+      return {
+        id: String(r.id), name: r.Full_Name || '—', account: r.Account_Name || null, account_id: r.Account_Name_id || null,
+        priority: pr, group: pr && PF_GROUPS.some((g) => g.key === pr) ? pr : pr ? 'other:' + pr : 'none',
+        li: r.LI_Connect && r.LI_Connect !== '-None-' ? r.LI_Connect : null, assigned: r.Assigned || null, created: r.Created_Time ? ctD(r.Created_Time) : null,
+      };
+    }),
+  });
 
   dash.calc('b2b_added_rows', {
     title: 'B2B prospects added to Zoho, one row each',
@@ -652,6 +677,18 @@
 
   /* Static structure, built once. */
   root.replaceChildren();
+  const pf = el('section', 'cc-card cc-pf');
+  pf.id = 'b2-pf';
+  pf.setAttribute('aria-labelledby', 'b2-pf-title');
+  const pfHead = el('div', 'cc-b2-scorehead');
+  const pfTitleBox = el('div');
+  const pfTitle = el('h2', null, 'Partner Funnel Overview');
+  pfTitle.id = 'b2-pf-title';
+  pfTitleBox.append(pfTitle, el('p', 'cc-b2-insight', 'Campaign: May 2026 - 100 B2B. Every tagged contact by Priority, Priority 9 and 11 included.'));
+  pfHead.append(pfTitleBox);
+  const pfBody = el('div', 'cc-pf-body');
+  const pfNote = el('p', 'cc-b2-insight cc-pf-note');
+  pf.append(pfHead, pfBody, pfNote);
   const score = el('section', 'cc-card cc-b2-score');
   score.id = 'b2-score';
   score.setAttribute('aria-labelledby', 'b2-score-title');
@@ -816,7 +853,7 @@
   drill.querySelector('.cc-card-head').append(drillClose);
   drill.append(drillBody);
 
-  root.append(score, p3, mtg, pmCard, mailCard, grid1, drill, nextCard, queueCard, monCard, grid2, sopCard, dqCard);
+  root.append(pf, score, p3, mtg, pmCard, mailCard, grid1, drill, nextCard, queueCard, monCard, grid2, sopCard, dqCard);
   root.addEventListener('click', (e) => {
     const b = e.target.closest('[data-sop]');
     if (!b) return;
@@ -927,6 +964,7 @@
   };
 
   const draw = () => {
+    drawPf();
     drawScore();
     drawP3();
     drawMtg();
@@ -1993,6 +2031,103 @@
     }
     const loose = missing.filter((r) => r.company_deals.length).length;
     pmNote.textContent = `Met means at least one meeting marked Completed in Zoho${from ? `; ${periodName.toLowerCase()} counts partners whose first completed meeting falls in it (Central time${pmPeriod === 'week' ? ', weeks start Monday' : ''}), and their deals as they stand today` : ''}; ${intF(all.length)} = ${intF(made.length)} created + ${intF(missing.length)} not created. A deal counts only when its Deal Type is Referral Partner and its Contact Name is the person we met; a deal on the same company linked to someone else, or to no contact, doesn’t count${loose ? ` (${intF(loose)} met ${loose === 1 ? 'partner has' : 'partners have'} one; the list shows it so the link can be fixed)` : ''}.`;
+  };
+
+  /* Partner Funnel Overview. */
+  let pfPick = null;
+  const pfCols = [
+    ['Name', (r) => link('Contacts', r.id, r.name)],
+    ['Company', (r) => (r.account_id ? link('Accounts', r.account_id, r.account) : r.account || 'No company')],
+    ['Priority', (r) => (r.priority ? 'P' + r.priority : 'Not set')],
+    ['LI Connect', (r) => r.li || 'Empty'],
+    ['Assigned', (r) => r.assigned || 'Not assigned'],
+    ['Added to Zoho', (r) => (r.created ? fullDayF(r.created) : '—')],
+  ];
+  const pfOpen = (g, list, total) => {
+    pfPick = g ? g.key : null;
+    drawPf();
+    showTable(g ? g.label : 'All campaign contacts', pfCols, list.slice().sort((a, b) => String(a.name).localeCompare(String(b.name))),
+      g ? `${intF(list.length)} of ${intF(total)} contacts tagged “May 2026 - 100 B2B” (${total ? Math.round((list.length / total) * 1000) / 10 : 0}%). Select a name to open it in Zoho CRM.` : 'Every contact tagged “May 2026 - 100 B2B”, Priority 9 and 11 included. Select a name to open it in Zoho CRM.');
+  };
+  const pfArc = (cx, cy, r0, r1, a0, a1) => {
+    const p = (r, a) => [cx + r * Math.sin(a), cy - r * Math.cos(a)];
+    if (a1 - a0 >= Math.PI * 2 - 1e-6) a1 = a0 + Math.PI * 2 - 1e-4;
+    const large = a1 - a0 > Math.PI ? 1 : 0;
+    const [x0, y0] = p(r1, a0); const [x1, y1] = p(r1, a1); const [x2, y2] = p(r0, a1); const [x3, y3] = p(r0, a0);
+    return `M${x0.toFixed(2)} ${y0.toFixed(2)}A${r1} ${r1} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}L${x2.toFixed(2)} ${y2.toFixed(2)}A${r0} ${r0} 0 ${large} 0 ${x3.toFixed(2)} ${y3.toFixed(2)}Z`;
+  };
+  const drawPf = () => {
+    const st = state(['b2b_priority_all']);
+    pfNote.classList.toggle('cc-b2-bad', st === 'error');
+    if (st !== 'ok') {
+      pfBody.replaceChildren(el('p', st === 'error' ? 'cc-b2-bad' : 'cc-b2-insight', st === 'error' ? 'Campaign contacts didn’t load from Zoho, so the funnel can’t be drawn. Reload, or check the source in the dashboard menu.' : 'Loading campaign contacts from Zoho…'));
+      pfNote.textContent = '';
+      return;
+    }
+    const all = rows('b2b_priority_all');
+    if (!all.length) { pfBody.replaceChildren(el('p', 'cc-b2-insight', 'No contacts carry the “May 2026 - 100 B2B” tag yet.')); pfNote.textContent = ''; return; }
+    const total = all.length;
+    const other = [...new Set(all.filter((r) => r.group.startsWith('other:')).map((r) => r.priority))];
+    const groups = [...PF_GROUPS, ...other.map((k) => ({ key: 'other:' + k, label: 'P' + k + ' · Not a defined stage', short: 'P' + k, side: 'out', tone: 'none' }))]
+      .map((g) => ({ ...g, list: all.filter((r) => r.group === g.key) }))
+      .filter((g) => g.list.length || ['5', '3', '1', '99', '9', '11'].includes(g.key));
+    const pctF = (n) => (total ? (Math.round((n / total) * 1000) / 10).toFixed(1) : '0.0') + '%';
+    const toneVar = (t) => `var(--pf-${t})`;
+
+    /* Donut. */
+    const ns = 'http://www.w3.org/2000/svg';
+    const S = 240; const R1 = 116; const R0 = 76;
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${S} ${S}`); svg.setAttribute('class', 'cc-pf-donut'); svg.setAttribute('role', 'group');
+    svg.setAttribute('aria-label', `${intF(total)} campaign contacts by Priority`);
+    let a = 0;
+    groups.filter((g) => g.list.length).forEach((g) => {
+      const span = (g.list.length / total) * Math.PI * 2;
+      const path = document.createElementNS(ns, 'path');
+      path.setAttribute('d', pfArc(S / 2, S / 2, R0, R1, a, a + span));
+      path.setAttribute('class', 'cc-pf-slice' + (pfPick && pfPick !== g.key ? ' cc-pf-dim' : '') + (pfPick === g.key ? ' cc-pf-on' : ''));
+      path.style.fill = toneVar(g.tone);
+      path.setAttribute('tabindex', '0'); path.setAttribute('role', 'button');
+      path.setAttribute('aria-label', `${g.label}: ${intF(g.list.length)}, ${pctF(g.list.length)}. Open the list.`);
+      const tt = document.createElementNS(ns, 'title'); tt.textContent = `${g.label}: ${intF(g.list.length)} (${pctF(g.list.length)})`; path.append(tt);
+      const go = () => pfOpen(g, g.list, total);
+      path.addEventListener('click', go);
+      path.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+      svg.append(path);
+      a += span;
+    });
+    const pickG = pfPick ? groups.find((g) => g.key === pfPick) : null;
+    const center = el('button', 'cc-pf-center');
+    center.type = 'button';
+    center.append(el('span', null, pickG ? pickG.short : 'Total contacts'), el('b', null, intF(pickG ? pickG.list.length : total)), el('small', null, pickG ? `${pctF(pickG.list.length)} of campaign` : '100% of campaign'));
+    center.addEventListener('click', () => (pickG ? pfOpen(pickG, pickG.list, total) : pfOpen(null, all, total)));
+    const donut = el('div', 'cc-pf-left');
+    const ring = el('div', 'cc-pf-ring');
+    ring.append(svg, center);
+    donut.append(ring, el('p', 'cc-pf-hint', pfPick ? 'Select the center or the same priority again to show everyone.' : 'Select a slice or a priority to highlight it and list the contacts.'));
+
+    /* Rows. */
+    const rowsFor = (side, title, sub) => {
+      const box = el('div', 'cc-pf-col');
+      const h = el('div', 'cc-pf-colhead'); h.append(el('h3', null, title)); if (sub) h.append(el('span', null, sub));
+      box.append(h);
+      groups.filter((g) => g.side === side).forEach((g) => {
+        const r = el('div', 'cc-pf-row' + (pfPick === g.key ? ' cc-pf-on' : '') + (pfPick && pfPick !== g.key ? ' cc-pf-dim' : ''));
+        r.style.setProperty('--pf-c', toneVar(g.tone));
+        const top = el('div', 'cc-pf-rtop');
+        top.append(el('i', 'cc-pf-sw'), el('span', 'cc-pf-name', g.label), el('b', null, intF(g.list.length)), el('small', null, pctF(g.list.length)), el('span', 'cc-pf-chev', '›'));
+        const bar = el('div', 'cc-pf-bar'); const fill = el('i'); fill.style.width = (total ? (g.list.length / total) * 100 : 0) + '%'; bar.append(fill);
+        r.append(top, bar);
+        press(r, () => (pfPick === g.key ? (pfPick = null, drawPf(), drill.hidden = true) : pfOpen(g, g.list, total)));
+        r.setAttribute('aria-label', `${g.label}: ${intF(g.list.length)} contacts, ${pctF(g.list.length)}. Open the list.`);
+        r.setAttribute('aria-pressed', String(pfPick === g.key));
+        box.append(r);
+      });
+      return box;
+    };
+    pfBody.replaceChildren(donut, rowsFor('funnel', 'Partner Funnel', 'Light to dark green'), rowsFor('out', 'Inactive & Restricted', null));
+    const p99 = groups.find((g) => g.key === '99');
+    pfNote.textContent = `${intF(total)} contacts carry the “May 2026 - 100 B2B” tag. Each sits in exactly one group by its current Zoho Priority, so the groups add up to the total.${p99 && !p99.list.length ? ' No contact is at Priority 99 yet: set it on signed partners in Zoho and they move here at the next refresh.' : ''} Other campaign figures on this tab leave Priority 9 and 11 out.`;
   };
 
   dash.onData(draw);
