@@ -1009,6 +1009,18 @@
   drillClose.addEventListener('click', () => { drill.hidden = true; });
   drill.querySelector('.cc-card-head').append(drillClose);
   drill.append(drillBody);
+  /* Lists open right under the section that was clicked, not in one fixed place further down. */
+  let drillFrom = null;
+  const noteFrom = (e) => {
+    const t = e.target;
+    if (!(t instanceof Element) || drill.contains(t)) return;
+    let sec = t;
+    while (sec && sec.parentElement !== root) sec = sec.parentElement;
+    if (sec) drillFrom = sec;
+  };
+  const placeDrill = () => {
+    if (drillFrom && drillFrom !== drill && drillFrom.parentElement === root && drillFrom.nextElementSibling !== drill) drillFrom.after(drill);
+  };
 
   root.append(pf, score, p3, na, mtg, pmCard, mailCard, grid1, drill, nextCard, queueCard, monCard, grid2, sopCard, dqCard);
   /* SOP links: an animated playbook page instead of the word. The link keeps its title and aria-label. */
@@ -1024,6 +1036,8 @@
     a.classList.add('cc-sop-btn');
     a.innerHTML = SOP_ICON + '<span class="cc-b2-sr">SOP</span>';
   });
+  root.addEventListener('click', noteFrom, true);
+  root.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') noteFrom(e); }, true);
   root.addEventListener('click', (e) => {
     const b = e.target.closest('[data-sop]');
     if (!b) return;
@@ -1044,6 +1058,7 @@
     tbl.append(tb);
     drillBody.replaceChildren(list.length ? tbl : el('p', empty ? 'cc-pm-done' : 'cc-b2-insight', empty || 'Nobody here.'));
     if (note) drillBody.prepend(el('p', 'cc-b2-insight', note));
+    placeDrill();
     drill.hidden = false;
     drill.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
@@ -1075,6 +1090,7 @@
     tbl.append(tb);
     drillBody.replaceChildren(tbl);
     if (note) drillBody.prepend(el('p', 'cc-b2-insight', note));
+    placeDrill();
     drill.hidden = false;
     drill.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
@@ -1561,6 +1577,7 @@
     tbl.append(tb);
     drillBody.replaceChildren(tbl);
     if (note) drillBody.prepend(el('p', 'cc-b2-insight', note));
+    placeDrill();
     drill.hidden = false;
     drill.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
@@ -1581,6 +1598,7 @@
     });
     tbl.append(tb);
     drillBody.replaceChildren(el('p', 'cc-b2-insight', 'Tagged “May 2026 - 100 B2B” with Priority 5 now: the backlog the weekly transfer to Priority 3 picks from. Newest first.'), tbl);
+    placeDrill();
     drill.hidden = false;
     drill.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
@@ -1733,6 +1751,7 @@
     tbl.append(tb);
     drillBody.replaceChildren(tbl);
     if (note) drillBody.prepend(el('p', 'cc-b2-insight', note));
+    placeDrill();
     drill.hidden = false;
     drill.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
@@ -2000,6 +2019,7 @@
     drillBody.replaceChildren(tbl);
     if (note) drillBody.prepend(el('p', 'cc-b2-insight', note));
     if (mode === 'unmarked') drillBody.prepend(sopBtn(7, 'SOP 7 Log a meeting'));
+    placeDrill();
     drill.hidden = false;
     drill.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
