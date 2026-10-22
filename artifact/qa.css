@@ -113,3 +113,12 @@
 .cc-qa-rules { list-style: none; }
 .cc-qa-rules li { display: grid; gap: 2px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--color-border-line); border-left: 3px solid var(--qa-ok); }
 @media (prefers-reduced-motion: reduce) { .cc-qa-arc, .cc-qa-crbar i { animation: none; } .cc-qa-stat { transition: none; } .cc-qa-stat:hover { transform: none; } }
+/* Merge in Zoho: opens Zoho's merge screen for the group. */
+.cc-qa-merge-acts { display: grid; gap: 8px; margin: 2px 0 6px; }
+.cc-qa-mergerow { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; }
+.cc-qa-mergebtn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: var(--cds-font-weight-medium); text-decoration: none; color: #fff; background: var(--qa-accent); box-shadow: 0 6px 16px -10px var(--qa-accent); transition: transform .15s ease, box-shadow .2s ease; white-space: nowrap; }
+.cc-qa-mergebtn::after { content: "↗"; font-size: 12px; opacity: .85; }
+.cc-qa-mergebtn:hover { transform: translateY(-1px); box-shadow: 0 10px 22px -12px var(--qa-accent); }
+.cc-qa-mergebtn:focus-visible { outline: 2px solid var(--qa-accent); outline-offset: 2px; }
+.cc-qa-mergestep { font-size: 12px; color: var(--color-fg-muted); }
+@media (prefers-reduced-motion: reduce) { .cc-qa-mergebtn { transition: none; } .cc-qa-mergebtn:hover { transform: none; } }

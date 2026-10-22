@@ -370,6 +370,16 @@
   const dayF = (s) => (s ? new Date(s).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric' }) : '—');
   const link = (module, id, text) => { const a = el('a', 'cc-zlink', text); a.href = ZOHO + module + '/' + id; a.target = '_blank'; a.rel = 'noopener'; a.title = 'Open in Zoho CRM'; return a; };
   const zmod = { Contacts: 'Contacts', Accounts: 'Accounts', Deals: 'Potentials' };
+  /* Zoho's merge screen opens straight from a link with the record IDs. It takes at most three records, lists them newest
+     first (highest ID) and makes Record 1 the master, whatever order the link gives. */
+  const MERGE_MAX = 3;
+  const idDesc = (a, b) => (a.length !== b.length ? b.length - a.length : b < a ? -1 : b > a ? 1 : 0);
+  const mergeBatches = (plan) => {
+    const out = [];
+    for (let i = 0; i < plan.merge.length; i += MERGE_MAX - 1) out.push([plan.keep, ...plan.merge.slice(i, i + MERGE_MAX - 1)].map(String));
+    return out;
+  };
+  const mergeUrl = (module, ids) => ZOHO + zmod[module] + '/merge?ids=' + ids.map(encodeURIComponent).join(',');
   const state = (ids) => { const st = ids.map((id) => dash.data(id).status); if (st.some((s) => s === 'loading')) return 'loading'; return st.every((s) => s === 'ok') ? 'ok' : 'error'; };
   const rows = (id) => { const d = dash.data(id); return d.status === 'ok' ? d.data || [] : []; };
   const mask = (e) => (e ? e.replace(/^(.)[^@]*@/, '$1***@') : '—');
@@ -533,7 +543,7 @@
         ? [['', (r) => (g.plan && g.plan.keep === r.id ? el('span', 'cc-qa-keep', '★ Keep') : g.plan ? el('span', 'cc-qa-merge', 'Merge') : '')], ['Name', (r) => link('Contacts', r.id, r.name)], ['Account', (r) => (r.account_id ? link('Accounts', r.account_id, r.account) : 'None')], ['Email', (r) => mask(r.email || r.email2)], ['LinkedIn', (r) => (r.li_slug ? '✓' : '—')], ['Priority', (r) => (r.priority ? 'P' + r.priority : '—')], ['Deals · meetings', (r) => `${r.deals} · ${r.meetings}`], ['Created', (r) => dayF(r.created)]]
         : dupModule === 'Accounts'
           ? [['', (r) => (g.plan.keep === r.id ? el('span', 'cc-qa-keep', '★ Keep') : el('span', 'cc-qa-merge', 'Merge'))], ['Account', (r) => link('Accounts', r.id, r.name)], ['Website', (r) => r.domain || '—'], ['Contacts', (r) => intF(r.contacts)], ['Deals', (r) => intF(r.deals)], ['Industry', (r) => r.industry || '—'], ['Created', (r) => dayF(r.created)]]
-          : [['', (r) => (g.plan.keep === r.id ? el('span', 'cc-qa-keep', '★ Keep') : el('span', 'cc-qa-merge', 'Close or merge'))], ['Deal', (r) => link('Potentials', r.id, r.name)], ['Stage', (r) => r.stage || '—'], ['Account', (r) => (r.account_id ? link('Accounts', r.account_id, r.account) : 'None')], ['Contact', (r) => (r.contact_id ? link('Contacts', r.contact_id, r.contact) : 'None')], ['Created', (r) => dayF(r.created)]];
+          : [['', (r) => (g.plan.keep === r.id ? el('span', 'cc-qa-keep', '★ Keep') : el('span', 'cc-qa-merge', 'Merge'))], ['Deal', (r) => link('Potentials', r.id, r.name)], ['Stage', (r) => r.stage || '—'], ['Account', (r) => (r.account_id ? link('Accounts', r.account_id, r.account) : 'None')], ['Contact', (r) => (r.contact_id ? link('Contacts', r.contact_id, r.contact) : 'None')], ['Created', (r) => dayF(r.created)]];
       const th = el('thead'); const hr = el('tr'); cols.forEach(([x]) => { const c = el('th', null, x); c.scope = 'col'; hr.append(c); }); th.append(hr);
       const tb = el('tbody');
       const order = g.plan ? [g.plan.keep, ...g.plan.merge] : g.records;
@@ -545,10 +555,23 @@
       if (g.plan) {
         if (g.plan.carry.length) { const p = el('p'); p.append(el('b', null, 'Carry over: ')); p.append(document.createTextNode(g.plan.carry.map((c) => `${c.label} from ${c.from}`).join('; ') + '.')); foot.append(p); }
         g.plan.notes.forEach((n) => foot.append(el('p', null, n)));
+        const batches = mergeBatches(g.plan);
+        const keepName = (recOf(g.plan.keep) || {}).name || 'the starred record';
+        const acts = el('div', 'cc-qa-merge-acts');
+        batches.forEach((ids, i) => {
+          const pos = ids.slice().sort(idDesc).indexOf(String(g.plan.keep)) + 1;
+          const a = el('a', 'cc-qa-mergebtn', batches.length > 1 ? `Merge in Zoho (${i + 1} of ${batches.length})` : 'Merge in Zoho');
+          a.href = mergeUrl(dupModule, ids); a.target = '_blank'; a.rel = 'noopener';
+          a.title = `Opens Zoho's merge screen with these ${ids.length} records`;
+          a.setAttribute('aria-label', `Merge ${ids.length} records into ${keepName} in Zoho (opens a new tab)`);
+          const step = el('span', 'cc-qa-mergestep', pos === 1
+            ? `${keepName} opens as the master (Record 1). Check the values, then select Merge.`
+            : `In Zoho, choose Record ${pos} at the top (${keepName}) to make it the master, check the values, then select Merge.`);
+          const row = el('div', 'cc-qa-mergerow'); row.append(a, step); acts.append(row);
+        });
+        foot.append(acts);
         const how = el('p', 'cc-qa-how');
-        how.textContent = dupModule === 'Deals'
-          ? 'How: open the kept deal in Zoho and bring it up to date; set the other to Closed Lost with the reason “Duplicate”, or merge it if your edition allows.'
-          : `How: in Zoho, open the kept ${dupModule === 'Contacts' ? 'contact' : 'account'}, choose Find and Merge (or select the records in the list view and use Merge), pick the kept record as master, and choose its values field by field. Zoho moves the related deals, meetings, tasks and notes onto the kept record.`;
+        how.textContent = `Merge in Zoho opens Zoho's merge screen with these records already chosen; nothing changes until you select Merge there. Zoho moves the related ${dupModule === 'Deals' ? 'contacts, activities and notes' : 'deals, meetings, tasks and notes'} onto the master, keeps the oldest Created Time, and merges up to ${MERGE_MAX} records at a time${batches.length > 1 ? ', so this group takes ' + batches.length + ' merges, in order' : ''}.`;
         foot.append(how);
       } else foot.append(el('p', 'cc-qa-how', 'These are different people with the same email address (often a shared inbox). Give each their own address, or keep the shared one only on the right person.'));
       card.append(foot);
