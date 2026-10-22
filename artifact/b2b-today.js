@@ -1843,6 +1843,26 @@
     if (k === 'year') return t.slice(0, 5) + '01-01';
     return null;
   };
+  /* The last five periods of a kind, oldest first: [start, end, short label]; the last one is the current period to date. */
+  const pmSeries = (k) => {
+    const t = todayCT();
+    const iso = (d) => d.toISOString().slice(0, 10);
+    const out = [];
+    for (let i = 4; i >= 0; i -= 1) {
+      if (k === 'week') {
+        const m = new Date(new Date(pmStart('week') + 'T00:00:00Z').getTime() - i * 7 * 864e5);
+        out.push([iso(m), i ? iso(new Date(m.getTime() + 6 * 864e5)) : t, i ? 'Week of ' + dayF(iso(m)) : 'This week']);
+      } else if (k === 'month') {
+        const [y, mo] = t.split('-').map(Number);
+        const f = new Date(Date.UTC(y, mo - 1 - i, 1));
+        out.push([iso(f), i ? iso(new Date(Date.UTC(y, mo - i, 0))) : t, f.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', year: 'numeric' })]);
+      } else if (k === 'year') {
+        const y = Number(t.slice(0, 4)) - i;
+        out.push([y + '-01-01', i ? y + '-12-31' : t, String(y)]);
+      }
+    }
+    return out;
+  };
   const pmPrev = (k) => {
     const t = todayCT();
     const iso = (d) => d.toISOString().slice(0, 10);
@@ -1881,23 +1901,6 @@
       pmNote.textContent = '';
       return;
     }
-    const prev = pmPrev(pmPeriod);
-    const before = prev ? everyone.filter((r) => r.first && r.first >= prev[0] && r.first <= prev[1]) : null;
-    const prevLabel = prev ? `${prev[2]} (${fullDayF(prev[0])} – ${fullDayF(prev[1])})` : '';
-    /* One comparison line per card: the previous full period, the change, and a link to that period's list. good: 'up' when a rise is good, 'down' when a fall is. */
-    const compare = (tileNode, now, then, good, open) => {
-      const d = now - then;
-      const line = el('p', 'cc-pm-cmp');
-      const tone = d === 0 ? 'flat' : (d > 0) === (good === 'up') ? 'good' : 'bad';
-      const chip = el('span', 'cc-pm-delta cc-pmd-' + tone, d === 0 ? 'No change' : (d > 0 ? '▲ +' : '▼ −') + intF(Math.abs(d)));
-      const btn = el('button', 'cc-pm-prev', `${prev[2]}: ${intF(then)}`);
-      btn.type = 'button';
-      btn.title = `Open the list for ${prevLabel}`;
-      btn.addEventListener('click', (e) => { e.stopPropagation(); open(); });
-      btn.addEventListener('keydown', (e) => e.stopPropagation());
-      line.append(chip, document.createTextNode(' vs '), btn);
-      tileNode.append(line);
-    };
     const tile = (cls, label, value, sub, go, aria) => {
       const c = el('div', 'cc-pm-tile ' + cls);
       c.append(el('p', 'cc-pm-label', label), el('p', 'cc-pm-num', intF(value)));
@@ -1920,17 +1923,59 @@
     const tgt = el('p', 'cc-pm-target', 'Target: 0');
     gap.insertBefore(tgt, gap.children[2] || null);
     if (!missing.length) gap.append(el('p', 'cc-pm-sub', all.length ? (from ? `All partners first met ${periodName.toLowerCase()} have Referral Partner Deals created.` : 'All met partners have Referral Partner Deals created.') : `Nobody was met for the first time ${periodName.toLowerCase()}.`));
-    if (prev) {
-      const pMade = before.filter((r) => r.created);
-      const pMiss = before.filter((r) => !r.created);
-      const scopePrev = ` first met ${prev[2].toLowerCase()} (${fullDayF(prev[0])} – ${fullDayF(prev[1])})`;
-      compare(met, all.length, before.length, 'up', () => showTable('Partners met, ' + prev[2].toLowerCase(), pmCols, pmSort(before), `Partners${scopePrev}, most recent meeting first. ` + PM_OWNER_NOTE));
-      compare(ok, made.length, pMade.length, 'up', () => showTable('Referral Partner deal created, ' + prev[2].toLowerCase(), pmCols, pmSort(pMade), `Partners${scopePrev} whose Referral Partner deal names them as the contact. ` + PM_OWNER_NOTE));
-      compare(gap, missing.length, pMiss.length, 'down', () => showTable('Referral Partner deal not created, ' + prev[2].toLowerCase(), pmCols, pmSort(pMiss), `Partners${scopePrev} with no Referral Partner deal linked to them. ` + PM_OWNER_NOTE, `All partners first met ${prev[2].toLowerCase()} have Referral Partner Deals created.`));
-    }
     const pair = el('div', 'cc-pm-pair');
     pair.append(ok, gap);
     pmBody.replaceChildren(met, pair);
+    if (from) {
+      const series = pmSeries(pmPeriod).map(([a, b, label], i, arr) => {
+        const list = everyone.filter((r) => r.first && r.first >= a && r.first <= b);
+        return { a, b, label, now: i === arr.length - 1, list, made: list.filter((r) => r.created), miss: list.filter((r) => !r.created) };
+      });
+      const peak = Math.max(1, ...series.map((x) => x.list.length));
+      const chart = el('div', 'cc-pm-chart');
+      chart.setAttribute('role', 'group');
+      chart.setAttribute('aria-label', `Partners first met in each of the last five ${pmPeriod === 'week' ? 'weeks' : pmPeriod === 'month' ? 'months' : 'years'}, split by Referral Partner deal`);
+      const head = el('div', 'cc-pm-chead');
+      const key = el('p', 'cc-pm-key');
+      key.append(el('span', 'cc-pm-k cc-pm-k-ok', 'Deal created'), el('span', 'cc-pm-k cc-pm-k-bad', 'Deal not created'));
+      head.append(el('h3', null, `${periodName} against the four before it`), key);
+      const cols = el('div', 'cc-pm-cols');
+      series.forEach((x) => {
+        const range = `${fullDayF(x.a)} – ${fullDayF(x.b)}`;
+        const col = el('div', 'cc-pm-col' + (x.now ? ' cc-pm-now' : ''));
+        const total = el('button', 'cc-pm-total', intF(x.list.length));
+        total.type = 'button';
+        total.title = `${x.label}: ${intF(x.list.length)} partners first met (${range}). Open the list.`;
+        total.addEventListener('click', () => showTable(`Partners met, ${x.label.toLowerCase()}`, pmCols, pmSort(x.list), `Partners first met ${range}, most recent meeting first. ` + PM_OWNER_NOTE));
+        const bar = el('div', 'cc-pm-bar');
+        bar.style.height = (x.list.length / peak) * 100 + '%';
+        [['miss', 'cc-pm-seg-bad', 'without a Referral Partner deal', 'not created'], ['made', 'cc-pm-seg-ok', 'with a Referral Partner deal', 'created']].forEach(([k, cls, words, short]) => {
+          const n = x[k].length;
+          if (!n) return;
+          const seg = el('button', 'cc-pm-seg ' + cls);
+          seg.type = 'button';
+          seg.style.flexGrow = String(n);
+          seg.title = `${x.label}: ${intF(n)} ${words}. Open the list.`;
+          seg.setAttribute('aria-label', seg.title);
+          if (n && x.list.length / peak > 0.25) seg.textContent = intF(n);
+          seg.addEventListener('click', () => showTable(`Referral Partner deal ${short}, ${x.label.toLowerCase()}`, pmCols, pmSort(x[k]), `Partners first met ${range} ${words}. ` + PM_OWNER_NOTE));
+          bar.append(seg);
+        });
+        const track = el('div', 'cc-pm-track');
+        track.append(bar);
+        const lab = el('p', 'cc-pm-clabel', x.label);
+        const sub = el('small', null, x.list.length ? `${intF(x.made.length)} created, ${intF(x.miss.length)} not` : 'Nobody met');
+        lab.append(sub);
+        col.append(total, track, lab);
+        cols.append(col);
+      });
+      chart.append(head, cols);
+      const prevX = series[series.length - 2];
+      const nowX = series[series.length - 1];
+      const d = nowX.list.length - prevX.list.length;
+      chart.append(el('p', 'cc-b2-insight', `${periodName}: ${intF(nowX.list.length)} first met against ${intF(prevX.list.length)} in ${prevX.label.toLowerCase().startsWith('week') ? 'the ' + prevX.label.toLowerCase() : prevX.label} (${d === 0 ? 'no change' : (d > 0 ? '+' : '−') + intF(Math.abs(d))}). ${periodName} runs to today, so it can read low until the period ends. Select a bar, a color or a total for its list.`));
+      pmBody.append(chart);
+    }
     const loose = missing.filter((r) => r.company_deals.length).length;
     pmNote.textContent = `Met means at least one meeting marked Completed in Zoho${from ? `; ${periodName.toLowerCase()} counts partners whose first completed meeting falls in it (Central time${pmPeriod === 'week' ? ', weeks start Monday' : ''}), and their deals as they stand today` : ''}; ${intF(all.length)} = ${intF(made.length)} created + ${intF(missing.length)} not created. A deal counts only when its Deal Type is Referral Partner and its Contact Name is the person we met; a deal on the same company linked to someone else, or to no contact, doesn’t count${loose ? ` (${intF(loose)} met ${loose === 1 ? 'partner has' : 'partners have'} one; the list shows it so the link can be fixed)` : ''}.`;
   };
