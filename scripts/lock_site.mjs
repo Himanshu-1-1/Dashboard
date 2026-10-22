@@ -91,7 +91,7 @@ writeFileSync(join(dir, 'data.lock.json'), JSON.stringify({
 for (const name of [...FILES, ...sealedFiles]) rmSync(join(dir, name), { force: true });
 const indexPath = join(dir, 'index.html');
 const html = readFileSync(indexPath, 'utf8');
-const stripped = html.replace(/^[ \t]*<script src="(?:data|boxbyte|courier|research|mail|linksync)\.js"><\/script>\r?\n/gm, '');
+const stripped = html.replace(/^[ \t]*<script src="(?:data|boxbyte|courier|research|mail|cal|linksync)\.js"><\/script>\r?\n/gm, '');
 writeFileSync(indexPath, stripped);
 const left = FILES.filter((f) => stripped.includes(`src="${f}"`));
 if (left.length) fail('index.html still loads ' + left.join(', '));
