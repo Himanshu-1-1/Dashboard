@@ -735,6 +735,7 @@ body.cc-locked .cc { display: none; }
     <button type="button" class="cc-tab" role="tab" id="tab-overview" data-tab="overview" aria-controls="overview">Overview</button>
     <button type="button" class="cc-tab" role="tab" id="tab-rp" data-tab="rp" aria-controls="rp"><i class="cc-dot" data-hue="rp"></i>B2B Campaign</button>
     <button type="button" class="cc-tab" role="tab" id="tab-today" data-tab="today" aria-controls="today"><i class="cc-dot" data-hue="rp"></i>B2B Today</button>
+    <button type="button" class="cc-tab" role="tab" id="tab-qa" data-tab="qa" aria-controls="qa">Quality Assurance</button>
     <button type="button" class="cc-tab" role="tab" id="tab-ref" data-tab="ref" aria-controls="ref"><i class="cc-dot" data-hue="rp"></i>Referrals</button>
     <button type="button" class="cc-tab" role="tab" id="tab-icp" data-tab="icp" aria-controls="icp"><i class="cc-dot" data-hue="icp"></i>ICP Prospecting</button>
     <button type="button" class="cc-tab" role="tab" id="tab-fn" data-tab="fn" aria-controls="fn"><i class="cc-dot" data-hue="fn"></i>Founder Network</button>
@@ -1457,6 +1458,7 @@ body.cc-locked .cc { display: none; }
       <p class="cc-empty" hidden>No deals match this search.</p>
     </article>
   </section>
+  <section class="cc-page" id="qa" role="tabpanel" aria-labelledby="tab-qa" hidden><link rel="stylesheet" href="qa.css"><div class="cc-qa-root" id="qa-root"></div></section>
 </div>
 
 <script>
@@ -6507,6 +6509,7 @@ dash.calc('attention', {
 
 <script>window.CC_MAIL_PRIVATE = true; /* B2B Today: say so when the sealed email history isn't in this build */</script>
 <script src="b2b-today.js"></script>
+<script src="qa.js"></script>
 </main>
 </body>
 </html>

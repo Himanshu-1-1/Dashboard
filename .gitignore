@@ -9,6 +9,8 @@ site/research.js
 site/data.lock.json
 site/b2b-today.js
 site/b2b-today.css
+site/qa.js
+site/qa.css
 site/*.sealed.json
 site/mail.js
 site/linksync.js

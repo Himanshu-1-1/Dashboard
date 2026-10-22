@@ -99,10 +99,10 @@ jobs:
             fi
           done
 
-      - name: Add the B2B Today tab
+      - name: Add the B2B Today and Quality Assurance tabs
         run: |
           # Source lives in artifact/ (shared with the private Claude Dashboard); the public page loads the same files.
-          cp artifact/b2b-today.js artifact/b2b-today.css site/
+          cp artifact/b2b-today.js artifact/b2b-today.css artifact/qa.js artifact/qa.css site/
 
       - name: Lock the data behind the team passcode
         env:
