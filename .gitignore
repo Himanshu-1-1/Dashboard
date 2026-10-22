@@ -14,3 +14,5 @@ site/qa.css
 site/*.sealed.json
 site/mail.js
 site/linksync.js
+site/cal.js
+site/ff.js

@@ -78,9 +78,9 @@ jobs:
       - name: Add the email history and LinkedIn sync
         run: |
           # Zoho contact IDs, dates and counts only (no names, addresses or message content): b2b_mail and
-          # b2b_mail_weeks from the scheduled mail tasks, b2b_cal (meeting times from the team calendars) from the
-          # scheduled calendar task, li_sync from Mack's LinkedIn export. Locked below.
-          for pair in mail:mail.js cal:cal.js linkedin:linksync.js; do
+          # b2b_mail_weeks from the scheduled mail tasks, b2b_cal (meeting times from the team calendars) and b2b_ff (B2B
+          # prospects on Fireflies recordings) from the scheduled calendar task, li_sync from Mack's LinkedIn export. Locked below.
+          for pair in mail:mail.js cal:cal.js cal:ff.js linkedin:linksync.js; do
             b="${pair%%:*}"; f="${pair##*:}"
             if git fetch --depth=1 origin "$b-snapshot" 2>/dev/null && git cat-file -e "FETCH_HEAD:$f" 2>/dev/null; then
               git show "FETCH_HEAD:$f" > "site/$f"
@@ -112,7 +112,7 @@ jobs:
           # Encrypts data.js, boxbyte.js, courier.js and research.js into data.lock.json and deletes the readable
           # files. Fails (and nothing is published) when the DASH_PASSCODE secret is missing or shorter than 16 characters.
           node scripts/lock_site.mjs site
-          for f in data.js boxbyte.js courier.js research.js mail.js cal.js linksync.js mail.sealed.json linkedin.sealed.json; do
+          for f in data.js boxbyte.js courier.js research.js mail.js cal.js ff.js linksync.js mail.sealed.json linkedin.sealed.json; do
             if [ -e "site/$f" ]; then echo "::error::site/$f is still present"; exit 1; fi
           done
 

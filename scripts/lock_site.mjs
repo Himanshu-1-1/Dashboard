@@ -3,7 +3,7 @@
 //
 //   DASH_PASSCODE=... node scripts/lock_site.mjs site
 //
-// Reads site/data.js and, when present, site/boxbyte.js, site/courier.js, site/research.js, site/mail.js, site/cal.js and
+// Reads site/data.js and, when present, site/boxbyte.js, site/courier.js, site/research.js, site/mail.js, site/cal.js, site/ff.js and
 // site/linksync.js (each sets one window.__NAME__ = {...}), plus any site/*.sealed.json written by scripts/seal.mjs (opened with the MAIL_KEY
 // secret, the RSA private key, and served to the page as window.__SEALED__.datasets), encrypts them together with
 // AES-256-GCM under a key derived from the passcode (PBKDF2-SHA256), writes site/data.lock.json, deletes the readable files and removes their <script> tags from
@@ -13,7 +13,7 @@ import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'no
 import { join } from 'node:path';
 
 export const KDF = { name: 'PBKDF2-SHA256', iterations: 600000, salt: 'campaign-command-center|Himanshu-1-1/Dashboard|v1' };
-const FILES = ['data.js', 'boxbyte.js', 'courier.js', 'research.js', 'mail.js', 'cal.js', 'linksync.js'];
+const FILES = ['data.js', 'boxbyte.js', 'courier.js', 'research.js', 'mail.js', 'cal.js', 'ff.js', 'linksync.js'];
 const MIN_LENGTH = 16;
 
 const fail = (msg) => {
@@ -91,7 +91,7 @@ writeFileSync(join(dir, 'data.lock.json'), JSON.stringify({
 for (const name of [...FILES, ...sealedFiles]) rmSync(join(dir, name), { force: true });
 const indexPath = join(dir, 'index.html');
 const html = readFileSync(indexPath, 'utf8');
-const stripped = html.replace(/^[ \t]*<script src="(?:data|boxbyte|courier|research|mail|cal|linksync)\.js"><\/script>\r?\n/gm, '');
+const stripped = html.replace(/^[ \t]*<script src="(?:data|boxbyte|courier|research|mail|cal|ff|linksync)\.js"><\/script>\r?\n/gm, '');
 writeFileSync(indexPath, stripped);
 const left = FILES.filter((f) => stripped.includes(`src="${f}"`));
 if (left.length) fail('index.html still loads ' + left.join(', '));
