@@ -500,3 +500,63 @@
 .cc-sop-btn::after { content: "↗"; position: absolute; top: -7px; right: -7px; width: 16px; height: 16px; display: grid; place-items: center; border-radius: 50%; font-size: 10px; line-height: 1; color: var(--color-panel); background: var(--sop-accent); box-shadow: 0 0 0 2px var(--color-panel); transform: scale(0); transition: transform .25s cubic-bezier(.34, 1.56, .64, 1); }
 .cc-sop-btn:hover::after, .cc-sop-btn:focus-visible::after { transform: scale(1); }
 @media (prefers-reduced-motion: reduce) { .cc-sop-btn::after { transition: none; } }
+
+
+/* Premium chart finish (B2B Today): glossy fills, soft depth, a grow-in on draw and a glow on hover. */
+:root { --cc-gloss: linear-gradient(180deg, rgba(255,255,255,.34) 0%, rgba(255,255,255,.08) 38%, rgba(255,255,255,0) 60%, rgba(0,0,0,.06) 100%); --cc-gloss-x: linear-gradient(180deg, rgba(255,255,255,.38), rgba(255,255,255,0) 70%); }
+.cc-b2-wbar i, .cc-b2-mbars i, .cc-b2-trendbar i { background-image: var(--cc-gloss); border-radius: 7px 7px 2px 2px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.45), inset 0 -1px 0 rgba(0,0,0,.08), 0 2px 6px -2px rgba(15,23,42,.25);
+  transform-origin: 50% 100%; animation: cc-chart-rise .75s cubic-bezier(.2,.85,.25,1) both; transition: filter .2s ease, box-shadow .2s ease; }
+.cc-b2-wnow .cc-b2-wbar i { background-image: repeating-linear-gradient(45deg, var(--cds-chart-muted, var(--color-border-line)) 0 4px, transparent 4px 7px); }
+.cc-b2-wbar, .cc-b2-mbars, .cc-b2-trendbar { border-bottom: 1px solid color-mix(in oklab, var(--color-fg) 14%, transparent); }
+.cc-b2-wcol:hover .cc-b2-wbar i, .cc-b2-mcol:hover .cc-b2-mbars i, .cc-b2-trendcol:hover .cc-b2-trendbar i { filter: brightness(1.08) saturate(1.1);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.55), 0 6px 18px -4px color-mix(in oklab, var(--b2-c1) 55%, transparent); }
+.cc-b2-wcol:hover, .cc-b2-mcol:hover { background: linear-gradient(180deg, transparent, color-mix(in oklab, var(--b2-c1) 7%, transparent)); }
+.cc-b2-wcol b, .cc-b2-trendcol b, .cc-pm-total { letter-spacing: -.01em; }
+
+/* B2B Deals Created columns. */
+.cc-pm-bar { border-radius: 9px 9px 3px 3px; box-shadow: 0 6px 16px -8px rgba(15,23,42,.45), inset 0 0 0 1px rgba(255,255,255,.08);
+  transform-origin: 50% 100%; animation: cc-chart-rise .8s cubic-bezier(.2,.85,.25,1) both; }
+.cc-pm-seg { background-image: var(--cc-gloss); box-shadow: inset 0 1px 0 rgba(255,255,255,.35); text-shadow: 0 1px 1px rgba(0,0,0,.25); transition: filter .2s ease; }
+.cc-pm-seg-ok { background-color: var(--color-ok); }
+.cc-pm-seg-bad { background-color: var(--color-bad); }
+.cc-pm-col:hover .cc-pm-bar { box-shadow: 0 10px 24px -8px color-mix(in oklab, var(--b2-c1) 50%, transparent), inset 0 0 0 1px rgba(255,255,255,.12); }
+.cc-pm-now .cc-pm-bar { box-shadow: 0 0 0 2px color-mix(in oklab, var(--b2-c1) 55%, transparent), 0 10px 22px -8px color-mix(in oklab, var(--b2-c1) 55%, transparent); }
+
+/* Partner Funnel rows and donut. */
+.cc-pf-bar { height: 8px; border-radius: 999px; box-shadow: inset 0 1px 2px rgba(15,23,42,.12); }
+.cc-pf-bar i { border-radius: 999px; background-image: var(--cc-gloss-x); box-shadow: inset 0 1px 0 rgba(255,255,255,.4); transform-origin: 0 50%; animation: cc-chart-grow-x .9s cubic-bezier(.2,.85,.25,1) both; }
+.cc-pf-donut { overflow: visible; filter: drop-shadow(0 10px 18px rgba(15,23,42,.16)); animation: cc-chart-spin-in .9s cubic-bezier(.2,.85,.25,1) both; }
+.cc-pf-slice { transform-origin: 120px 120px; transition: opacity .2s ease, transform .25s cubic-bezier(.34,1.56,.64,1), filter .2s ease; }
+.cc-pf-slice:hover, .cc-pf-slice.cc-pf-on { transform: scale(1.035); filter: brightness(1.06) saturate(1.1); }
+.cc-pf-gloss { pointer-events: none; }
+.cc-pf-inner { fill: none; stroke: rgba(15,23,42,.18); stroke-width: 3; filter: blur(1.5px); }
+
+/* Meeting sparklines. */
+.cc-mt-stop { stop-color: var(--mt-c); }
+.cc-mt-line { stroke-width: 2.2; filter: drop-shadow(0 2px 3px color-mix(in oklab, var(--mt-c) 45%, transparent)); }
+.cc-mt-spark { animation: cc-chart-wipe 1.1s cubic-bezier(.4,0,.2,1) both; }
+.cc-mt-dot { animation: cc-chart-pulse 2.4s ease-out 1.1s infinite; transform-box: fill-box; transform-origin: center; }
+
+@keyframes cc-chart-rise { from { transform: scaleY(0); opacity: .2; } to { transform: scaleY(1); opacity: 1; } }
+@keyframes cc-chart-grow-x { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes cc-chart-spin-in { from { transform: rotate(-90deg) scale(.86); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes cc-chart-wipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes cc-chart-pulse { 0% { transform: scale(1); } 30% { transform: scale(1.9); opacity: .55; } 60%, 100% { transform: scale(1); opacity: 1; } }
+.cc-b2-wcol:nth-child(1) .cc-b2-wbar i, .cc-b2-mcol:nth-child(1) .cc-b2-mbars i, .cc-b2-trendcol:nth-child(1) .cc-b2-trendbar i, .cc-pm-col:nth-child(1) .cc-pm-bar { animation-delay: 0ms; }
+.cc-b2-wcol:nth-child(2) .cc-b2-wbar i, .cc-b2-mcol:nth-child(2) .cc-b2-mbars i, .cc-b2-trendcol:nth-child(2) .cc-b2-trendbar i, .cc-pm-col:nth-child(2) .cc-pm-bar { animation-delay: 45ms; }
+.cc-b2-wcol:nth-child(3) .cc-b2-wbar i, .cc-b2-mcol:nth-child(3) .cc-b2-mbars i, .cc-b2-trendcol:nth-child(3) .cc-b2-trendbar i, .cc-pm-col:nth-child(3) .cc-pm-bar { animation-delay: 90ms; }
+.cc-b2-wcol:nth-child(4) .cc-b2-wbar i, .cc-b2-mcol:nth-child(4) .cc-b2-mbars i, .cc-b2-trendcol:nth-child(4) .cc-b2-trendbar i, .cc-pm-col:nth-child(4) .cc-pm-bar { animation-delay: 135ms; }
+.cc-b2-wcol:nth-child(5) .cc-b2-wbar i, .cc-b2-mcol:nth-child(5) .cc-b2-mbars i, .cc-b2-trendcol:nth-child(5) .cc-b2-trendbar i, .cc-pm-col:nth-child(5) .cc-pm-bar { animation-delay: 180ms; }
+.cc-b2-wcol:nth-child(6) .cc-b2-wbar i, .cc-b2-mcol:nth-child(6) .cc-b2-mbars i, .cc-b2-trendcol:nth-child(6) .cc-b2-trendbar i, .cc-pm-col:nth-child(6) .cc-pm-bar { animation-delay: 225ms; }
+.cc-b2-wcol:nth-child(7) .cc-b2-wbar i, .cc-b2-mcol:nth-child(7) .cc-b2-mbars i, .cc-b2-trendcol:nth-child(7) .cc-b2-trendbar i, .cc-pm-col:nth-child(7) .cc-pm-bar { animation-delay: 270ms; }
+.cc-b2-wcol:nth-child(8) .cc-b2-wbar i, .cc-b2-mcol:nth-child(8) .cc-b2-mbars i, .cc-b2-trendcol:nth-child(8) .cc-b2-trendbar i, .cc-pm-col:nth-child(8) .cc-pm-bar { animation-delay: 315ms; }
+.cc-b2-wcol:nth-child(9) .cc-b2-wbar i, .cc-b2-mcol:nth-child(9) .cc-b2-mbars i, .cc-b2-trendcol:nth-child(9) .cc-b2-trendbar i, .cc-pm-col:nth-child(9) .cc-pm-bar { animation-delay: 360ms; }
+.cc-b2-wcol:nth-child(10) .cc-b2-wbar i, .cc-b2-mcol:nth-child(10) .cc-b2-mbars i, .cc-b2-trendcol:nth-child(10) .cc-b2-trendbar i, .cc-pm-col:nth-child(10) .cc-pm-bar { animation-delay: 405ms; }
+.cc-b2-wcol:nth-child(11) .cc-b2-wbar i, .cc-b2-mcol:nth-child(11) .cc-b2-mbars i, .cc-b2-trendcol:nth-child(11) .cc-b2-trendbar i, .cc-pm-col:nth-child(11) .cc-pm-bar { animation-delay: 450ms; }
+.cc-b2-wcol:nth-child(12) .cc-b2-wbar i, .cc-b2-mcol:nth-child(12) .cc-b2-mbars i, .cc-b2-trendcol:nth-child(12) .cc-b2-trendbar i, .cc-pm-col:nth-child(12) .cc-pm-bar { animation-delay: 495ms; }
+@media (prefers-reduced-motion: reduce) {
+  .cc-b2-wbar i, .cc-b2-mbars i, .cc-b2-trendbar i, .cc-pm-bar, .cc-pf-bar i, .cc-pf-donut, .cc-mt-spark, .cc-mt-dot { animation: none; }
+  .cc-pf-slice { transition: opacity .2s ease; }
+  .cc-pf-slice:hover, .cc-pf-slice.cc-pf-on { transform: none; }
+}

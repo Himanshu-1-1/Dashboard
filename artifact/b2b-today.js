@@ -1859,6 +1859,7 @@
   };
   const whenF = (iso) => new Date(iso).toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' CT';
   const fullDayF = (s) => new Date(String(s).slice(0, 10) + 'T00:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' });
+  let sparkSeq = 0;
   const spark = (pts, label) => {
     const ns = 'http://www.w3.org/2000/svg';
     const W = 160; const H = 40; const P = 3;
@@ -1875,6 +1876,14 @@
     const line = known.map((p, j) => `${j ? 'L' : 'M'}${x(p.i).toFixed(1)} ${yv(p.n).toFixed(1)}`).join(' ');
     const area = document.createElementNS(ns, 'path');
     area.setAttribute('d', `${line} L${x(last.i).toFixed(1)} ${H} L${x(first.i).toFixed(1)} ${H} Z`); area.setAttribute('class', 'cc-mt-area');
+    const gid = 'cc-mt-g' + (sparkSeq += 1);
+    const defs = document.createElementNS(ns, 'defs');
+    const lg = document.createElementNS(ns, 'linearGradient');
+    lg.setAttribute('id', gid); lg.setAttribute('x1', '0'); lg.setAttribute('y1', '0'); lg.setAttribute('x2', '0'); lg.setAttribute('y2', '1');
+    [['0', '0.42'], ['1', '0']].forEach(([o, a]) => { const st = document.createElementNS(ns, 'stop'); st.setAttribute('offset', o); st.setAttribute('class', 'cc-mt-stop'); st.style.stopOpacity = a; lg.append(st); });
+    defs.append(lg);
+    svg.append(defs);
+    area.style.fill = `url(#${gid})`;
     const path = document.createElementNS(ns, 'path');
     path.setAttribute('d', line); path.setAttribute('class', 'cc-mt-line'); path.setAttribute('vector-effect', 'non-scaling-stroke');
     const dot = document.createElementNS(ns, 'circle');
@@ -2487,6 +2496,20 @@
     center.addEventListener('click', () => (pickG ? pfOpen(pickG, pickG.list, total) : pfOpen(null, all, total)));
     const donut = el('div', 'cc-pf-left');
     const ring = el('div', 'cc-pf-ring');
+    const gloss = document.createElementNS(ns, 'g');
+    gloss.setAttribute('class', 'cc-pf-gloss'); gloss.setAttribute('aria-hidden', 'true');
+    const gdefs = document.createElementNS(ns, 'defs');
+    const rg = document.createElementNS(ns, 'linearGradient');
+    rg.setAttribute('id', 'cc-pf-shine'); rg.setAttribute('x1', '0'); rg.setAttribute('y1', '0'); rg.setAttribute('x2', '0'); rg.setAttribute('y2', '1');
+    [['0', '0.38'], ['0.45', '0.06'], ['1', '0']].forEach(([o, a]) => { const st = document.createElementNS(ns, 'stop'); st.setAttribute('offset', o); st.setAttribute('stop-color', '#fff'); st.setAttribute('stop-opacity', a); rg.append(st); });
+    gdefs.append(rg);
+    const shine = document.createElementNS(ns, 'path');
+    shine.setAttribute('d', pfArc(S / 2, S / 2, R0, R1, 0, Math.PI * 2));
+    shine.setAttribute('fill', 'url(#cc-pf-shine)');
+    const inner = document.createElementNS(ns, 'circle');
+    inner.setAttribute('cx', S / 2); inner.setAttribute('cy', S / 2); inner.setAttribute('r', R0 + 0.5); inner.setAttribute('class', 'cc-pf-inner');
+    gloss.append(gdefs, shine, inner);
+    svg.append(gloss);
     ring.append(svg, center);
     donut.append(ring, el('p', 'cc-pf-hint', pfPick ? 'Reset view, or select the same priority again, to show everyone.' : 'Select a slice or a priority to highlight it and list the contacts.'));
 
