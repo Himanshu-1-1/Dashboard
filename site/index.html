@@ -80,6 +80,7 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
 <script src="courier.js"></script>
 <script src="research.js"></script>
 <script src="mail.js"></script>
+<script src="cal.js"></script>
 <script src="linksync.js"></script>
 <script>
 /* Data layer: reads data.json (written daily by scripts/fetch_zoho.py) and serves it to the page
@@ -240,9 +241,9 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
   };
   const load = () => {
     const json = window.__DASH_DATA__;
-    const extras = [window.__BOXBYTE__, window.__COURIER__, window.__RESEARCH__, window.__MAIL__, window.__LINKSYNC__, window.__SEALED__].filter((x) => x && x.datasets);
+    const extras = [window.__BOXBYTE__, window.__COURIER__, window.__RESEARCH__, window.__MAIL__, window.__CAL__, window.__LINKSYNC__, window.__SEALED__].filter((x) => x && x.datasets);
     if (json && json.datasets) {
-      raw = { ...json, datasets: Object.assign({ wi_research: [], wi_mack: [], li_sync: [] }, json.datasets, ...extras.map((x) => x.datasets)) };
+      raw = { ...json, datasets: Object.assign({ wi_research: [], wi_mack: [], li_sync: [], b2b_cal: [] }, json.datasets, ...extras.map((x) => x.datasets)) };
       cache = {};
       runAll();
       stamp('Data from Zoho CRM as of ' + when(json.generated_at) + '.');

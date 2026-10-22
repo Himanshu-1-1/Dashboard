@@ -3,7 +3,7 @@
 //
 //   DASH_PASSCODE=... node scripts/lock_site.mjs site
 //
-// Reads site/data.js and, when present, site/boxbyte.js, site/courier.js, site/research.js, site/mail.js and
+// Reads site/data.js and, when present, site/boxbyte.js, site/courier.js, site/research.js, site/mail.js, site/cal.js and
 // site/linksync.js (each sets one window.__NAME__ = {...}), plus any site/*.sealed.json written by scripts/seal.mjs (opened with the MAIL_KEY
 // secret, the RSA private key, and served to the page as window.__SEALED__.datasets), encrypts them together with
 // AES-256-GCM under a key derived from the passcode (PBKDF2-SHA256), writes site/data.lock.json, deletes the readable files and removes their <script> tags from
@@ -13,7 +13,7 @@ import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'no
 import { join } from 'node:path';
 
 export const KDF = { name: 'PBKDF2-SHA256', iterations: 600000, salt: 'campaign-command-center|Himanshu-1-1/Dashboard|v1' };
-const FILES = ['data.js', 'boxbyte.js', 'courier.js', 'research.js', 'mail.js', 'linksync.js'];
+const FILES = ['data.js', 'boxbyte.js', 'courier.js', 'research.js', 'mail.js', 'cal.js', 'linksync.js'];
 const MIN_LENGTH = 16;
 
 const fail = (msg) => {

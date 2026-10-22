@@ -453,3 +453,14 @@
 .cc-pf-reset { margin-left: auto; flex: none; }
 .cc-pf-reset:disabled { opacity: .45; cursor: default; }
 .cc-pf .cc-b2-scorehead .cc-b2-soplink { margin-left: 0; }
+
+/* Who to talk to next (Priority 1 meeting plan). */
+.cc-mp { display: grid; gap: var(--cds-gap-sm); padding-top: var(--cds-gap-md); border-top: 1px solid var(--color-border-line); }
+.cc-mp-head h3 { margin: 0; font-size: 15px; font-weight: var(--cds-font-weight-medium); }
+.cc-mp-head .cc-b2-insight { margin: 2px 0 0; }
+.cc-mp-tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--cds-gap-sm); }
+@media (max-width: 1100px) { .cc-mp-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .cc-mp-tiles { grid-template-columns: 1fr; } }
+.cc-mp-warn { --pm-c: var(--color-warn); border-color: color-mix(in oklab, var(--pm-c) 50%, var(--color-border-line)); background: color-mix(in oklab, var(--pm-c) 10%, var(--color-panel)); }
+.cc-mp-tile .cc-pm-sub { color: var(--color-fg-muted); }
+.cc-mp-list .cc-b2-sop { margin: 0 0 6px; }

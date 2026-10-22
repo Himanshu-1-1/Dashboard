@@ -551,13 +551,17 @@
   const MTG_PRIORITY = '1';
   const minuteOf = (t) => Math.floor(t / 6e4);
 
+  /* Meetings come from two places: Zoho Events (Meeting Status Completed counts once its start time has passed) and the
+     team's Outlook calendars (dataset b2b_cal, synced on weekdays: a past, uncancelled event with the prospect as guest or
+     booking customer, or named in the subject). A Central-time day with a meeting from either source counts once. */
   dash.calc('mtg_people', {
-    title: 'B2B prospects by completed meetings',
-    description: 'One row per B2B prospect: completed meetings (Zoho Meeting Status Completed, start time passed, one per start minute), the Central-time day of each, the day they entered each meeting-count stage, the next scheduled meeting, and past meetings not marked Completed.',
-    inputs: ['b2b_people', 'b2b_added', 'b2b_meetings'],
-    fn: (b2b_people, b2b_added, b2b_meetings) => {
+    title: 'B2B prospects by meetings held',
+    description: 'One row per B2B prospect: days with a meeting held (Zoho Meeting Status Completed, or a past uncancelled meeting on the info@, mack@, hemang@ or shruti@ Outlook calendar; one per Central-time day, with the source of each), the day they entered each meeting-count stage, the next meeting booked in either place, Outlook meetings Zoho does not show as Completed, and past Zoho meetings not marked Completed that Outlook does not confirm either.',
+    inputs: ['b2b_people', 'b2b_added', 'b2b_meetings', 'b2b_cal'],
+    fn: (b2b_people, b2b_added, b2b_meetings, b2b_cal) => {
       const now = Date.now();
       const added = new Map(b2b_added.map((r) => [String(r.id), r]));
+      const cal = new Map((b2b_cal || []).map((r) => [String(r.Zoho_Id), r]));
       const by = new Map();
       b2b_meetings.forEach((m) => {
         const id = m.Who_Id_id ? String(m.Who_Id_id) : null;
@@ -572,21 +576,63 @@
       });
       return b2b_people.map((p) => {
         const b = by.get(p.id) || { done: new Map(), next: null, unmarked: [] };
-        const done = [...b.done.values()].sort((x, y) => x - y);
-        const unmarked = b.unmarked.filter((u) => !b.done.has(minuteOf(u.t))).sort((x, y) => x.t - y.t);
+        const c = cal.get(p.id);
+        const held = new Map();
+        const mark = (t, src, extra) => {
+          const d = ctDate(t);
+          const h = held.get(d) || { day: d, t, zoho: false, outlook: false, cals: new Set() };
+          h.t = Math.min(h.t, t);
+          h[src] = true;
+          if (extra) extra.split(',').forEach((x) => x && h.cals.add(x));
+          held.set(d, h);
+        };
+        b.done.forEach((t) => mark(t, 'zoho'));
+        let next = b.next;
+        let cancelled = 0;
+        (c ? c.meetings || [] : []).forEach((m) => {
+          const t = Date.parse(m.at);
+          if (!Number.isFinite(t)) return;
+          if (m.cancelled) { if (t <= now) cancelled += 1; return; }
+          if (t > now) { if (next == null || t < next) next = t; return; }
+          mark(t, 'outlook', m.cals);
+        });
+        const list = [...held.values()].sort((x, y) => x.t - y.t);
+        const days = list.map((h) => h.day);
+        const unmarked = b.unmarked.filter((u) => !b.done.has(minuteOf(u.t)) && !held.has(ctDate(u.t))).sort((x, y) => x.t - y.t);
         const a = added.get(p.id) || {};
         const created = Date.parse(a.Created_Time);
         const hasCreated = Number.isFinite(created);
-        const days = done.map((t) => ctDate(t));
-        const startT = hasCreated ? (done.length ? Math.min(created, done[0]) : created) : done.length ? done[0] : null;
+        const first = list.length ? list[0].t : null;
+        const startT = hasCreated ? (first != null ? Math.min(created, first) : created) : first;
         return {
           id: p.id, name: p.name, account: p.account, account_id: p.account_id, assigned: a.Assigned || null, priority: p.priority,
-          n: done.length, cat: Math.min(4, done.length), days, last: days.length ? days[days.length - 1] : null,
-          next: b.next == null ? null : new Date(b.next).toISOString(),
+          li: p.li, connected: p.connected,
+          n: days.length, cat: Math.min(4, days.length), days, last: days.length ? days[days.length - 1] : null,
+          next: next == null ? null : new Date(next).toISOString(),
           start: startT == null ? null : ctDate(startT), created: hasCreated ? ctDate(created) : null,
-          entered: [hasCreated && (!done.length || created < done[0]) ? ctDate(created) : null, days[0] || null, days[1] || null, days[2] || null, days[3] || null],
+          entered: [hasCreated && (first == null || created < first) ? ctDate(created) : null, days[0] || null, days[1] || null, days[2] || null, days[3] || null],
           unmarked: unmarked.map((u) => ({ at: new Date(u.t).toISOString(), day: ctDate(u.t), status: u.status })),
+          sources: list.map((h) => ({ day: h.day, zoho: h.zoho, outlook: h.outlook, cals: [...h.cals].join(',') })),
+          to_log: list.filter((h) => h.outlook && !h.zoho).map((h) => ({ day: h.day, cals: [...h.cals].join(',') })),
+          cal_checked: Boolean(c), cal_as_of: c ? c.as_of || null : null, cal_cancelled: cancelled,
         };
+      });
+    },
+  });
+
+  /* Who to talk to next, Priority 1 only: ask for a first meeting, already booked, talk to again (last meeting
+     AGAIN_DAYS+ ago and nothing booked), met recently, and Outlook meetings to log in Zoho. */
+  const AGAIN_DAYS = 30;
+  dash.calc('p1_meet_plan', {
+    title: 'Priority 1 meeting plan',
+    description: `One row per B2B prospect at Priority 1 now with its group: ask (no meeting held or booked), booked (a meeting is booked), again (last meeting ${AGAIN_DAYS}+ days ago, nothing booked), recent (met within ${AGAIN_DAYS} days, nothing booked); plus days since the last meeting and Outlook meetings Zoho does not show as Completed.`,
+    inputs: ['mtg_people'],
+    fn: (mtg_people) => {
+      const t0 = dayMs(todayCT());
+      return mtg_people.filter((p) => p.priority === MTG_PRIORITY).map((p) => {
+        const since = p.last ? Math.round((t0 - dayMs(p.last)) / 864e5) : null;
+        const group = p.next ? 'booked' : !p.n ? 'ask' : since >= AGAIN_DAYS ? 'again' : 'recent';
+        return { ...p, since, group };
       });
     },
   });
@@ -853,7 +899,7 @@
   const mtgTitleBox = el('div');
   const mtgTitle = el('h2', null, 'P1 Meeting Frequency & Relationship Depth');
   mtgTitle.id = 'b2-mtg-title';
-  mtgTitleBox.append(mtgTitle, el('p', 'cc-b2-insight', 'Priority 1 partners (two-way conversation): how often we have met each, and who still needs a first meeting.'));
+  mtgTitleBox.append(mtgTitle, el('p', 'cc-b2-insight', 'Priority 1 partners (two-way conversation): how often we have met each, who to ask for a first meeting, and who to talk to again. Meetings come from Zoho and the team’s Outlook calendars.'));
   mtgHead.append(mtgTitleBox);
   const mtgPath = el('div', 'cc-mt-path');
   const mtgBar = el('ol', 'cc-mt-bar');
@@ -865,7 +911,18 @@
   mtgGap.hidden = true;
   const mtgGrid = el('div', 'cc-mt-grid');
   const mtgNote = el('p', 'cc-b2-insight cc-mt-note');
-  mtg.append(mtgHead, mtgPath, mtgGap, mtgGrid, mtgNote);
+  const plan = el('div', 'cc-mp');
+  plan.id = 'b2-mp';
+  const planHead = el('div', 'cc-mp-head');
+  planHead.append(el('h3', null, 'Who to talk to next'), el('p', 'cc-b2-insight', `Priority 1 only, from Zoho and the team’s Outlook calendars. Select a count to list the people; select it again to close.`));
+  const planTiles = el('div', 'cc-mp-tiles');
+  planTiles.setAttribute('role', 'group');
+  planTiles.setAttribute('aria-label', 'Who to talk to next');
+  const planList = el('div', 'cc-b2-wrap cc-mp-list');
+  planList.id = 'b2-mp-list';
+  planList.hidden = true;
+  plan.append(planHead, planTiles, planList);
+  mtg.append(mtgHead, mtgPath, mtgGap, mtgGrid, plan, mtgNote);
   const pmCard = el('section', 'cc-card cc-pm');
   pmCard.id = 'b2-pm';
   pmCard.setAttribute('aria-labelledby', 'b2-pm-title');
@@ -1808,13 +1865,98 @@
     return svg;
   };
 
+  const CAL_NAMES = { info: 'info@', mack: 'mack@', hemang: 'hemang@', shruti: 'shruti@' };
+  const calsF = (c) => String(c || '').split(',').filter(Boolean).map((x) => CAL_NAMES[x] || x).join(', ');
+  /* Where a person's meetings come from: Zoho, Outlook or both. */
+  const srcF = (p) => {
+    const src = p.sources || [];
+    if (!src.length) return '—';
+    const z = src.some((x) => x.zoho); const o = src.some((x) => x.outlook);
+    return z && o ? 'Zoho + Outlook' : z ? 'Zoho' : 'Outlook only';
+  };
+
+  /* Who to talk to next (Priority 1). */
+  let planTab = null;
+  const PLAN = [
+    ['ask', 'Ask for a first meeting', 'No meeting held or booked', 'warn'],
+    ['booked', 'Meeting booked', 'Next meeting on a calendar or in Zoho', 'ok'],
+    ['again', 'Talk to again', `Last met ${AGAIN_DAYS}+ days ago, nothing booked`, 'warn'],
+    ['recent', 'Met recently', `Met within ${AGAIN_DAYS} days, nothing booked`, 'none'],
+    ['log', 'Log in Zoho', 'Outlook meetings Zoho doesn’t show as Completed', 'bad'],
+  ];
+  const drawPlan = () => {
+    const st = state(['p1_meet_plan']);
+    if (st !== 'ok') { planTiles.replaceChildren(); planList.hidden = true; return; }
+    const rowsP = rows('p1_meet_plan');
+    const mail = mailOk() ? new Map(rows('b2b_mail_people').map((r) => [r.id, r])) : null;
+    const lists = {
+      ask: rowsP.filter((r) => r.group === 'ask').sort((a, b) => (b.connected ? 1 : 0) - (a.connected ? 1 : 0)
+        || (mail ? (((mail.get(b.id) || {}).status === 'They wrote last') ? 1 : 0) - (((mail.get(a.id) || {}).status === 'They wrote last') ? 1 : 0) : 0)
+        || String(a.name).localeCompare(String(b.name))),
+      booked: rowsP.filter((r) => r.group === 'booked').sort((a, b) => String(a.next).localeCompare(String(b.next))),
+      again: rowsP.filter((r) => r.group === 'again').sort((a, b) => (b.since || 0) - (a.since || 0)),
+      recent: rowsP.filter((r) => r.group === 'recent').sort((a, b) => (a.since || 0) - (b.since || 0)),
+      log: rowsP.filter((r) => r.to_log && r.to_log.length).sort((a, b) => b.to_log.length - a.to_log.length || String(a.name).localeCompare(String(b.name))),
+    };
+    const nameC = ['Name', (r) => link('Contacts', r.id, r.name)];
+    const coC = ['Company', (r) => (r.account_id ? link('Accounts', r.account_id, r.account) : r.account || 'No company')];
+    const ownC = ['Owner (Assigned)', (r) => r.assigned || 'Not assigned'];
+    const mailC = mail ? [['Email', (r) => { const m = mail.get(r.id); if (!m) return '—'; return m.status + (m.last_in ? `; they wrote ${dayF(m.last_in)}` : '') + (m.last_out ? `; we wrote ${dayF(m.last_out)}` : ''); }]] : [];
+    const COLS = {
+      ask: [nameC, coC, ['LinkedIn', (r) => r.li || 'Not set'], ...mailC, ownC, ['In Zoho since', (r) => (r.created ? fullDayF(r.created) : '—')]],
+      booked: [nameC, coC, ['Next meeting', (r) => whenF(r.next)], ['Meetings so far', (r) => intF(r.n)], ['Last met', (r) => (r.last ? fullDayF(r.last) : 'Not yet')], ownC],
+      again: [nameC, coC, ['Last met', (r) => fullDayF(r.last)], ['Days since', (r) => intF(r.since)], ['Meetings', (r) => intF(r.n)], ...mailC, ownC],
+      recent: [nameC, coC, ['Last met', (r) => fullDayF(r.last)], ['Days since', (r) => intF(r.since)], ['Meetings', (r) => intF(r.n)], ['Source', srcF], ownC],
+      log: [nameC, coC, ['Meetings to log (CT)', (r) => r.to_log.map((x) => fullDayF(x.day)).join(', ')], ['Calendars', (r) => calsF([...new Set(r.to_log.flatMap((x) => x.cals.split(',')))].join(','))], ownC],
+    };
+    const NOTE = {
+      ask: 'Priority 1 prospects with no meeting held in Zoho or on any team calendar, and nothing booked. Connected on LinkedIn first' + (mail ? ', then those who wrote to us last' : '') + '. Ask with SOP 4.',
+      booked: 'A meeting is booked in Zoho or on a team calendar. Soonest first.',
+      again: `Met before, last meeting ${AGAIN_DAYS} or more days ago, and nothing booked. Longest gap first: suggest a follow-up call.`,
+      recent: `Met within the last ${AGAIN_DAYS} days with nothing booked yet. They move to Talk to again after ${AGAIN_DAYS} days.`,
+      log: 'Meetings on the team’s Outlook calendars that Zoho doesn’t show as Completed on that day. Log each one in Zoho as a meeting linked to the contact with Meeting Status Completed (SOP 7), so the CRM and the deal SOP see it.',
+    };
+    const show = (k) => {
+      planTab = k;
+      planTiles.querySelectorAll('.cc-mp-tile').forEach((b) => b.setAttribute('aria-expanded', String(b.dataset.k === k)));
+      planList.hidden = !k;
+      if (!k) { planList.replaceChildren(); return; }
+      const [, label] = PLAN.find((x) => x[0] === k);
+      const list = lists[k];
+      if (!list.length) { planList.replaceChildren(el('p', 'cc-pm-done', 'Nobody here right now.')); return; }
+      const tbl = el('table', 'cc-tbl');
+      const th = el('thead'); const hr = el('tr');
+      COLS[k].forEach(([x]) => { const c = el('th', null, x); c.scope = 'col'; hr.append(c); });
+      th.append(hr); tbl.append(th);
+      const tb = el('tbody');
+      list.forEach((r) => { const tr = rowOpens(el('tr'), r.id); COLS[k].forEach(([, f]) => { const v = f(r); const td = el('td'); if (v instanceof Node) td.append(v); else td.textContent = v == null || v === '' ? '—' : v; tr.append(td); }); tb.append(tr); });
+      tbl.append(tb);
+      planList.replaceChildren(el('p', 'cc-na-cap', `${label} (${intF(list.length)})`), el('p', 'cc-b2-insight', NOTE[k]), tbl);
+      if (k === 'ask') planList.insertBefore(sopBtn(4, 'SOP 4 Ask for a first meeting'), planList.children[2]);
+      if (k === 'log') planList.insertBefore(sopBtn(7, 'SOP 7 Log a meeting'), planList.children[2]);
+    };
+    planTiles.replaceChildren(...PLAN.map(([k, label, sub, tone]) => {
+      const n = lists[k].length;
+      const cls = tone === 'none' ? 'cc-pm-none' : tone === 'ok' ? (n ? 'cc-pm-ok' : 'cc-pm-none') : n ? (tone === 'bad' ? 'cc-pm-bad' : 'cc-mp-warn') : 'cc-pm-ok';
+      const b = el('button', 'cc-pm-tile cc-na-tile cc-mp-tile ' + cls);
+      b.type = 'button'; b.dataset.k = k; b.setAttribute('aria-controls', 'b2-mp-list');
+      const txt = el('span', 'cc-na-txt');
+      txt.append(el('span', 'cc-pm-label', label), el('span', 'cc-pm-sub', sub));
+      b.append(el('span', 'cc-pm-num', intF(n)), txt, el('span', 'cc-na-chev'));
+      b.setAttribute('aria-label', `${label}: ${intF(n)}. ${planTab === k ? 'Hide' : 'Show'} the list.`);
+      b.addEventListener('click', () => show(planTab === k ? null : k));
+      return b;
+    }));
+    show(PLAN.some(([k]) => k === planTab) ? planTab : null);
+  };
+
   const showMtg = (title, list, note, mode) => {
     drill.querySelector('h3').textContent = title + ' (' + intF(list.length) + ')';
     const tbl = el('table', 'cc-tbl');
     const th = el('thead'); const hr = el('tr');
     (mode === 'unmarked'
       ? ['Name', 'Company', 'Owner (Assigned)', 'Meeting (CT)', 'Meeting Status', 'Completed meetings']
-      : ['Name', 'Company', 'Owner (Assigned)', 'Last completed meeting', 'Completed meetings', 'Next scheduled meeting']).forEach((x) => { const c = el('th', null, x); c.scope = 'col'; hr.append(c); });
+      : ['Name', 'Company', 'Owner (Assigned)', 'Last meeting', 'Meetings', 'Source', 'Next meeting']).forEach((x) => { const c = el('th', null, x); c.scope = 'col'; hr.append(c); });
     th.append(hr); tbl.append(th);
     const tb = el('tbody');
     list.forEach((r) => {
@@ -1824,7 +1966,7 @@
       const a = el('td'); if (p.account_id) a.append(link('Accounts', p.account_id, p.account)); else a.textContent = 'No company'; tr.append(a);
       tr.append(el('td', null, p.assigned || 'Not assigned'));
       if (mode === 'unmarked') tr.append(el('td', null, whenF(r.u.at)), el('td', 'cc-b2-late', r.u.status), el('td', null, intF(p.n)));
-      else tr.append(el('td', null, p.last ? fullDayF(p.last) : 'None'), el('td', null, intF(p.n)), el('td', null, p.next ? whenF(p.next) : 'None scheduled'));
+      else tr.append(el('td', null, p.last ? fullDayF(p.last) : 'None'), el('td', null, intF(p.n)), el('td', null, srcF(p)), el('td', null, p.next ? whenF(p.next) : 'None booked'));
       tb.append(tr);
     });
     tbl.append(tb);
@@ -1878,7 +2020,7 @@
     if (unmarked.length) {
       const who = new Set(unmarked.map((x) => x.p.id)).size;
       const txt = el('p');
-      txt.append(el('b', null, `${intF(unmarked.length)} past meeting${unmarked.length === 1 ? '' : 's'} with ${intF(who)} Priority 1 prospect${who === 1 ? '' : 's'} ${unmarked.length === 1 ? 'isn’t' : 'aren’t'} marked Completed in Zoho`), document.createTextNode(' (Meeting Status is Scheduled or blank), so they don’t count in the stages below. Set Meeting Status to Completed for meetings that happened. Zoho has no Cancelled or No-show value, so a meeting that didn’t happen can only stay uncounted.'));
+      txt.append(el('b', null, `${intF(unmarked.length)} past meeting${unmarked.length === 1 ? '' : 's'} with ${intF(who)} Priority 1 prospect${who === 1 ? '' : 's'} ${unmarked.length === 1 ? 'isn’t' : 'aren’t'} marked Completed in Zoho and aren’t on a team Outlook calendar either`), document.createTextNode(' (Meeting Status is Scheduled or blank), so they don’t count in the stages below. Set Meeting Status to Completed for meetings that happened. Zoho has no Cancelled or No-show value, so a meeting that didn’t happen can only stay uncounted.'));
       const b = el('button', 'cc-go', 'List them'); b.type = 'button';
       b.addEventListener('click', () => showMtg('Past meetings not marked Completed', unmarked, 'Newest first. Each one stays out of the counts until Meeting Status says Completed.', 'unmarked'));
       mtgGap.replaceChildren(txt, b);
@@ -1941,7 +2083,10 @@
       return c;
     }));
     const from = (stages[0] || {}).history_from;
-    mtgNote.textContent = `Counts B2B prospects at Priority 1 today (${intF(ppl.length)}) by completed meetings in Zoho (Meeting Status Completed, start time passed); future and unmarked meetings don’t count, and each prospect sits in one stage. Today, This week (from Monday) and This month count prospects who newly reached a stage, in Central time; Never Met is reached when Zoho creates the contact. The change compares today’s total with ${prevDay ? fullDayF(prevDay) : 'the same day last month'}. Trends are rebuilt from meeting dates and contact creation dates${from ? ' since ' + fullDayF(from) : ''}; Zoho doesn’t keep Priority history, so past weeks show today’s Priority 1 prospects only, and anyone who has since moved to another Priority (signed partners at P99 included) isn’t in them.`;
+    drawPlan();
+    const calAsOf = ppl.reduce((m, p) => (p.cal_as_of && (!m || p.cal_as_of < m) ? p.cal_as_of : m), null);
+    const calLine = ppl.some((p) => p.cal_checked) ? ` Outlook calendars (info@, mack@, hemang@, shruti@) checked ${calAsOf ? whenF(calAsOf) : ''}: an event counts when the prospect is a guest or the booking customer, or the subject names them, and it wasn’t cancelled.` : ' The Outlook calendar sync isn’t in this build, so only Zoho meetings count.';
+    mtgNote.textContent = `Counts B2B prospects at Priority 1 today (${intF(ppl.length)}) by days with a meeting held, from Zoho (Meeting Status Completed, start time passed) or a team Outlook calendar; a day with a meeting in both counts once, and each prospect sits in one stage.${calLine} Today, This week (from Monday) and This month count prospects who newly reached a stage, in Central time; Never Met is reached when Zoho creates the contact. The change compares today’s total with ${prevDay ? fullDayF(prevDay) : 'the same day last month'}. Trends are rebuilt from meeting dates and contact creation dates${from ? ' since ' + fullDayF(from) : ''}; Zoho doesn’t keep Priority history, so past weeks show today’s Priority 1 prospects only, and anyone who has since moved to another Priority (signed partners at P99 included) isn’t in them.`;
   };
 
   /* B2B Partner Meetings: met partners and their Referral Partner deals. */
