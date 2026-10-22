@@ -739,7 +739,7 @@
   pmCard.setAttribute('aria-labelledby', 'b2-pm-title');
   const pmHead = el('div', 'cc-b2-scorehead');
   const pmTitleBox = el('div');
-  const pmTitle = el('h2', null, 'B2B Partner Meetings');
+  const pmTitle = el('h2', null, 'B2B Deals Created');
   pmTitle.id = 'b2-pm-title';
   pmTitleBox.append(pmTitle, el('p', 'cc-b2-insight', 'Campaign: May 2026 - 100 B2B. Every partner we have met should have a Referral Partner deal in Zoho.'));
   const pmSop = el('a', 'cc-b2-soplink', 'SOP');
