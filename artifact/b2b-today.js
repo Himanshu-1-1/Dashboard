@@ -1011,6 +1011,19 @@
   drill.append(drillBody);
 
   root.append(pf, score, p3, na, mtg, pmCard, mailCard, grid1, drill, nextCard, queueCard, monCard, grid2, sopCard, dqCard);
+  /* SOP links: an animated playbook page instead of the word. The link keeps its title and aria-label. */
+  const SOP_ICON = '<svg class="cc-sop-ico" viewBox="0 0 32 36" aria-hidden="true" focusable="false">'
+    + '<g class="cc-sop-spark"><circle cx="27" cy="5" r="1.4"/><circle cx="4" cy="9" r="1"/><circle cx="29" cy="15" r="1"/><path d="M24 2.5v3M22.5 4h3"/></g>'
+    + '<g class="cc-sop-page">'
+    + '<path class="cc-sop-sheet" d="M7 3h12.5L27 10.5V30a2.5 2.5 0 0 1-2.5 2.5H7A2.5 2.5 0 0 1 4.5 30V5.5A2.5 2.5 0 0 1 7 3z"/>'
+    + '<path class="cc-sop-fold" d="M19.5 3v5a2.5 2.5 0 0 0 2.5 2.5h5"/>'
+    + '<path class="cc-sop-line cc-sop-l1" d="M8.5 14.5h11"/><path class="cc-sop-line cc-sop-l2" d="M8.5 19h13"/><path class="cc-sop-line cc-sop-l3" d="M8.5 23.5h7"/>'
+    + '<g class="cc-sop-stamp"><circle cx="22.5" cy="26" r="5.2"/><path d="M20.2 26.1l1.6 1.6 3-3.3"/></g>'
+    + '</g></svg>';
+  root.querySelectorAll('a.cc-b2-soplink').forEach((a) => {
+    a.classList.add('cc-sop-btn');
+    a.innerHTML = SOP_ICON + '<span class="cc-b2-sr">SOP</span>';
+  });
   root.addEventListener('click', (e) => {
     const b = e.target.closest('[data-sop]');
     if (!b) return;
