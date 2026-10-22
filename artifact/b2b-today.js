@@ -1909,11 +1909,15 @@
       c.setAttribute('aria-label', aria);
       return c;
     };
-    const met = tile('cc-pm-main', 'Partners Met', everyone.length, 'Unique campaign contacts with at least one completed meeting, all time',
+    const met = tile('cc-pm-main', 'Partners Met', everyone.length, 'Unique contacts with a completed meeting, all time',
       () => showTable('Partners met', pmCols, pmSort(everyone), 'Every May 2026 - 100 B2B contact with at least one meeting marked Completed in Zoho, most recent meeting first. ' + PM_OWNER_NOTE),
       `Partners met, all time: ${intF(everyone.length)}. Open the list.`);
     const allMade = everyone.filter((r) => r.created).length;
-    met.append(el('p', 'cc-pm-sub cc-pm-split', `${intF(allMade)} with a Referral Partner deal, ${intF(everyone.length - allMade)} without`));
+    met.append(el('p', 'cc-pm-sub cc-pm-split', `${intF(allMade)} with a deal, ${intF(everyone.length - allMade)} without`));
+    met.style.setProperty('--pm-share', ((everyone.length ? allMade / everyone.length : 0) * 100).toFixed(1) + '%');
+    met.title = `${intF(everyone.length)} partners met, all time: ${intF(allMade)} with a Referral Partner deal (green part of the ring), ${intF(everyone.length - allMade)} without (red). Select to list them.`;
+    const metWrap = el('div', 'cc-pm-left');
+    metWrap.append(met);
     const ok = tile('cc-pm-ok', 'Referral Partner Deal Created', made.length, 'Met, with a Referral Partner deal linked to the contact',
       () => showTable('Referral Partner deal created' + (from ? ', ' + periodName.toLowerCase() : ''), pmCols, pmSort(made), `${from ? 'Partners' : 'Met partners'}${scope} whose Referral Partner deal names them as the contact. ` + PM_OWNER_NOTE),
       `Referral Partner deal created: ${intF(made.length)}. Open the list.`);
@@ -1936,7 +1940,7 @@
       periodLine.append(b, document.createTextNode(` (since ${fullDayF(from)}). Their deals as they stand today:`));
     } else periodLine.textContent = 'Every partner met so far. Their deals as they stand today:';
     right.append(pmTools, periodLine, pair);
-    pmBody.replaceChildren(met, right);
+    pmBody.replaceChildren(metWrap, right);
     if (from) {
       const series = pmSeries(pmPeriod).map(([a, b, label], i, arr) => {
         const list = everyone.filter((r) => r.first && r.first >= a && r.first <= b);

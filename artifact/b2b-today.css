@@ -318,7 +318,15 @@
 .cc-pm { gap: var(--cds-gap-md); }
 .cc-pm .cc-b2-scorehead h2 { margin: 0; }
 .cc-pm .cc-b2-scorehead .cc-b2-insight { margin: 2px 0 0; }
-.cc-pm-body { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(0, 2.4fr); gap: var(--cds-gap-md); align-items: start; }
+.cc-pm-body { display: grid; grid-template-columns: minmax(240px, 1fr) minmax(0, 2.6fr); gap: var(--cds-gap-md); align-items: stretch; }
+.cc-pm-left { display: grid; place-items: center; }
+.cc-pm-tile.cc-pm-main { width: 230px; height: 230px; padding: 0 26px; border-radius: 50%; border: 0; place-content: center; justify-items: center; text-align: center; gap: 2px;
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--b2-c1) 7%, var(--color-panel)) calc(100% - 9px), transparent calc(100% - 8px)),
+    conic-gradient(var(--color-ok) 0 var(--pm-share, 0%), var(--color-bad) var(--pm-share, 0%) 100%); }
+.cc-pm-tile.cc-pm-main .cc-pm-num { margin: 2px 0; }
+.cc-pm-tile.cc-pm-main .cc-pm-sub { font-size: 11px; line-height: 1.35; }
+.cc-pm-tile.cc-pm-main .cc-pm-split { margin-top: 2px; padding-top: 6px; border-top-color: var(--color-border-line); color: var(--color-fg); }
+.cc-pm-tile.cc-pm-main:hover { box-shadow: 0 0 0 4px color-mix(in oklab, var(--b2-c1) 18%, transparent); }
 @media (max-width: 860px) { .cc-pm-body { grid-template-columns: 1fr; } }
 .cc-pm-right { display: grid; gap: var(--cds-gap-sm); min-width: 0; }
 .cc-pm-period { margin: 0; font-size: 13px; color: var(--color-fg-muted); }
