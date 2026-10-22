@@ -701,6 +701,60 @@
     },
   });
 
+  /* Referral Partner deals at Closed (Closed Won) and the meetings it took to sign each partner. A partner counts once
+     their Referral Partner Agreement is signed in Zoho Sign (any signed copy, matched by the deal's Contact Name, else
+     its Account); meetings are days with a meeting held (mtg_people) up to and including the signing day. */
+  const RW_OWN = /tech\s*-?\s*transpire|true\s*lean/i;
+  dash.calc('rp_signed', {
+    title: 'Signed Referral Partners and meetings before signing',
+    description: 'One row per partner with a Referral Partner deal at Closed: Founder Network or not (the contact’s Relationship Type), whether the Referral Partner Agreement is signed in Zoho Sign and when, the days with a meeting held up to and including the signing day (Zoho Completed, team Outlook calendar, Fireflies), and why the meeting history may be incomplete. Rows with signed false are Closed deals without a signed agreement and are not counted.',
+    inputs: ['deals', 'deals_tagged', 'sign_docs', 'mtg_people'],
+    fn: (deals, deals_tagged, sign_docs, mtg_people) => {
+      const raw = new Map(deals.map((d) => [String(d.id), d]));
+      const mtg = new Map(mtg_people.map((m) => [String(m.id), m]));
+      const docs = sign_docs.filter((d) => /referral partner agreement/i.test(d.Name || '') && !/recalled|draft/i.test(String(d.zohosign__Document_Status || '')) && !RW_OWN.test(d.zohosign__Account || ''));
+      const isSigned = (d) => /signed|completed/i.test(String(d.zohosign__Document_Status || ''));
+      const agreementFor = (contactId, accountId, nameHint) => {
+        const mine = docs.filter((d) => (contactId && String(d.zohosign__Contact_id) === contactId) || (!contactId && accountId && String(d.zohosign__Account_id) === accountId));
+        if (!mine.length && contactId && accountId) mine.push(...docs.filter((d) => !d.zohosign__Contact_id && String(d.zohosign__Account_id) === accountId));
+        if (!mine.length && !contactId && nameHint) mine.push(...docs.filter((d) => d.zohosign__Contact && nameHint.includes(String(d.zohosign__Contact).toLowerCase())));
+        const signed = mine.filter(isSigned).sort((a, b) => String(a.zohosign__Date_Completed || '').localeCompare(String(b.zohosign__Date_Completed || '')));
+        if (signed.length) return { state: 'Signed', on: String(signed[0].zohosign__Date_Completed || '').slice(0, 10) || null, doc_id: String(signed[0].id), sent: signed[0].zohosign__Date_Sent || null, contact: signed[0].zohosign__Contact || null };
+        const newest = mine.slice().sort((a, b) => String(b.zohosign__Date_Sent || '').localeCompare(String(a.zohosign__Date_Sent || '')))[0];
+        return newest ? { state: String(newest.zohosign__Document_Status || 'Not signed'), on: null, doc_id: String(newest.id), sent: newest.zohosign__Date_Sent || null, contact: newest.zohosign__Contact || null } : { state: 'None in Zoho Sign', on: null, doc_id: null, sent: null, contact: null };
+      };
+      const byPartner = new Map();
+      deals_tagged.filter((d) => d.kind === 'Partnership' && d.stage === 'Closed').forEach((d) => {
+        const r = raw.get(String(d.id)) || {};
+        const cid = d.contact_id ? String(d.contact_id) : null;
+        const aid = d.account_id && !RW_OWN.test(d.account || '') ? String(d.account_id) : null;
+        const m = cid ? mtg.get(cid) : null;
+        const ag = agreementFor(cid, aid, cid ? null : `${d.deal || ''} ${d.account || ''}`.toLowerCase());
+        const signed = ag.state === 'Signed';
+        const before = signed && m ? (m.sources || []).filter((x) => x.day <= ag.on) : [];
+        const gaps = [];
+        if (!cid) gaps.push('The deal has no Contact Name, so meetings can’t be matched');
+        else if (!m) gaps.push('Not a B2B campaign contact, so calendars and recordings weren’t checked');
+        else {
+          const unmarked = (m.unmarked || []).filter((u) => !signed || u.day <= ag.on);
+          if (unmarked.length) gaps.push(`${unmarked.length} past Zoho meeting${unmarked.length === 1 ? '' : 's'}${signed ? ' before signing' : ''} still ${[...new Set(unmarked.map((u) => u.status))].join(' or ')} (${unmarked.map((u) => new Date(u.day + 'T00:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' })).join(', ')}) that no calendar or recording confirms`);
+          if (!m.cal_checked) gaps.push('Team Outlook calendars weren’t searched for them');
+        }
+        const row = {
+          key: cid || 'd' + d.id, deal_id: String(d.id), deal: d.deal || 'Referral Partner deal',
+          contact_id: cid, name: d.contact || ag.contact || d.account || d.deal || 'No contact', fn: cid ? CC_RULES.isFN(r['Contact_Name.Relationship_Type']) : null,
+          account: m && m.account && !RW_OWN.test(m.account) ? m.account : aid ? d.account : null,
+          account_id: m && m.account_id && !RW_OWN.test(m.account || '') ? String(m.account_id) : aid,
+          signed, agreement: ag.state, signed_on: ag.on, doc_id: ag.doc_id, sent: ag.sent,
+          meetings: before.length, meeting_days: before, gaps,
+        };
+        const prev = byPartner.get(row.key);
+        if (!prev || (row.signed && (!prev.signed || row.signed_on < prev.signed_on))) byPartner.set(row.key, row);
+      });
+      return [...byPartner.values()].sort((a, b) => Number(b.signed) - Number(a.signed) || String(a.name).localeCompare(String(b.name)));
+    },
+  });
+
   /* Account gaps: a Referral Partner deal needs an Account in Zoho, so every B2B prospect at Priority 1 or with any meeting
      (completed, scheduled or not marked) should have one. Our own company as the Account counts as none. Do Not Contact
      records are left out: no deal will follow. Separately, Referral Partner deals linked to a prospect whose Account is
@@ -987,6 +1041,21 @@
   pmTools.setAttribute('role', 'group');
   pmTools.setAttribute('aria-label', 'Period');
   pmCard.append(pmHead, pmBody, pmNote);
+  const rw = el('section', 'cc-card cc-rw');
+  rw.id = 'b2-rw';
+  rw.setAttribute('aria-labelledby', 'b2-rw-title');
+  const rwHead = el('div', 'cc-b2-scorehead');
+  const rwTitleBox = el('div');
+  const rwTitle = el('h2', null, 'Referral Partner Deals — Closed Won');
+  rwTitle.id = 'b2-rw-title';
+  rwTitleBox.append(rwTitle, el('p', 'cc-b2-insight', 'Referral Partner deals at Closed in Zoho whose agreement is signed in Zoho Sign, by where the partner came from, and how many meetings we held before they signed. Select any number to list the partners.'));
+  rwHead.append(rwTitleBox);
+  const rwPanel = el('div', 'cc-rw-panel');
+  rwPanel.setAttribute('role', 'group');
+  rwPanel.setAttribute('aria-label', 'Signed partners by source');
+  const rwFlags = el('div', 'cc-rw-flags');
+  const rwNote = el('p', 'cc-b2-insight cc-rw-note');
+  rw.append(rwHead, rwPanel, rwFlags, rwNote);
   const monCard = card('b2-monday', 'Priority 3 queue', 'Everyone at Priority 3, grouped by what to do next from LI Connect: untouched first, then connected, then waiting. Within a group, the strongest partner evidence comes first.');
   const monTools = el('div', 'cc-tools cc-b2-chips');
   const monBody = el('div', 'cc-b2-wrap');
@@ -1063,7 +1132,7 @@
     if (drillFrom && drillFrom !== drill && drillFrom.parentElement === root && drillFrom.nextElementSibling !== drill) drillFrom.after(drill);
   };
 
-  root.append(pf, score, p3, na, mtg, pmCard, mailCard, grid1, drill, nextCard, queueCard, monCard, grid2, sopCard, dqCard, plan, br);
+  root.append(pf, score, p3, na, mtg, pmCard, rw, mailCard, grid1, drill, nextCard, queueCard, monCard, grid2, sopCard, dqCard, plan, br);
   /* SOP links: an animated playbook page instead of the word. The link keeps its title and aria-label. */
   const SOP_ICON = '<svg class="cc-sop-ico" viewBox="0 0 32 36" aria-hidden="true" focusable="false">'
     + '<g class="cc-sop-spark"><circle cx="27" cy="5" r="1.4"/><circle cx="4" cy="9" r="1"/><circle cx="29" cy="15" r="1"/><path d="M24 2.5v3M22.5 4h3"/></g>'
@@ -1198,6 +1267,7 @@
     drawNa();
     drawMtg();
     drawPm();
+    drawRw();
     drawBriefs();
     const st = state(['b2b_people', 'b2b_actions', 'b2b_monday', 'b2b_funnel', 'b2b_segments']);
     if (st !== 'ok') {
@@ -2241,6 +2311,94 @@
     return null;
   };
   const pmSort = (list) => list.slice().sort((a, b) => String(b.last || '').localeCompare(String(a.last || '')) || String(a.name).localeCompare(String(b.name)));
+  /* Referral Partner Deals — Closed Won: three boxes (Founder Network, Other Partners, Combined), each with its signed
+     total and the 1 / 2 / 3 / 4+ meetings breakdown (0 only when a signed partner has none). Every number opens its list. */
+  const RW_GROUPS = [['fn', 'Founder Network', (p) => p.fn === true], ['other', 'Other Partners', (p) => p.fn !== true], ['all', 'Combined', () => true]];
+  const rwSrc = (p) => (p.fn === true ? 'Founder Network' : p.fn === false ? 'Other' : 'Not known (no contact on the deal)');
+  const rwDayF = (d) => (d ? fullDayF(d) : '—');
+  const rwSeen = (x) => [x.zoho && 'Zoho (Completed)', x.outlook && ('Outlook' + (x.cals ? ' (' + String(x.cals).split(',').filter(Boolean).map((c) => CAL_NAMES[c] || c).join(', ') + ')' : '')), x.fireflies && 'Fireflies recording'].filter(Boolean).join(', ');
+  const rwBtn = (text, label, fn) => { const b = el('button', 'cc-rw-link', text); b.type = 'button'; b.setAttribute('aria-label', label); b.addEventListener('click', fn); return b; };
+  let rwBack = null;
+  const rwMeetings = (p) => {
+    const back = rwBack;
+    showTable(`${p.name}: meetings before signing`, [
+      ['Date (CT)', (x) => fullDayF(x.day)],
+      ['Seen in', (x) => rwSeen(x)],
+    ], p.meeting_days.slice().sort((a, b) => b.day.localeCompare(a.day)), `One row per day with a meeting held, up to the day the agreement was signed (${rwDayF(p.signed_on)}).${p.gaps.length ? ' Incomplete: ' + p.gaps.join('; ') + '.' : ''}`, 'No meetings held before signing were found in Zoho, the team calendars or Fireflies.');
+    const head = drillBody.firstElementChild;
+    const tools = el('div', 'cc-tools');
+    if (p.contact_id) { const z = el('a', 'cc-go', 'Open the contact in Zoho'); z.href = ZOHO + 'Contacts/' + p.contact_id; z.target = '_blank'; z.rel = 'noopener'; tools.append(z); }
+    if (back) { const b = el('button', 'cc-go', '← Back to ' + back.title); b.type = 'button'; b.addEventListener('click', back.fn); tools.prepend(b); }
+    drillBody.insertBefore(tools, head);
+  };
+  const rwList = (title, list) => {
+    const open = () => {
+      rwBack = { title, fn: open };
+      showTable(title, [
+        ['Partner', (p) => { const w = el('span'); if (p.contact_id) w.append(link('Contacts', p.contact_id, p.name)); else w.textContent = p.name; if (p.gaps.length) { const f = el('span', 'cc-rw-flagmark', ' ⚑'); f.title = p.gaps.join('; '); w.append(f); } return w; }],
+        ['Company', (p) => (p.account_id ? link('Accounts', p.account_id, p.account || 'Account') : p.account || 'No Account')],
+        ['Source', (p) => { const w = el('span', 'cc-rw-src ' + (p.fn ? 'cc-rw-fn' : 'cc-rw-other')); w.append(el('i'), document.createTextNode(rwSrc(p))); return w; }],
+        ['Meetings before signing', (p) => rwBtn(intF(p.meetings), `${p.name}: ${p.meetings} meetings before signing. List them.`, () => rwMeetings(p))],
+        ['Agreement signed', (p) => (p.doc_id ? link('CustomModule1', p.doc_id, rwDayF(p.signed_on)) : rwDayF(p.signed_on))],
+        ['Deal', (p) => link('Potentials', p.deal_id, p.deal)],
+      ], list.slice().sort((a, b) => b.meetings - a.meetings || String(a.name).localeCompare(String(b.name))), 'Meetings are days with a meeting held (Zoho Completed, team Outlook calendar or Fireflies), up to and including the signing day. Select a meeting count to see the dates. ⚑ marks incomplete meeting history.');
+      drill.querySelectorAll('a.cc-zlink[href*="CustomModule1"]').forEach((a) => { a.title = 'Open the agreement in Zoho CRM'; });
+    };
+    return open;
+  };
+  const rwFix = (title, list, kind) => () => {
+    rwBack = null;
+    showTable(title, [
+      ['Partner', (p) => (p.contact_id ? link('Contacts', p.contact_id, p.name) : p.name)],
+      ['Company', (p) => (p.account_id ? link('Accounts', p.account_id, p.account || 'Account') : p.account || 'No Account')],
+      ['Source', (p) => rwSrc(p)],
+      [kind === 'unsigned' ? 'Agreement in Zoho Sign' : 'Meetings before signing', (p) => (kind === 'unsigned' ? (p.doc_id ? link('CustomModule1', p.doc_id, p.agreement + (p.sent ? ', sent ' + fullDayF(p.sent) : '')) : p.agreement) : rwBtn(intF(p.meetings), `${p.name}: list meetings`, () => { rwBack = { title, fn: rwFix(title, list, kind) }; rwMeetings(p); }))],
+      ['What to fix', (p) => (kind === 'unsigned' ? (p.agreement === 'None in Zoho Sign' ? 'Deal is Closed but Zoho Sign has no Referral Partner Agreement for them: send it, or attach the signed copy' : 'Deal is Closed but the agreement isn’t signed: chase the signature, or move the deal back from Closed') + (p.contact_id ? '' : '; the deal also has no Contact Name') : p.gaps.join('; '))],
+      ['Deal', (p) => link('Potentials', p.deal_id, p.deal)],
+    ], list, kind === 'unsigned' ? 'Not counted above until the agreement is signed in Zoho Sign.' : 'Counted above with the meetings found; the count may be low until these are fixed.');
+  };
+  const drawRw = () => {
+    const st = state(['rp_signed']);
+    if (st !== 'ok') {
+      rwPanel.replaceChildren(el('p', st === 'error' ? 'cc-b2-bad' : 'cc-b2-insight', st === 'error' ? 'Deals, Zoho Sign or meeting data didn’t load, so signed partners can’t be counted. Reload, or check the sources in the dashboard menu.' : 'Loading deals, agreements and meetings…'));
+      rwFlags.replaceChildren(); rwNote.textContent = '';
+      return;
+    }
+    const all = rows('rp_signed');
+    const signed = all.filter((p) => p.signed);
+    const unsigned = all.filter((p) => !p.signed);
+    const incomplete = signed.filter((p) => p.gaps.length);
+    const cats = [...(signed.some((p) => p.meetings === 0) ? [[0, '0 meetings', (n) => n === 0]] : []), [1, '1 meeting', (n) => n === 1], [2, '2 meetings', (n) => n === 2], [3, '3 meetings', (n) => n === 3], [4, '4+ meetings', (n) => n >= 4]];
+    rwPanel.replaceChildren(...RW_GROUPS.map(([g, label, keep]) => {
+      const mine = signed.filter(keep);
+      const box = el('div', 'cc-rw-box cc-rw-' + g);
+      const top = el('button', 'cc-rw-top'); top.type = 'button';
+      top.setAttribute('aria-label', `${label}: ${mine.length} signed partners. List them.`);
+      const name = el('span', 'cc-rw-name'); name.append(el('i'), document.createTextNode(label));
+      top.append(name, el('b', null, intF(mine.length)), el('small', null, `signed partner${mine.length === 1 ? '' : 's'}${g === 'all' || !signed.length ? '' : `, ${Math.round((mine.length / signed.length) * 100)}% of all`}`));
+      if (mine.length) top.addEventListener('click', rwList(`${label}: signed partners`, mine)); else top.disabled = true;
+      const cells = el('div', 'cc-rw-cells'); cells.style.setProperty('--n', cats.length);
+      cats.forEach(([, cl, f]) => {
+        const r = mine.filter((p) => f(p.meetings));
+        const c = el('button', 'cc-rw-cell'); c.type = 'button';
+        const bar = el('em'); const fill = el('s'); fill.style.width = (mine.length ? (r.length / mine.length) * 100 : 0) + '%'; bar.append(fill);
+        c.append(el('b', null, intF(r.length)), bar, el('span', null, cl));
+        c.setAttribute('aria-label', `${label}, ${cl} before signing: ${r.length} partners${r.length ? '. List them.' : ''}`);
+        if (r.length) c.addEventListener('click', rwList(`${label}, ${cl} before signing`, r)); else c.disabled = true;
+        cells.append(c);
+      });
+      box.append(top, el('p', 'cc-rw-by', 'Meetings before signing'), cells);
+      return box;
+    }));
+    const flag = (n, text, fn) => { const b = el('button', 'cc-rw-flag'); b.type = 'button'; b.append(el('b', null, intF(n)), document.createTextNode(' ' + text)); b.addEventListener('click', fn); return b; };
+    rwFlags.replaceChildren(
+      ...(unsigned.length ? [flag(unsigned.length, `Closed deal${unsigned.length === 1 ? '' : 's'} without a signed agreement (not counted)`, rwFix('Closed Referral Partner deals without a signed agreement', unsigned, 'unsigned'))] : []),
+      ...(incomplete.length ? [flag(incomplete.length, `signed partner${incomplete.length === 1 ? '' : 's'} with incomplete meeting history`, rwFix('Signed partners with incomplete meeting history', incomplete, 'gaps'))] : []),
+    );
+    rwFlags.hidden = !unsigned.length && !incomplete.length;
+    rwNote.textContent = 'A meeting counts when Zoho marks it Completed, it is an uncancelled event on a team Outlook calendar, or Fireflies recorded 5+ minutes with the partner; one per day (Central time), up to and including the day the agreement was signed. Founder Network is the partner’s Relationship Type in Zoho. Each partner counts once.';
+  };
+
   const drawPm = () => {
     const st = state(['b2b_partner_deals']);
     pmNote.classList.toggle('cc-b2-bad', st === 'error');
