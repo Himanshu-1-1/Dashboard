@@ -1843,6 +1843,14 @@
     if (k === 'year') return t.slice(0, 5) + '01-01';
     return null;
   };
+  const pmPrev = (k) => {
+    const t = todayCT();
+    const iso = (d) => d.toISOString().slice(0, 10);
+    if (k === 'week') { const m = new Date(pmStart('week') + 'T00:00:00Z'); return [iso(new Date(m.getTime() - 7 * 864e5)), iso(new Date(m.getTime() - 864e5)), 'Last week']; }
+    if (k === 'month') { const [y, mo] = t.split('-').map(Number); return [iso(new Date(Date.UTC(y, mo - 2, 1))), iso(new Date(Date.UTC(y, mo - 1, 0))), 'Last month']; }
+    if (k === 'year') { const y = Number(t.slice(0, 4)) - 1; return [y + '-01-01', y + '-12-31', 'Last year']; }
+    return null;
+  };
   const pmSort = (list) => list.slice().sort((a, b) => String(b.last || '').localeCompare(String(a.last || '')) || String(a.name).localeCompare(String(b.name)));
   const drawPm = () => {
     const st = state(['b2b_partner_deals']);
@@ -1867,11 +1875,29 @@
     const scope = from ? ` first met ${periodName.toLowerCase()} (since ${fullDayF(from)})` : '';
     const made = all.filter((r) => r.created);
     const missing = all.filter((r) => !r.created);
-    if (!all.length) {
-      pmBody.replaceChildren(el('p', 'cc-b2-insight', from ? `No campaign contacts were met for the first time ${periodName.toLowerCase()}. A contact counts in the period of their first meeting marked Completed in Zoho.` : 'No campaign contacts have been recorded as met yet. A contact counts once a meeting with them is marked Completed in Zoho.'));
+    if (!everyone.length) {
+      pmTools.replaceChildren();
+      pmBody.replaceChildren(el('p', 'cc-b2-insight', 'No campaign contacts have been recorded as met yet. A contact counts once a meeting with them is marked Completed in Zoho.'));
       pmNote.textContent = '';
       return;
     }
+    const prev = pmPrev(pmPeriod);
+    const before = prev ? everyone.filter((r) => r.first && r.first >= prev[0] && r.first <= prev[1]) : null;
+    const prevLabel = prev ? `${prev[2]} (${fullDayF(prev[0])} – ${fullDayF(prev[1])})` : '';
+    /* One comparison line per card: the previous full period, the change, and a link to that period's list. good: 'up' when a rise is good, 'down' when a fall is. */
+    const compare = (tileNode, now, then, good, open) => {
+      const d = now - then;
+      const line = el('p', 'cc-pm-cmp');
+      const tone = d === 0 ? 'flat' : (d > 0) === (good === 'up') ? 'good' : 'bad';
+      const chip = el('span', 'cc-pm-delta cc-pmd-' + tone, d === 0 ? 'No change' : (d > 0 ? '▲ +' : '▼ −') + intF(Math.abs(d)));
+      const btn = el('button', 'cc-pm-prev', `${prev[2]}: ${intF(then)}`);
+      btn.type = 'button';
+      btn.title = `Open the list for ${prevLabel}`;
+      btn.addEventListener('click', (e) => { e.stopPropagation(); open(); });
+      btn.addEventListener('keydown', (e) => e.stopPropagation());
+      line.append(chip, document.createTextNode(' vs '), btn);
+      tileNode.append(line);
+    };
     const tile = (cls, label, value, sub, go, aria) => {
       const c = el('div', 'cc-pm-tile ' + cls);
       c.append(el('p', 'cc-pm-label', label), el('p', 'cc-pm-num', intF(value)));
@@ -1886,14 +1912,22 @@
     const ok = tile('cc-pm-ok', 'Referral Partner Deal Created', made.length, 'Met, with a Referral Partner deal linked to the contact',
       () => showTable('Referral Partner deal created' + (from ? ', ' + periodName.toLowerCase() : ''), pmCols, pmSort(made), `${from ? 'Partners' : 'Met partners'}${scope} whose Referral Partner deal names them as the contact. ` + PM_OWNER_NOTE),
       `Referral Partner deal created: ${intF(made.length)}. Open the list.`);
-    const gap = tile(missing.length ? 'cc-pm-bad' : 'cc-pm-ok', 'Referral Partner Deal Not Created', missing.length, null,
+    const gap = tile(missing.length ? 'cc-pm-bad' : all.length ? 'cc-pm-ok' : 'cc-pm-none', 'Referral Partner Deal Not Created', missing.length, null,
       () => (missing.length
         ? showTable('Referral Partner deal not created' + (from ? ', ' + periodName.toLowerCase() : ''), pmCols, pmSort(missing), `${from ? 'Partners' : 'Met partners'}${scope} with no Referral Partner deal linked to them.` + ' Create the deal in Zoho as SOP 002 sets out (Deal Type Reseller/ Referral Partner, Stage Identify, Amount $0.00, their company as Account Name and this person as Contact Name); they drop off this list at the next refresh. ' + PM_OWNER_NOTE)
         : showTable('Referral Partner deal not created' + (from ? ', ' + periodName.toLowerCase() : ''), pmCols, [], null, from ? `All partners first met ${periodName.toLowerCase()} have Referral Partner Deals created.` : 'All met partners have Referral Partner Deals created.')),
       `Referral Partner deal not created: ${intF(missing.length)}, target 0. Open the list.`);
     const tgt = el('p', 'cc-pm-target', 'Target: 0');
     gap.insertBefore(tgt, gap.children[2] || null);
-    if (!missing.length) gap.append(el('p', 'cc-pm-sub', 'All met partners have Referral Partner Deals created.'));
+    if (!missing.length) gap.append(el('p', 'cc-pm-sub', all.length ? (from ? `All partners first met ${periodName.toLowerCase()} have Referral Partner Deals created.` : 'All met partners have Referral Partner Deals created.') : `Nobody was met for the first time ${periodName.toLowerCase()}.`));
+    if (prev) {
+      const pMade = before.filter((r) => r.created);
+      const pMiss = before.filter((r) => !r.created);
+      const scopePrev = ` first met ${prev[2].toLowerCase()} (${fullDayF(prev[0])} – ${fullDayF(prev[1])})`;
+      compare(met, all.length, before.length, 'up', () => showTable('Partners met, ' + prev[2].toLowerCase(), pmCols, pmSort(before), `Partners${scopePrev}, most recent meeting first. ` + PM_OWNER_NOTE));
+      compare(ok, made.length, pMade.length, 'up', () => showTable('Referral Partner deal created, ' + prev[2].toLowerCase(), pmCols, pmSort(pMade), `Partners${scopePrev} whose Referral Partner deal names them as the contact. ` + PM_OWNER_NOTE));
+      compare(gap, missing.length, pMiss.length, 'down', () => showTable('Referral Partner deal not created, ' + prev[2].toLowerCase(), pmCols, pmSort(pMiss), `Partners${scopePrev} with no Referral Partner deal linked to them. ` + PM_OWNER_NOTE, `All partners first met ${prev[2].toLowerCase()} have Referral Partner Deals created.`));
+    }
     const pair = el('div', 'cc-pm-pair');
     pair.append(ok, gap);
     pmBody.replaceChildren(met, pair);
