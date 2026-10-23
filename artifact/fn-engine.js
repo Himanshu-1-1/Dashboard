@@ -565,6 +565,10 @@
     return { status: s.kind === 'live' ? 'Connected' : 'Imported', tone: 'ok' };
   }
 
+  /* An action that can't wait: a commitment overdue but not so old it needs closing, or a meeting to prepare within
+     `prepDays`. The same rule makes a founder Urgent. */
+  const isUrgentAction = (a) => a.status !== 'Done' && ((a.kind === 'commitment' && a.status === 'Overdue' && !a.stale) || (a.category === 'Prepare for a meeting' && a.status === 'Due soon'));
+
   /* ---------- the priority engine ---------- */
   function priorityOf(f, F, actions, today, settings = DEFAULTS) {
     const w = settings.weights;
@@ -584,7 +588,7 @@
     part('recency', p === '1' || p === '3' ? (gap == null ? 1 : gap > 60 ? 1 : gap > 30 ? 0.6 : 0) : 0, gap == null ? 'No interaction on record' : `Last interaction ${gap} days ago`);
     const until = F.upcoming ? daysBetween(today, F.upcoming) : null;
     part('upcoming', until != null && until <= 7 ? 1 : 0, `Meeting in ${until} day${until === 1 ? '' : 's'}`);
-    const urgent = actions.slice().sort((x, y) => rankAction(x) - rankAction(y)).find((a) => a.status !== 'Done' && ((a.kind === 'commitment' && a.status === 'Overdue' && !a.stale) || (a.category === 'Prepare for a meeting' && a.status === 'Due soon')));
+    const urgent = actions.slice().sort((x, y) => rankAction(x) - rankAction(y)).find(isUrgentAction);
     const review = !f.zoho || f.identities.some((i) => i.confidence === 'possible' || i.confidence === 'partial') || f.issues.some((i) => i.type === 'Needs a full name');
     let band = score >= settings.bands.high ? 'High priority' : score >= settings.bands.normal ? 'Normal' : 'Nurture';
     if (review) band = 'Needs review';
@@ -650,7 +654,7 @@
     return settings.targets.map((t) => Object.assign({}, t, { actual: counts[t.id], rows: counts[t.id] == null ? [] : rows[t.id] }, metricStatus({ actual: counts[t.id], target: t.target, today, missing: counts[t.id] == null, baseline: baselines[t.id] || 0 }, settings), { baseline: baselines[t.id] || 0 }));
   }
 
-  const api = { DEFAULTS, STATUS, TONE, STAGES, STAGE_RULES, ctDay, daysBetween, nameToks, personKey, keyOfName, slugOf, lev, zohoIndex, matchPerson, buildFounders, facts, stageOf, actionsFor, actionStatus, metricStatus, sourceStatus, expectedShare, priorityOf, run, targets, targetRows, rankAction, outreach, draftFor };
+  const api = { DEFAULTS, STATUS, TONE, STAGES, STAGE_RULES, ctDay, daysBetween, nameToks, personKey, keyOfName, slugOf, lev, zohoIndex, matchPerson, buildFounders, facts, stageOf, actionsFor, actionStatus, metricStatus, sourceStatus, expectedShare, priorityOf, isUrgentAction, run, targets, targetRows, rankAction, outreach, draftFor };
   root.FN_ENGINE = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

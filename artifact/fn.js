@@ -167,7 +167,7 @@
   ];
   const st = {
     view: 'overview',
-    actions: { status: null, category: '', owner: '', kind: '', q: '', done: false, sort: 'urgency', page: 0 },
+    actions: { status: null, urgent: false, category: '', owner: '', kind: '', q: '', done: false, sort: 'urgency', page: 0 },
     founders: { band: null, stage: '', ver: '', source: '', soon: false, q: '', sort: 'score', page: 0 },
     timeline: { source: '', q: '', page: 0 },
     quality: { type: '', sev: '', page: 0 },
@@ -327,7 +327,7 @@
     const soon = m.founders.filter((f) => f.upcoming && E.daysBetween(today, f.upcoming) <= 7);
     const review = open.filter((a) => a.kind === 'proposal').length;
     const fixes = m.issues.filter((i) => i.severity === 'high');
-    const urgent = m.founders.filter((f) => f.priorityInfo.band === 'Urgent');
+    const urgentActs = open.filter(E.isUrgentAction);
 
     const tiles = el('div', 'cc-fx-tiles');
     /* Each tile keeps its tone from the existing rules (anything open is red or amber, nothing open is clear); the kind
@@ -341,7 +341,7 @@
     };
     const outlookIn = statusOf('fn_outlook') === 'ok';
     tiles.append(
-      tile(urgent.length ? 'bad' : 'ok', 'urgent', 'Urgent founders', urgent.length, 'overdue or meeting within 2 days', urgent.length ? 'Critical' : 'Clear', () => go('founders', { band: 'Urgent' })),
+      tile(urgentActs.length ? 'bad' : 'ok', 'urgent', 'Urgent actions', urgentActs.length, 'overdue up to 45 days, or meeting prep within 2 days', urgentActs.length ? 'Critical' : 'Clear', () => go('actions', { urgent: true, status: null, done: false })),
       tile(overdue.length ? 'bad' : 'ok', 'overdue', 'Overdue commitments', overdue.length, 'Zoho tasks and meetings', overdue.length ? 'Overdue' : 'Clear', () => go('actions', { status: 'Overdue', done: false })),
       tile(outlookIn ? 'info' : 'muted', 'meet', 'Meeting in the next 7 days', soon.length, outlookIn ? 'founders, Zoho and calendars' : 'Zoho only; calendars not loaded', outlookIn ? 'Schedule' : 'Partial', () => go('founders', { soon: true, band: null, stage: '', sort: 'meeting' })),
       tile(review ? 'warn' : 'ok', 'review', 'Waiting for review', review, 'asks from Telegram and calls', review ? 'Pending' : 'Clear', () => go('actions', { status: 'Needs review', done: false })),
@@ -420,7 +420,7 @@
     const all = m.actions;
     const owners = [...new Set(all.map((x) => x.owner).filter(Boolean))].sort();
     const cats = [...new Set(all.map((x) => x.category))].sort();
-    const vis = all.filter((x) => (a.done || x.status !== 'Done') && (!a.status || x.status === a.status) && (!a.category || x.category === a.category)
+    const vis = all.filter((x) => (a.done || x.status !== 'Done') && (!a.urgent || E.isUrgentAction(x)) && (!a.status || x.status === a.status) && (!a.category || x.category === a.category)
       && (!a.owner || (a.owner === '-' ? !x.owner : x.owner === a.owner)) && (!a.kind || x.kind === a.kind) && has(a.q, x.text, x.name, x.company, x.category, x.next));
     const sorters = {
       urgency: (x, y) => E.rankAction(x) - E.rankAction(y) || String(x.due || '9').localeCompare(String(y.due || '9')),
@@ -432,8 +432,10 @@
     wrap.append(cardHead('Action Center', 'Complete tasks in Zoho'));
     const counts = Object.fromEntries(ACTION_STATUS.map((s) => [s, all.filter((x) => x.status === s).length]));
     const chips = el('div', 'cc-fx-chips');
-    chips.append(chip(`All open (${intF(all.filter((x) => x.status !== 'Done').length)})`, !a.status && !a.done, () => { Object.assign(a, { status: null, done: false, page: 0 }); render(); }));
-    for (const s of ACTION_STATUS) if (counts[s]) chips.append(chip(`${s} (${intF(counts[s])})`, a.status === s, () => { Object.assign(a, { status: a.status === s ? null : s, done: s === 'Done' && a.status !== s, page: 0 }); render(); }));
+    chips.append(chip(`All open (${intF(all.filter((x) => x.status !== 'Done').length)})`, !a.status && !a.done && !a.urgent, () => { Object.assign(a, { status: null, urgent: false, done: false, page: 0 }); render(); }));
+    const nUrgent = all.filter(E.isUrgentAction).length;
+    if (nUrgent) chips.append(chip(`Urgent (${intF(nUrgent)})`, a.urgent, () => { Object.assign(a, { urgent: !a.urgent, status: null, done: false, page: 0 }); render(); }));
+    for (const s of ACTION_STATUS) if (counts[s]) chips.append(chip(`${s} (${intF(counts[s])})`, a.status === s, () => { Object.assign(a, { status: a.status === s ? null : s, urgent: false, done: s === 'Done' && a.status !== s, page: 0 }); render(); }));
     const filters = el('div', 'cc-fx-filters');
     filters.append(
       search(a.q, 'Search actions or founders', (v) => { a.q = v; a.page = 0; render(); }),

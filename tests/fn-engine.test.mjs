@@ -342,3 +342,8 @@ test('every target count is the length of the list it opens', () => {
   const meetings = E.targets(model, src).find((t) => t.id === 'meetings').rows;
   assert.ok(meetings.every((r) => r.f && r.day && r.sources.length));
 });
+
+test('urgent actions are exactly what makes a founder Urgent', () => {
+  const { founders } = E.run(fixture());
+  for (const f of founders) assert.equal(f.priorityInfo.band === 'Urgent', f.actions.some(E.isUrgentAction), f.name);
+});
