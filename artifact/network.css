@@ -1,0 +1,86 @@
+/* Mack's Network tab (private dashboard only). Uses the page's tokens. */
+.cc-mn-root { display: grid; gap: var(--cds-gap-md); --mn-a: var(--color-ok); --mn-b: color-mix(in oklab, var(--color-ok) 45%, var(--color-panel)); --mn-new: var(--s1, #3987e5); }
+.cc-mn-root h2 { margin: 0; font-size: 20px; font-weight: var(--cds-font-weight-medium); }
+.cc-mn-root h3 { margin: 0; }
+
+/* Stats */
+.cc-mn-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.cc-mn-stat { --k: var(--color-fg); appearance: none; font: inherit; color: inherit; text-align: left; cursor: pointer; display: grid; gap: 2px; padding: 12px 14px; border-radius: 12px;
+  border: 1px solid color-mix(in oklab, var(--k) 35%, var(--color-border-line)); background: color-mix(in oklab, var(--k) 7%, var(--color-panel)); transition: box-shadow .15s ease, transform .15s ease; }
+.cc-mn-stat:hover { box-shadow: 0 0 0 3px color-mix(in oklab, var(--k) 20%, transparent); transform: translateY(-1px); }
+.cc-mn-stat:focus-visible { outline: 2px solid var(--k); outline-offset: 2px; }
+.cc-mn-slab { font-size: 13px; font-weight: var(--cds-font-weight-medium); }
+.cc-mn-stat b { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: 40px; line-height: 1.05; color: var(--k); font-variant-numeric: tabular-nums; }
+.cc-mn-stat small { font-size: 12px; color: var(--color-fg-muted); }
+.cc-mn-sA { --k: var(--color-ok); }
+.cc-mn-sB { --k: color-mix(in oklab, var(--color-ok) 55%, var(--color-fg-muted)); }
+.cc-mn-sClient { --k: var(--s2, #d95926); }
+.cc-mn-sIn { --k: var(--s1, #3987e5); }
+
+/* Partner-type bars */
+.cc-mn-bars { display: grid; gap: 4px; }
+.cc-mn-bar { appearance: none; font: inherit; color: inherit; background: none; border: 1px solid transparent; border-radius: 10px; padding: 6px 8px; cursor: pointer; text-align: left;
+  display: grid; grid-template-columns: minmax(150px, 260px) minmax(0, 1fr) 84px 84px; gap: 12px; align-items: center; transition: background .15s ease, border-color .15s ease; }
+.cc-mn-bar:hover { background: color-mix(in oklab, var(--color-ok) 6%, transparent); border-color: var(--color-border-line); }
+.cc-mn-bar[aria-pressed="true"] { background: color-mix(in oklab, var(--color-ok) 10%, transparent); border-color: color-mix(in oklab, var(--color-ok) 45%, var(--color-border-line)); }
+.cc-mn-bar:focus-visible { outline: 2px solid var(--color-ok); outline-offset: 1px; }
+.cc-mn-blab { font-size: 13px; }
+.cc-mn-track { display: flex; height: 14px; border-radius: 7px; background: color-mix(in oklab, var(--color-fg) 6%, transparent); overflow: hidden; }
+.cc-mn-track i { display: block; height: 100%; }
+.cc-mn-fa { background: var(--mn-a); }
+.cc-mn-fb { background: var(--mn-b); }
+.cc-mn-bnum, .cc-mn-bnew { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cc-mn-bnum { color: var(--color-ok); font-weight: var(--cds-font-weight-medium); }
+.cc-mn-bnew { color: var(--color-fg-muted); }
+
+/* Shortlist */
+.cc-mn-shortlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.cc-mn-pick { display: grid; gap: 4px; align-content: start; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--color-border-line); background: color-mix(in oklab, var(--color-ok) 4%, var(--color-panel)); }
+.cc-mn-picktop { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 8px; }
+.cc-mn-person { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-weight: var(--cds-font-weight-medium); }
+.cc-mn-ptype { font-size: 11px; padding: 1px 8px; border-radius: 999px; background: color-mix(in oklab, var(--color-ok) 14%, transparent); color: var(--color-ok); white-space: nowrap; }
+.cc-mn-role { margin: 0; font-size: 12.5px; }
+.cc-mn-why { margin: 0; font-size: 12.5px; color: var(--color-fg-muted); }
+.cc-mn-refer { margin: 0; font-size: 12.5px; }
+.cc-mn-refer b { font-weight: var(--cds-font-weight-medium); }
+.cc-mn-since { margin: 0; font-size: 11px; color: var(--color-fg-muted); }
+.cc-mn-clientmark { font-size: 10.5px; font-weight: 500; padding: 0 6px; border-radius: 999px; color: var(--s2, #d95926); border: 1px solid color-mix(in oklab, var(--s2, #d95926) 45%, transparent); }
+
+/* Scope switch: Not in Zoho / Already in Zoho */
+.cc-mn-scope { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; border: 1px solid var(--color-border-line); border-radius: 12px; overflow: hidden; }
+.cc-mn-scopetab { appearance: none; font: inherit; color: inherit; text-align: left; cursor: pointer; border: 0; background: var(--color-panel); padding: 10px 14px; display: grid; gap: 2px; transition: background .15s ease; }
+.cc-mn-scopetab + .cc-mn-scopetab { border-left: 1px solid var(--color-border-line); }
+.cc-mn-scopetab b { font-weight: var(--cds-font-weight-medium); font-size: 14px; }
+.cc-mn-scopetab span { font-size: 12px; color: var(--color-fg-muted); }
+.cc-mn-scopetab:hover { background: color-mix(in oklab, var(--color-fg) 4%, var(--color-panel)); }
+.cc-mn-scopetab[aria-selected="true"] { background: color-mix(in oklab, var(--mn-new) 10%, var(--color-panel)); box-shadow: inset 0 -3px 0 var(--mn-new); }
+.cc-mn-scopetab:focus-visible { outline: 2px solid var(--mn-new); outline-offset: -2px; }
+
+/* Filters and table */
+.cc-mn-filters { display: grid; gap: 8px; }
+.cc-mn-flab { font-size: 12px; color: var(--color-fg-muted); min-width: 64px; }
+.cc-mn-select, .cc-mn-search { font: inherit; font-size: 13px; color: var(--color-fg); background: var(--color-bg); border: 1px solid var(--color-border-line); border-radius: 999px; padding: 5px 12px; }
+.cc-mn-search { min-width: 260px; flex: 1 1 260px; }
+.cc-mn-select:focus-visible, .cc-mn-search:focus-visible { outline: 2px solid var(--mn-new); outline-offset: 1px; }
+.cc-mn-tablewrap { overflow-x: auto; }
+.cc-mn-tbl td { vertical-align: top; }
+.cc-mn-rolecell span { display: block; }
+.cc-mn-rolecell small { display: block; color: var(--color-fg-muted); }
+.cc-mn-whycell { max-width: 280px; color: var(--color-fg-muted); }
+.cc-mn-date { white-space: nowrap; }
+.cc-mn-grade { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+.cc-mn-gA { background: var(--mn-a); color: var(--color-panel); }
+.cc-mn-gB { background: var(--mn-b); color: var(--color-fg); }
+.cc-mn-gC { background: color-mix(in oklab, var(--color-fg) 10%, transparent); color: var(--color-fg-muted); }
+.cc-mn-gX { background: none; border: 1px dashed var(--color-border-line); color: var(--color-fg-muted); }
+.cc-mn-crm { white-space: nowrap; }
+.cc-mn-crm-none { color: var(--color-fg-muted); }
+.cc-mn-dnc { color: var(--color-bad); }
+.cc-mn-pager { justify-content: center; }
+.cc-mn-pnum { font-size: 12px; color: var(--color-fg-muted); }
+.cc-mn-empty { margin: 0; color: var(--color-fg-muted); }
+.cc-mn-foot { margin: 0; font-size: 12px; color: var(--color-fg-muted); line-height: 1.5; }
+
+@media (max-width: 900px) { .cc-mn-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cc-mn-bar { grid-template-columns: minmax(0, 1fr) 70px 70px; } .cc-mn-bar .cc-mn-track { grid-column: 1 / -1; grid-row: 2; } }
+@media (max-width: 520px) { .cc-mn-stats, .cc-mn-scope { grid-template-columns: 1fr; } .cc-mn-scopetab + .cc-mn-scopetab { border-left: 0; border-top: 1px solid var(--color-border-line); } }
+@media (prefers-reduced-motion: reduce) { .cc-mn-stat, .cc-mn-bar, .cc-mn-scopetab { transition: none; } }
