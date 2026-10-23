@@ -113,7 +113,7 @@
 
   const shortCard = el('section', 'cc-card cc-mn-short');
   const shortHead = el('div', 'cc-card-head');
-  shortHead.append(el('h3', null, 'Add these first'), el('p', null, 'Strong fits who are not in Zoho yet, the partner kinds that have signed with us first, longest-standing connections first within each kind. Mack already knows them, so outreach can skip the connection request.'));
+  shortHead.append(el('h3', null, 'Add these first'), el('p', null, 'Strong fits who are not in Zoho yet, one from each kind of partner in turn, longest-standing connection first within each kind. Mack already knows them, so outreach can skip the connection request.'));
   const shortBody = el('div', 'cc-mn-shortlist');
   const shortMore = el('div', 'cc-tools');
   shortCard.append(shortHead, shortBody, shortMore);
@@ -220,8 +220,15 @@
 
   let shortAll = false;
   const drawShort = (all) => {
-    const picks = all.filter((r) => r.fit === 'A' && r.crm === 'none' && !['ENTERPRISE_EXEC', 'EMPLOYEE'].includes(r.type))
-      .sort((a, b) => (TYPE_RANK[a.type] ?? 99) - (TYPE_RANK[b.type] ?? 99) || String(a.connected).localeCompare(String(b.connected)));
+    /* One from each kind of partner in turn (kinds in TYPES order), longest-standing connection first within a kind,
+       so the first cards cover every kind instead of the biggest one. */
+    const byType = new Map();
+    all.filter((r) => r.fit === 'A' && r.crm === 'none' && !['ENTERPRISE_EXEC', 'EMPLOYEE'].includes(r.type))
+      .sort((a, b) => String(a.connected).localeCompare(String(b.connected)))
+      .forEach((r) => { if (!byType.has(r.type)) byType.set(r.type, []); byType.get(r.type).push(r); });
+    const queues = TYPES.map(([k]) => byType.get(k) || []).filter((q) => q.length);
+    const picks = [];
+    for (let i = 0; queues.some((q) => q.length > i); i += 1) queues.forEach((q) => { if (q[i]) picks.push(q[i]); });
     const show = shortAll ? picks : picks.slice(0, SHORTLIST);
     shortBody.replaceChildren(...show.map((r) => {
       const c = el('article', 'cc-mn-pick');
@@ -250,7 +257,7 @@
     g.append(el('span', 'cc-mn-flab', 'Grade'), ...GRADES.map(([k, label, def]) => chip(`${k} ${label} (${intF(allRows.filter((r) => inScope(r) && r.fit === k).length)})`, st.grade.has(k), () => { st.grade.has(k) ? st.grade.delete(k) : st.grade.add(k); st.page = 0; drawList(); }, def)));
     const c = el('div', 'cc-tools');
     c.hidden = st.scope === 'new';
-    c.append(el('span', 'cc-mn-flab', 'In Zoho as'), chip('Any', !st.crm, () => { st.crm = null; st.page = 0; drawList(); }), ...CRM.map(([k, label]) => chip(label, st.crm === k, () => { st.crm = st.crm === k ? null : k; st.page = 0; drawList(); })));
+    c.append(el('span', 'cc-mn-flab', 'In Zoho as'), chip('Any', !st.crm, () => { st.crm = null; st.page = 0; drawList(); }), ...CRM.filter(([k]) => k !== 'none').map(([k, label]) => chip(label, st.crm === k, () => { st.crm = st.crm === k ? null : k; st.page = 0; drawList(); })));
     const t = el('div', 'cc-tools');
     const sel = el('select', 'cc-mn-select');
     sel.setAttribute('aria-label', 'Partner type');
