@@ -648,3 +648,4 @@
 .cc-pm-seg-other { background-color: var(--color-fg-muted); }
 .cc-pm-others { margin-top: -2px; }
 .cc-pm-otherdeal { color: var(--color-fg-muted); }
+.cc-pm-exception { display: block; margin-top: 2px; color: var(--color-fg-muted); }

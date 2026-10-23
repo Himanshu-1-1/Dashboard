@@ -679,15 +679,21 @@
   /* B2B partner meetings: every prospect with a completed meeting (mtg_people) and the Referral Partner deals linked to
      them by the deal's Contact Name. A Referral Partner deal on their company but linked to another contact, or to no
      contact, doesn't count; it is shown on the row so the link can be fixed. */
+  /* Deals of another type that the team has decided count as the partner's Referral Partner deal (deal ID: why). Each one
+     is shown on its row as an exception, so the page and Zoho can be told apart. */
+  const PM_RP_EXCEPTIONS = new Map([
+    ['6988700000010324021', 'counted as the Referral Partner deal by the team’s decision (Oct 23, 2026)'],
+  ]);
   dash.calc('b2b_partner_deals', {
     title: 'Met B2B prospects and their Referral Partner deals',
     description: 'One row per B2B prospect with at least one meeting held (Zoho Meeting Status Completed with start time passed, or a past uncancelled meeting on a team Outlook calendar): most recent meeting, Assigned, the Referral Partner deals whose Contact Name is this person (created), any Referral Partner deal on their company that is linked to someone else or to no contact (not counted, shown for fixing), and, when they have no Referral Partner deal, the deals of another type (Platform Provider, client work) linked to them or on their company (other true), which take them off the not-created list.',
     inputs: ['mtg_people', 'deals_tagged'],
     fn: (mtg_people, deals_tagged) => {
-      const rp = deals_tagged.filter((d) => d.kind === 'Partnership');
+      const isRp = (d) => d.kind === 'Partnership' || PM_RP_EXCEPTIONS.has(String(d.id));
+      const rp = deals_tagged.filter(isRp);
       const otherByContact = new Map();
       const otherByAccount = new Map();
-      deals_tagged.filter((d) => d.kind !== 'Partnership').forEach((d) => {
+      deals_tagged.filter((d) => !isRp(d)).forEach((d) => {
         if (d.contact_id) { const k = String(d.contact_id); if (!otherByContact.has(k)) otherByContact.set(k, []); otherByContact.get(k).push(d); }
         if (d.account_id && !OWN_CO.test(String(d.account || ''))) { const k = String(d.account_id); if (!otherByAccount.has(k)) otherByAccount.set(k, []); otherByAccount.get(k).push(d); }
       });
@@ -697,7 +703,7 @@
         if (d.contact_id) { const k = String(d.contact_id); if (!byContact.has(k)) byContact.set(k, []); byContact.get(k).push(d); }
         if (d.account_id) { const k = String(d.account_id); if (!byAccount.has(k)) byAccount.set(k, []); byAccount.get(k).push(d); }
       });
-      const brief = (d) => ({ id: String(d.id), deal: d.deal || 'Referral Partner deal', stage: d.stage || null, contact: d.contact || null });
+      const brief = (d) => ({ id: String(d.id), deal: d.deal || 'Referral Partner deal', stage: d.stage || null, contact: d.contact || null, exception: PM_RP_EXCEPTIONS.get(String(d.id)) || null });
       return mtg_people.filter((p) => p.n > 0).map((p) => {
         const mine = (byContact.get(p.id) || []).map(brief);
         const mineIds = new Set(mine.map((d) => d.id));
@@ -2265,7 +2271,7 @@
   const pmDealCell = (r) => {
     if (r.deals.length) {
       const box = el('span', 'cc-pm-deals');
-      r.deals.forEach((d, i) => { if (i) box.append(document.createTextNode(', ')); box.append(link('Potentials', d.id, d.deal + (d.stage ? ' (' + d.stage + ')' : ''))); });
+      r.deals.forEach((d, i) => { if (i) box.append(document.createTextNode(', ')); box.append(link('Potentials', d.id, d.deal + (d.stage ? ' (' + d.stage + ')' : ''))); if (d.exception) box.append(el('small', 'cc-pm-exception', ' Not a Referral Partner deal in Zoho; ' + d.exception + '.')); });
       return box;
     }
     if (r.other_deals && r.other_deals.length) {
