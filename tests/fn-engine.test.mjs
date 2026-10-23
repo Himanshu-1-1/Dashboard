@@ -347,3 +347,11 @@ test('urgent actions are exactly what makes a founder Urgent', () => {
   const { founders } = E.run(fixture());
   for (const f of founders) assert.equal(f.priorityInfo.band === 'Urgent', f.actions.some(E.isUrgentAction), f.name);
 });
+
+test('a B2B campaign contact named in the Founder Network chat is not a data issue', () => {
+  const { founders } = E.run({ now: NOW, contacts: [zc('c1', 'Wren', 'Halloway', { Relationship_Type: 'Referral Partner', Tag: 'May 2026 - 100 B2B' }), zc('c2', 'Yuri', 'Banfield', { Relationship_Type: null, Tag: '' })], tgPeople: [{ name: 'Wren Halloway' }, { name: 'Yuri Banfield' }] });
+  const wren = founders.find((f) => f.name === 'Wren Halloway');
+  assert.ok(!wren.issues.some((i) => i.type === 'In Zoho, not Founder Network'));
+  assert.equal(wren.verification, 'In the B2B campaign');
+  assert.ok(founders.find((f) => f.name === 'Yuri Banfield').issues.some((i) => i.type === 'In Zoho, not Founder Network'), 'outside any campaign it is still flagged');
+});

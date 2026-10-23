@@ -26,6 +26,7 @@
     prepDays: 2,
     taskStaleDays: 45,
     callActionDays: 60,
+    b2bTag: 'May 2026 - 100 B2B', /* someone in the B2B partner campaign may also be in the Founder Network: not an issue */
     hiddenPriorities: ['9', '11', '99'], /* left off every list; P99 signed partners still count in the scorecard */
     outreachQuietDays: 14, /* someone emailed in the last two weeks isn't suggested again yet */ /* action items from recorded calls older than this stay on the timeline only */
     weights: { strategic: 25, opportunity: 20, relationship: 15, commitments: 15, intro: 10, recency: 10, upcoming: 5 },
@@ -38,6 +39,7 @@
   const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
   const list = (v) => (Array.isArray(v) ? v : str(v).split(',').map((x) => x.trim()).filter(Boolean));
   const isFN = (rel) => list(rel).includes('Founder Network');
+  const inB2B = (z, settings = DEFAULTS) => Boolean(z) && (list(z.Tag).includes(settings.b2bTag) || list(z.Relationship_Type).includes('Referral Partner'));
   const ctDay = (v, tz = DEFAULTS.tz) => {
     if (!v) return null;
     const s = str(v);
@@ -208,7 +210,7 @@
         if (m) {
           f.zoho = m.zoho; f.priority = m.zoho.Priority ? str(m.zoho.Priority) : null; f.owner = m.zoho.Assigned || null;
           f.identities.push({ source: 'Zoho CRM', record: str(m.zoho.id), method: 'Zoho record', confidence: 'confirmed', verified: true });
-          f.issues.push({ type: 'In Zoho, not Founder Network', detail: `Zoho contact “${[m.zoho.First_Name, m.zoho.Last_Name].filter(Boolean).join(' ')}” has Relationship Type “${str(m.zoho.Relationship_Type) || 'empty'}”${list(m.zoho.Tag).includes('Founder_Network') ? ' though it is tagged Founder_Network' : ''}`, fix: str(m.zoho.Relationship_Type) ? 'Add Founder Network to its Relationship Type' : 'Set its Relationship Type to Founder Network', severity: 'high' });
+          if (!inB2B(m.zoho, settings)) f.issues.push({ type: 'In Zoho, not Founder Network', detail: `Zoho contact “${[m.zoho.First_Name, m.zoho.Last_Name].filter(Boolean).join(' ')}” has Relationship Type “${str(m.zoho.Relationship_Type) || 'empty'}”${list(m.zoho.Tag).includes('Founder_Network') ? ' though it is tagged Founder_Network' : ''}`, fix: str(m.zoho.Relationship_Type) ? 'Add Founder Network to its Relationship Type' : 'Set its Relationship Type to Founder Network', severity: 'high' });
         } else if (!k || t.needs_name) {
           f.issues.push({ type: 'Needs a full name', detail: 'The chat gives only a first name or a description', fix: t.review_note || 'Find the full name, then search Zoho before adding', severity: 'medium' });
         } else {
@@ -609,7 +611,7 @@
       const open = actions.filter((a) => a.status !== 'Done');
       const next = open.slice().sort((a, b) => rankAction(a) - rankAction(b))[0] || null;
       return Object.assign(f, { facts: F, actions, priorityInfo: pr, stage: stageOf(f, F), lastInteraction: F.lastInteraction, upcoming: F.upcoming, next: next ? next.text : null,
-        verification: f.zoho && f.inFN ? (f.identities.every((i) => i.confidence !== 'possible') ? 'Verified' : 'Partly verified') : f.zoho ? 'In Zoho, not Founder Network' : 'Not in Zoho' });
+        verification: f.zoho && f.inFN ? (f.identities.every((i) => i.confidence !== 'possible') ? 'Verified' : 'Partly verified') : f.zoho ? (inB2B(f.zoho, settings) ? 'In the B2B campaign' : 'In Zoho, not Founder Network') : 'Not in Zoho' });
     });
     return { today, founders: rows };
   }
@@ -656,7 +658,7 @@
     return settings.targets.map((t) => Object.assign({}, t, { actual: counts[t.id], rows: counts[t.id] == null ? [] : rows[t.id] }, metricStatus({ actual: counts[t.id], target: t.target, today, missing: counts[t.id] == null, baseline: baselines[t.id] || 0 }, settings), { baseline: baselines[t.id] || 0 }));
   }
 
-  const api = { DEFAULTS, STATUS, TONE, STAGES, STAGE_RULES, ctDay, daysBetween, nameToks, personKey, keyOfName, slugOf, lev, zohoIndex, matchPerson, buildFounders, facts, stageOf, actionsFor, actionStatus, metricStatus, sourceStatus, expectedShare, priorityOf, isShown, isUrgentAction, run, targets, targetRows, rankAction, outreach, draftFor };
+  const api = { DEFAULTS, STATUS, TONE, STAGES, STAGE_RULES, ctDay, daysBetween, nameToks, personKey, keyOfName, slugOf, lev, zohoIndex, matchPerson, buildFounders, facts, stageOf, actionsFor, actionStatus, metricStatus, sourceStatus, expectedShare, priorityOf, inB2B, isShown, isUrgentAction, run, targets, targetRows, rankAction, outreach, draftFor };
   root.FN_ENGINE = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
