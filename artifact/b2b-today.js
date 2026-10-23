@@ -1131,6 +1131,12 @@
   sopCard.append(sl, sopList, empty);
 
   const drill = card('b2-list', 'People', null, 'cc-b2-drill');
+  /* A ring selection in B2B Deals Created lasts only while its list is the one open. */
+  new MutationObserver(() => {
+    if (pmSel == null) return;
+    const h = drill.querySelector('h3');
+    if (drill.hidden || !h || h.textContent !== pmSelTitle) { pmSel = null; if (pmRefreshRing) pmRefreshRing(); }
+  }).observe(drill, { attributes: true, attributeFilter: ['hidden'], childList: true, subtree: true, characterData: true });
   drill.hidden = true;
   const drillBody = el('div', 'cc-b2-wrap');
   const drillClose = el('button', 'cc-go', 'Close'); drillClose.type = 'button';
@@ -2299,6 +2305,9 @@
   ];
   const PM_PERIODS = [['week', 'This week'], ['month', 'This month'], ['year', 'This year'], ['all', 'All time']];
   let pmPeriod = 'all';
+  let pmSel = null;
+  let pmSelTitle = null;
+  let pmRefreshRing = null;
   const pmStart = (k) => {
     const t = todayCT();
     if (k === 'week') { const d = new Date(t + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return d.toISOString().slice(0, 10); }
@@ -2423,6 +2432,32 @@
     rwNote.textContent = 'A meeting counts when Zoho marks it Completed, it is an uncancelled event on a team Outlook calendar, or Fireflies recorded 5+ minutes with the partner; one per day (Central time), up to and including the day the agreement was signed. Founder Network is the partner’s Relationship Type in Zoho. Each partner counts once.';
   };
 
+  /* One floating tip for B2B Deals Created: follows the pointer, or sits by the element on keyboard focus. */
+  const pmTipEl = el('div', 'cc-pm-tip');
+  pmTipEl.hidden = true;
+  pmTipEl.setAttribute('role', 'tooltip');
+  document.body.append(pmTipEl);
+  const pmTipAt = (x, y) => {
+    const w = pmTipEl.offsetWidth; const h = pmTipEl.offsetHeight;
+    pmTipEl.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, x + 14)) + 'px';
+    pmTipEl.style.top = Math.max(8, y - h - 12 < 8 ? y + 18 : y - h - 12) + 'px';
+  };
+  const pmTip = (node, color, title, lines) => {
+    const fill = () => {
+      pmTipEl.replaceChildren();
+      const t = el('b'); const dot = el('i'); dot.style.setProperty('--k', color); t.append(dot, document.createTextNode(title));
+      pmTipEl.append(t, ...lines.map((l) => el('div', null, l)));
+      pmTipEl.hidden = false;
+    };
+    node.addEventListener('pointerenter', (e) => { fill(); pmTipAt(e.clientX, e.clientY); });
+    node.addEventListener('pointermove', (e) => pmTipAt(e.clientX, e.clientY));
+    node.addEventListener('pointerleave', () => { pmTipEl.hidden = true; });
+    node.addEventListener('focus', () => { fill(); const r = node.getBoundingClientRect(); pmTipAt(r.right, r.top); });
+    node.addEventListener('blur', () => { pmTipEl.hidden = true; });
+    node.addEventListener('click', () => { pmTipEl.hidden = true; });
+  };
+  window.addEventListener('scroll', () => { pmTipEl.hidden = true; }, { passive: true });
+
   const drawPm = () => {
     const st = state(['b2b_partner_deals']);
     pmNote.classList.toggle('cc-b2-bad', st === 'error');
@@ -2461,17 +2496,94 @@
       c.setAttribute('aria-label', aria);
       return c;
     };
-    const met = tile('cc-pm-main', 'Partners Met', everyone.length, 'Unique contacts with a meeting held, all time',
-      () => showTable('Partners met', pmCols, pmSort(everyone), 'Every May 2026 - 100 B2B contact with at least one meeting held (Zoho Completed, or on a team Outlook calendar for Priority 1 and 99), most recent meeting first. ' + PM_OWNER_NOTE),
-      `Partners met, all time: ${intF(everyone.length)}. Open the list.`);
-    const allMade = everyone.filter((r) => r.created).length;
-    const allOther = everyone.filter((r) => !r.created && r.other).length;
-    const allMiss = everyone.length - allMade - allOther;
-    met.append(el('p', 'cc-pm-sub cc-pm-split', `${intF(allMade)} with a deal, ${intF(allMiss)} without` + (allOther ? `, ${intF(allOther)} other deal` : '')));
-    const pct = (n) => ((everyone.length ? n / everyone.length : 0) * 100).toFixed(1) + '%';
-    met.style.setProperty('--pm-share', pct(allMade));
-    met.style.setProperty('--pm-other', pct(allMade + allOther));
-    met.title = `${intF(everyone.length)} partners met, all time: ${intF(allMade)} with a Referral Partner deal (green part of the ring)${allOther ? `, ${intF(allOther)} with another kind of deal (grey)` : ''}, ${intF(allMiss)} without (red). Select to list them.`;
+    /* Partners Met ring: one arc per group (created, another kind of deal, not created), all time. Hovering or focusing an
+       arc (or the matching card) lights it up and the center reads out that group; selecting it opens its list. */
+    const allMadeL = everyone.filter((r) => r.created);
+    const allOtherL = everyone.filter((r) => !r.created && r.other);
+    const allMissL = everyone.filter((r) => !r.created && !r.other);
+    const ringGroups = [
+      { k: 'made', cls: 'ok', label: 'Referral Partner Deal Created', list: allMadeL, title: 'Referral Partner deal created', note: 'Met partners whose Referral Partner deal names them as the contact. ' + PM_OWNER_NOTE },
+      { k: 'other', cls: 'other', label: 'Another kind of deal', list: allOtherL, title: 'Met partners with another kind of deal', note: 'Met partners with no Referral Partner deal but a deal of another type linked to them or on their company (Platform Provider, client work and so on). ' + PM_OWNER_NOTE },
+      { k: 'miss', cls: 'bad', label: 'Referral Partner Deal Not Created', list: allMissL, title: 'Referral Partner deal not created', note: 'Met partners with no Referral Partner deal linked to them. Create the deal in Zoho as SOP 002 sets out (Deal Type Reseller/ Referral Partner, Stage Identify, Amount $0.00, their company as Account Name and this person as Contact Name); they drop off this list at the next refresh. ' + PM_OWNER_NOTE },
+    ];
+    const pctOf = (n) => (everyone.length ? Math.round((n / everyone.length) * 100) : 0);
+    const met = el('div', 'cc-pm-ring');
+    const R = 108; const C = 2 * Math.PI * R; const GAP = ringGroups.filter((g) => g.list.length).length > 1 ? 3 : 0;
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 240 240'); svg.setAttribute('class', 'cc-pm-ringsvg'); svg.setAttribute('role', 'group');
+    svg.setAttribute('aria-label', 'Partners met, split by deal');
+    const track = document.createElementNS(NS, 'circle');
+    track.setAttribute('cx', '120'); track.setAttribute('cy', '120'); track.setAttribute('r', String(R)); track.setAttribute('class', 'cc-pm-arc-track');
+    svg.append(track);
+    const arcs = {};
+    let at = 0;
+    ringGroups.forEach((g) => {
+      const n = g.list.length;
+      if (!n) return;
+      const len = (n / everyone.length) * C;
+      const a = document.createElementNS(NS, 'circle');
+      a.setAttribute('cx', '120'); a.setAttribute('cy', '120'); a.setAttribute('r', String(R));
+      a.setAttribute('class', 'cc-pm-arc cc-pm-arc-' + g.cls);
+      a.setAttribute('stroke-dasharray', `${Math.max(0.5, len - GAP)} ${C}`);
+      a.setAttribute('stroke-dashoffset', String(-(at + GAP / 2)));
+      a.setAttribute('tabindex', '0'); a.setAttribute('role', 'button');
+      a.setAttribute('aria-label', `${g.label}: ${intF(n)} of ${intF(everyone.length)} partners met (${pctOf(n)}%). Open the list.`);
+      a.dataset.k = g.k;
+      at += len;
+      arcs[g.k] = a;
+      svg.append(a);
+    });
+    const center = el('button', 'cc-pm-center');
+    center.type = 'button';
+    const cLabel = el('span', 'cc-pm-clab'); const cNum = el('b', 'cc-pm-cnum'); const cSub = el('span', 'cc-pm-csub'); const cSplit = el('span', 'cc-pm-csplit');
+    center.append(cLabel, cNum, cSub, cSplit);
+    const splitLine = () => {
+      cSplit.replaceChildren();
+      ringGroups.forEach((g) => {
+        if (!g.list.length && g.k === 'other') return;
+        const w = el('span', 'cc-pm-ckey cc-pm-ckey-' + g.cls); w.append(el('i'), document.createTextNode(`${intF(g.list.length)} ${g.k === 'made' ? 'with a deal' : g.k === 'miss' ? 'without' : 'other deal'}`));
+        cSplit.append(w);
+      });
+    };
+    let hoverK = null;
+    const readout = () => {
+      const k = hoverK || pmSel;
+      const g = ringGroups.find((x) => x.k === k);
+      met.dataset.focus = g ? g.cls : '';
+      Object.entries(arcs).forEach(([key, a]) => { a.classList.toggle('cc-pm-arc-on', key === k); a.classList.toggle('cc-pm-arc-sel', key === pmSel); });
+      [['made', ok], ['miss', gap], ['other', otherLine]].forEach(([key, node]) => { if (node) node.classList.toggle('cc-pm-linked', key === k && !from); });
+      if (!g) {
+        cLabel.textContent = 'Partners Met'; cNum.textContent = intF(everyone.length);
+        cSub.textContent = 'Unique contacts with a meeting held, all time'; splitLine();
+        center.setAttribute('aria-label', `Partners met, all time: ${intF(everyone.length)}. Open the list.`);
+        return;
+      }
+      cLabel.textContent = g.label; cNum.textContent = intF(g.list.length);
+      cSub.textContent = `${pctOf(g.list.length)}% of ${intF(everyone.length)} partners met`;
+      cSplit.replaceChildren(document.createTextNode(pmSel === g.k ? 'Selected: its list is open below' : 'Select to list them'));
+    };
+    pmRefreshRing = readout;
+    const pick = (g) => {
+      pmSel = g.k;
+      readout();
+      showTable(g.title, pmCols, pmSort(g.list), g.note);
+      pmSelTitle = drill.querySelector('h3').textContent;
+    };
+    Object.values(arcs).forEach((a) => {
+      const g = ringGroups.find((x) => x.k === a.dataset.k);
+      const on = () => { hoverK = g.k; readout(); };
+      const off = () => { hoverK = null; readout(); };
+      a.addEventListener('pointerenter', on); a.addEventListener('pointerleave', off);
+      a.addEventListener('focus', on); a.addEventListener('blur', off);
+      a.addEventListener('click', () => pick(g));
+      a.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(g); } });
+    });
+    center.addEventListener('click', () => {
+      pmSel = null; readout();
+      showTable('Partners met', pmCols, pmSort(everyone), 'Every May 2026 - 100 B2B contact with at least one meeting held (Zoho Completed, or on a team Outlook calendar for Priority 1 and 99), most recent meeting first. ' + PM_OWNER_NOTE);
+    });
+    met.append(svg, center);
     const metWrap = el('div', 'cc-pm-left');
     metWrap.append(met);
     const ok = tile('cc-pm-ok', 'Referral Partner Deal Created', made.length, 'Met, with a Referral Partner deal linked to the contact',
@@ -2495,6 +2607,16 @@
       otherLine.append(ob, document.createTextNode(' (Platform Provider, client work and so on), so ' + (others.length === 1 ? 'isn’t' : 'aren’t') + ' counted as missing a Referral Partner deal.'));
     }
     otherLine.hidden = !others.length;
+    if (!from) {
+      [['made', ok], ['miss', gap], ['other', otherLine]].forEach(([key, node]) => {
+        node.addEventListener('pointerenter', () => { hoverK = key; readout(); });
+        node.addEventListener('pointerleave', () => { hoverK = null; readout(); });
+        node.addEventListener('focusin', () => { hoverK = key; readout(); });
+        node.addEventListener('focusout', () => { hoverK = null; readout(); });
+        node.addEventListener('click', () => { pmSel = key; readout(); pmSelTitle = drill.querySelector('h3').textContent; });
+      });
+    }
+    readout();
     const right = el('div', 'cc-pm-right');
     const periodLine = el('p', 'cc-pm-period');
     if (from) {
@@ -2524,7 +2646,8 @@
         const col = el('div', 'cc-pm-col' + (x.now ? ' cc-pm-now' : ''));
         const total = el('button', 'cc-pm-total', intF(x.list.length));
         total.type = 'button';
-        total.title = `${x.label}: ${intF(x.list.length)} partners first met (${range}). Open the list.`;
+        total.setAttribute('aria-label', `${x.label}: ${intF(x.list.length)} partners first met (${range}). Open the list.`);
+        pmTip(total, 'var(--b2-c1)', `${x.label}: ${intF(x.list.length)} first met`, [range, `${intF(x.made.length)} created, ${intF(x.miss.length)} not created` + (x.other.length ? `, ${intF(x.other.length)} another kind of deal` : ''), 'Select to list them']);
         total.addEventListener('click', () => showTable(`Partners met, ${x.label.toLowerCase()}`, pmCols, pmSort(x.list), `Partners first met ${range}, most recent meeting first. ` + PM_OWNER_NOTE));
         const bar = el('div', 'cc-pm-bar');
         bar.style.height = (x.list.length / peak) * 100 + '%';
@@ -2534,8 +2657,9 @@
           const seg = el('button', 'cc-pm-seg ' + cls);
           seg.type = 'button';
           seg.style.flexGrow = String(n);
-          seg.title = `${x.label}: ${intF(n)} ${words}. Open the list.`;
-          seg.setAttribute('aria-label', seg.title);
+          seg.setAttribute('aria-label', `${x.label}: ${intF(n)} ${words}. Open the list.`);
+          pmTip(seg, k === 'made' ? 'var(--color-ok)' : k === 'miss' ? 'var(--color-bad)' : 'var(--color-fg-muted)', k === 'made' ? 'Referral Partner deal created' : k === 'miss' ? 'Referral Partner deal not created' : 'Another kind of deal',
+            [`${x.label} (${range})`, `${intF(n)} of ${intF(x.list.length)} partners first met (${Math.round((n / x.list.length) * 100)}%)`, 'Select to list them']);
           if (n && x.list.length / peak > 0.25) seg.textContent = intF(n);
           seg.addEventListener('click', () => showTable(k === 'other' ? `Other deal type, ${x.label.toLowerCase()}` : `Referral Partner deal ${short}, ${x.label.toLowerCase()}`, pmCols, pmSort(x[k]), `Partners first met ${range} ${words}. ` + PM_OWNER_NOTE));
           bar.append(seg);

@@ -649,3 +649,49 @@
 .cc-pm-others { margin-top: -2px; }
 .cc-pm-otherdeal { color: var(--color-fg-muted); }
 .cc-pm-exception { display: block; margin-top: 2px; color: var(--color-fg-muted); }
+
+/* B2B Deals Created: interactive Partners Met ring */
+.cc-pm-ring { --pm-c: var(--b2-c1); position: relative; width: 240px; height: 240px; display: grid; place-items: center; }
+.cc-pm-ringsvg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+.cc-pm-arc-track { fill: none; stroke: var(--color-border-line); stroke-width: 12; }
+.cc-pm-arc { fill: none; stroke-width: 12; cursor: pointer; pointer-events: stroke; transition: stroke-width .18s ease, opacity .18s ease, filter .18s ease; outline: none; }
+.cc-pm-arc-ok { stroke: var(--color-ok); }
+.cc-pm-arc-other { stroke: var(--color-fg-muted); }
+.cc-pm-arc-bad { stroke: var(--color-bad); }
+.cc-pm-ring[data-focus]:not([data-focus=""]) .cc-pm-arc:not(.cc-pm-arc-on):not(.cc-pm-arc-sel) { opacity: .28; }
+.cc-pm-arc.cc-pm-arc-on, .cc-pm-arc.cc-pm-arc-sel { stroke-width: 20; filter: drop-shadow(0 0 6px color-mix(in oklab, currentColor 40%, transparent)); }
+.cc-pm-arc-ok.cc-pm-arc-on, .cc-pm-arc-ok.cc-pm-arc-sel { color: var(--color-ok); }
+.cc-pm-arc-bad.cc-pm-arc-on, .cc-pm-arc-bad.cc-pm-arc-sel { color: var(--color-bad); }
+.cc-pm-arc-other.cc-pm-arc-on, .cc-pm-arc-other.cc-pm-arc-sel { color: var(--color-fg-muted); }
+.cc-pm-arc:focus-visible { stroke-width: 20; }
+.cc-pm-center { position: relative; appearance: none; font: inherit; color: var(--color-fg); width: 188px; height: 188px; border-radius: 50%; border: 0; padding: 0 22px; cursor: pointer; display: grid; place-content: center; justify-items: center; text-align: center; gap: 2px;
+  background: color-mix(in oklab, var(--b2-c1) 7%, var(--color-panel)); transition: background .18s ease, box-shadow .18s ease; }
+.cc-pm-center:hover { box-shadow: 0 0 0 4px color-mix(in oklab, var(--b2-c1) 16%, transparent); }
+.cc-pm-center:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 3px; }
+.cc-pm-clab { font-size: var(--cds-font-size-caption); font-weight: var(--cds-font-weight-medium); line-height: 1.25; }
+.cc-pm-cnum { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: 56px; line-height: 1; margin: 2px 0; font-variant-numeric: tabular-nums; color: var(--color-fg); transition: color .18s ease; }
+.cc-pm-csub { font-size: 11px; line-height: 1.35; color: var(--color-fg-muted); }
+.cc-pm-csplit { margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--color-border-line); font-size: 11.5px; line-height: 1.45; }
+.cc-pm-csplit { display: grid; gap: 1px; justify-items: center; }
+.cc-pm-ckey { white-space: nowrap; }
+.cc-pm-ckey i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; vertical-align: 1px; background: var(--k); }
+.cc-pm-ckey-ok { --k: var(--color-ok); } .cc-pm-ckey-other { --k: var(--color-fg-muted); } .cc-pm-ckey-bad { --k: var(--color-bad); }
+.cc-pm-ring[data-focus="ok"] .cc-pm-cnum { color: var(--color-ok); }
+.cc-pm-ring[data-focus="bad"] .cc-pm-cnum { color: var(--color-bad); }
+.cc-pm-ring[data-focus="other"] .cc-pm-cnum { color: var(--color-fg-muted); }
+.cc-pm-ring[data-focus="ok"] .cc-pm-center { background: color-mix(in oklab, var(--color-ok) 9%, var(--color-panel)); }
+.cc-pm-ring[data-focus="bad"] .cc-pm-center { background: color-mix(in oklab, var(--color-bad) 9%, var(--color-panel)); }
+.cc-pm-ring[data-focus="other"] .cc-pm-center { background: color-mix(in oklab, var(--color-fg-muted) 9%, var(--color-panel)); }
+.cc-pm-tile.cc-pm-linked { box-shadow: 0 0 0 3px color-mix(in oklab, var(--pm-c) 30%, transparent); transform: translateY(-1px); }
+.cc-pm-tile { transition: box-shadow .18s ease, transform .18s ease; }
+.cc-pm-others.cc-pm-linked .cc-pm-prev { color: var(--color-fg); text-decoration-style: solid; }
+.cc-pm-others .cc-pm-prev::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--color-fg-muted); margin-right: 6px; vertical-align: 1px; }
+/* Chart: hovering a color dims the others so it is clear which one is picked; a tip says what it is. */
+.cc-pm-cols:hover .cc-pm-seg:not(:hover) { opacity: .45; }
+.cc-pm-seg { transition: opacity .15s ease, filter .15s ease; }
+.cc-pm-seg:hover, .cc-pm-seg:focus-visible { filter: brightness(1.12) saturate(1.1); box-shadow: inset 0 0 0 2px var(--color-panel); }
+.cc-pm-tip { position: fixed; z-index: 50; pointer-events: none; max-width: 260px; padding: 8px 10px; border-radius: 8px; background: var(--color-fg); color: var(--color-panel); font-size: 12px; line-height: 1.4; box-shadow: 0 6px 18px rgba(0,0,0,.18); }
+.cc-pm-tip b { display: block; font-weight: var(--cds-font-weight-medium); }
+.cc-pm-tip i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 0; background: var(--k); }
+@media (prefers-reduced-motion: reduce) { .cc-pm-arc, .cc-pm-center, .cc-pm-cnum, .cc-pm-tile, .cc-pm-seg { transition: none; } }
+@media (max-width: 520px) { .cc-pm-ring { width: 220px; height: 220px; } .cc-pm-center { width: 170px; height: 170px; } .cc-pm-cnum { font-size: 46px; } }
