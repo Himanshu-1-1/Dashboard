@@ -16,3 +16,6 @@ site/mail.js
 site/linksync.js
 site/cal.js
 site/ff.js
+site/fn-engine.js
+site/fn.js
+site/fn.css

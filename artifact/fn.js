@@ -347,7 +347,7 @@
       tile(urgentActs.length ? 'bad' : 'ok', 'urgent', 'Urgent actions', urgentActs.length, 'overdue up to 45 days, or meeting prep within 2 days', urgentActs.length ? 'Critical' : 'Clear', () => go('actions', { urgent: true, status: null, done: false })),
       tile(overdue.length ? 'bad' : 'ok', 'overdue', 'Overdue commitments', overdue.length, 'Zoho tasks and meetings', overdue.length ? 'Overdue' : 'Clear', () => go('actions', { status: 'Overdue', done: false })),
       tile(outlookIn ? 'info' : 'muted', 'meet', 'Meeting in the next 7 days', soon.length, outlookIn ? 'founders, Zoho and calendars' : 'Zoho only; calendars not loaded', outlookIn ? 'Schedule' : 'Partial', () => go('founders', { soon: true, band: null, stage: '', sort: 'meeting' })),
-      tile(review ? 'warn' : 'ok', 'review', 'Waiting for review', review, 'asks from Telegram and calls', review ? 'Pending' : 'Clear', () => go('actions', { status: 'Needs review', done: false })),
+      tile(review ? 'warn' : (statusOf('fn_tg_people') === 'ok' ? 'ok' : 'muted'), 'review', 'Waiting for review', review, 'asks from Telegram and calls', review ? 'Pending' : (statusOf('fn_tg_people') === 'ok' ? 'Clear' : 'Partial'), () => go('actions', { status: 'Needs review', done: false })),
       tile(fixes.length ? 'warn' : 'ok', 'fix', 'Zoho fixes', fixes.length, 'missing or not marked in Zoho', fixes.length ? 'Data to fix' : 'Clear', () => go('quality', { type: '', sev: 'high' })),
     );
 
@@ -615,7 +615,8 @@
       const s0 = statusOf(r.id);
       const at = r.kind === 'live' ? (s0 === 'ok' ? now.toISOString() : null) : r.id === 'mack_network' ? ((rowsOf('mack_network') || [])[0] || {}).export_date : built.get(r.id);
       const state = s0 === 'ok' ? 'ok' : s0 === 'loading' ? 'loading' : s0 === 'connect' || s0 === 'declined' ? 'connect' : s0 === 'missing' ? 'missing' : 'error';
-      const ss = E.sourceStatus({ kind: r.kind, state, at }, now);
+      /* the public site carries the imported files only once they are sealed for it */
+      const ss = state !== 'ok' && r.kind === 'imported' && window.CC_MAIL_PRIVATE ? { status: 'Not in this build', tone: 'muted' } : E.sourceStatus({ kind: r.kind, state, at }, now);
       const tr = el('tr');
       const st2 = el('td'); st2.append(pill(ss.status, ss.tone));
       tr.append(el('td', null, r.label), el('td', null, r.how), st2, el('td', null, s0 === 'ok' ? `${intF(r.count(m))} ${r.unit}` : '—'), el('td', null, r.kind === 'live' ? (s0 === 'ok' ? 'Live' : '—') : dayF(at)), el('td', null, r.limits));
@@ -763,9 +764,10 @@
       return;
     }
     const members = fnMembers(m);
-    const stale = SRC_ROWS.filter((r) => statusOf(r.id) !== 'ok').map((r) => r.label);
+    const missingRows = SRC_ROWS.filter((r) => statusOf(r.id) !== 'ok');
+    const stale = window.CC_MAIL_PRIVATE && missingRows.length && missingRows.every((r) => r.kind === 'imported') ? ['Telegram, Fireflies, Outlook and LinkedIn (not in this build yet)'] : missingRows.map((r) => r.label);
     const hidden = m.all.length - m.founders.length;
-    lede.textContent = `${intF(members.length)} in Zoho and ${intF(m.founders.filter((f) => !f.inFN).length)} more named in Telegram, as of ${dayF(m.today)} CT.${hidden ? ` ${intF(hidden)} at Priority 9, 11 or 99 are hidden.` : ''}${stale.length ? ' Not loaded: ' + stale.join(', ') + '.' : ''}`;
+    lede.textContent = `${intF(members.length)} in Zoho and ${intF(m.founders.filter((f) => !f.inFN).length)} more from Telegram or the Founder_Network tag, as of ${dayF(m.today)} CT.${hidden ? ` ${intF(hidden)} at Priority 9, 11 or 99 are hidden.` : ''}${stale.length ? ' Not loaded: ' + stale.join(', ') + '.' : ''}`;
     const view = { overview: drawOverview, actions: drawActions, founders: drawFounders, pipeline: drawPipeline, timeline: drawTimeline, quality: drawQuality, sources: drawSources, rules: drawRules }[st.view];
     const focusId = document.activeElement && root.contains(document.activeElement) && document.activeElement.matches('input') ? document.activeElement.className : null;
     body.replaceChildren(view(m));
