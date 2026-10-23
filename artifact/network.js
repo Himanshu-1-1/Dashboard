@@ -366,10 +366,10 @@
   let likelyAll = false;
   const drawLikely = (all) => {
     const pool = all.filter((r) => r.scope === 'new' && r.chance != null && researched(r) && resFit(r) !== 'Low')
-      .sort((a, b) => b.chance - a.chance || (a.brief.check === 'confirmed' ? -1 : 1) - (b.brief.check === 'confirmed' ? -1 : 1) || String(a.connected).localeCompare(String(b.connected)));
+      .sort((a, b) => Number(b.tie) - Number(a.tie) || b.chance - a.chance || (a.brief.check === 'confirmed' ? -1 : 1) - (b.brief.check === 'confirmed' ? -1 : 1) || String(a.connected).localeCompare(String(b.connected)));
     const lows = all.filter((r) => r.scope === 'new' && resFit(r) === 'Low').length;
     const waiting = all.filter((r) => r.scope === 'new' && r.brief && r.brief.check === 'none').length;
-    likely.p.textContent = `New people with the highest chance, each looked up on the web: current role, firm, who they serve, risks, and how Mack should open. ${intF(pool.length)} shown${lows ? `; ${intF(lows)} ruled out by research (competitor, inactive or outside our market) and moved down the list` : ''}${waiting ? `; ${intF(waiting)} more are still waiting for research` : ''}.`;
+    likely.p.textContent = `New people with the highest chance, each looked up on the web, those who endorsed or recommended Mack (or he them) first: current role, firm, who they serve, risks, and how Mack should open. ${intF(pool.length)} shown${lows ? `; ${intF(lows)} ruled out by research (competitor, inactive or outside our market) and moved down the list` : ''}${waiting ? `; ${intF(waiting)} more are still waiting for research` : ''}.`;
     const show = likelyAll ? pool : pool.slice(0, SHORTLIST);
     likelyBody.replaceChildren(...show.map((r) => {
       const b = r.brief;
