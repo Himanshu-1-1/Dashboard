@@ -681,10 +681,16 @@
      contact, doesn't count; it is shown on the row so the link can be fixed. */
   dash.calc('b2b_partner_deals', {
     title: 'Met B2B prospects and their Referral Partner deals',
-    description: 'One row per B2B prospect with at least one meeting held (Zoho Meeting Status Completed with start time passed, or a past uncancelled meeting on a team Outlook calendar): most recent meeting, Assigned, the Referral Partner deals whose Contact Name is this person (created) and any Referral Partner deal on their company that is linked to someone else or to no contact (not counted, shown for fixing).',
+    description: 'One row per B2B prospect with at least one meeting held (Zoho Meeting Status Completed with start time passed, or a past uncancelled meeting on a team Outlook calendar): most recent meeting, Assigned, the Referral Partner deals whose Contact Name is this person (created), any Referral Partner deal on their company that is linked to someone else or to no contact (not counted, shown for fixing), and, when they have no Referral Partner deal, the deals of another type (Platform Provider, client work) linked to them or on their company (other true), which take them off the not-created list.',
     inputs: ['mtg_people', 'deals_tagged'],
     fn: (mtg_people, deals_tagged) => {
       const rp = deals_tagged.filter((d) => d.kind === 'Partnership');
+      const otherByContact = new Map();
+      const otherByAccount = new Map();
+      deals_tagged.filter((d) => d.kind !== 'Partnership').forEach((d) => {
+        if (d.contact_id) { const k = String(d.contact_id); if (!otherByContact.has(k)) otherByContact.set(k, []); otherByContact.get(k).push(d); }
+        if (d.account_id && !OWN_CO.test(String(d.account || ''))) { const k = String(d.account_id); if (!otherByAccount.has(k)) otherByAccount.set(k, []); otherByAccount.get(k).push(d); }
+      });
       const byContact = new Map();
       const byAccount = new Map();
       rp.forEach((d) => {
@@ -695,8 +701,14 @@
       return mtg_people.filter((p) => p.n > 0).map((p) => {
         const mine = (byContact.get(p.id) || []).map(brief);
         const mineIds = new Set(mine.map((d) => d.id));
-        const companyOnly = p.account_id ? (byAccount.get(String(p.account_id)) || []).filter((d) => !mineIds.has(String(d.id))).map(brief) : [];
-        return { id: p.id, name: p.name, account: p.account, account_id: p.account_id, assigned: p.assigned, first: p.days[0] || null, last: p.last, meetings: p.n, deals: mine, company_deals: companyOnly, created: mine.length > 0 };
+        const named = String(p.name || '').trim().toLowerCase();
+        const companyOnly = [...new Map([
+          ...(p.account_id ? byAccount.get(String(p.account_id)) || [] : []),
+          ...(named.includes(' ') ? rp.filter((d) => !d.contact_id && String(d.deal || '').toLowerCase().includes(named)) : []),
+        ].filter((d) => !mineIds.has(String(d.id))).map((d) => [String(d.id), d])).values()].map(brief);
+        const otherRaw = mine.length || companyOnly.length ? [] : [...(otherByContact.get(p.id) || []), ...(p.account_id && !OWN_CO.test(String(p.account || '')) ? otherByAccount.get(String(p.account_id)) || [] : [])];
+        const other = [...new Map(otherRaw.map((d) => [String(d.id), d])).values()].map((d) => ({ ...brief(d), type: d.deal_type || 'Not set' }));
+        return { id: p.id, name: p.name, account: p.account, account_id: p.account_id, assigned: p.assigned, first: p.days[0] || null, last: p.last, meetings: p.n, deals: mine, company_deals: companyOnly, other_deals: other, created: mine.length > 0, other: other.length > 0 };
       });
     },
   });
@@ -2256,6 +2268,12 @@
       r.deals.forEach((d, i) => { if (i) box.append(document.createTextNode(', ')); box.append(link('Potentials', d.id, d.deal + (d.stage ? ' (' + d.stage + ')' : ''))); });
       return box;
     }
+    if (r.other_deals && r.other_deals.length) {
+      const box = el('span', 'cc-pm-deals cc-pm-otherdeal');
+      box.append(document.createTextNode('Other deal: '));
+      r.other_deals.forEach((d, i) => { if (i) box.append(document.createTextNode(', ')); box.append(link('Potentials', d.id, d.deal + ' (' + [d.type, d.stage].filter(Boolean).join(', ') + ')')); });
+      return box;
+    }
     const box = el('span', 'cc-pm-missing');
     box.append(el('b', null, 'Not created'));
     if (r.company_deals.length) {
@@ -2421,7 +2439,8 @@
     const all = everyone.filter(inPeriod);
     const scope = from ? ` first met ${periodName.toLowerCase()} (since ${fullDayF(from)})` : '';
     const made = all.filter((r) => r.created);
-    const missing = all.filter((r) => !r.created);
+    const others = all.filter((r) => !r.created && r.other);
+    const missing = all.filter((r) => !r.created && !r.other);
     if (!everyone.length) {
       pmTools.replaceChildren();
       pmBody.replaceChildren(el('p', 'cc-b2-insight', 'No campaign contacts have been recorded as met yet. A contact counts once a meeting with them is marked Completed in Zoho.'));
@@ -2440,9 +2459,13 @@
       () => showTable('Partners met', pmCols, pmSort(everyone), 'Every May 2026 - 100 B2B contact with at least one meeting held (Zoho Completed, or on a team Outlook calendar for Priority 1 and 99), most recent meeting first. ' + PM_OWNER_NOTE),
       `Partners met, all time: ${intF(everyone.length)}. Open the list.`);
     const allMade = everyone.filter((r) => r.created).length;
-    met.append(el('p', 'cc-pm-sub cc-pm-split', `${intF(allMade)} with a deal, ${intF(everyone.length - allMade)} without`));
-    met.style.setProperty('--pm-share', ((everyone.length ? allMade / everyone.length : 0) * 100).toFixed(1) + '%');
-    met.title = `${intF(everyone.length)} partners met, all time: ${intF(allMade)} with a Referral Partner deal (green part of the ring), ${intF(everyone.length - allMade)} without (red). Select to list them.`;
+    const allOther = everyone.filter((r) => !r.created && r.other).length;
+    const allMiss = everyone.length - allMade - allOther;
+    met.append(el('p', 'cc-pm-sub cc-pm-split', `${intF(allMade)} with a deal, ${intF(allMiss)} without` + (allOther ? `, ${intF(allOther)} other deal` : '')));
+    const pct = (n) => ((everyone.length ? n / everyone.length : 0) * 100).toFixed(1) + '%';
+    met.style.setProperty('--pm-share', pct(allMade));
+    met.style.setProperty('--pm-other', pct(allMade + allOther));
+    met.title = `${intF(everyone.length)} partners met, all time: ${intF(allMade)} with a Referral Partner deal (green part of the ring)${allOther ? `, ${intF(allOther)} with another kind of deal (grey)` : ''}, ${intF(allMiss)} without (red). Select to list them.`;
     const metWrap = el('div', 'cc-pm-left');
     metWrap.append(met);
     const ok = tile('cc-pm-ok', 'Referral Partner Deal Created', made.length, 'Met, with a Referral Partner deal linked to the contact',
@@ -2458,6 +2481,14 @@
     if (!missing.length) gap.append(el('p', 'cc-pm-sub', all.length ? (from ? `All partners first met ${periodName.toLowerCase()} have Referral Partner Deals created.` : 'All met partners have Referral Partner Deals created.') : `Nobody was met for the first time ${periodName.toLowerCase()}.`));
     const pair = el('div', 'cc-pm-pair');
     pair.append(ok, gap);
+    const otherLine = el('p', 'cc-pm-period cc-pm-others');
+    if (others.length) {
+      const ob = el('button', 'cc-pm-prev', `${intF(others.length)} met ${others.length === 1 ? 'partner has' : 'partners have'} another kind of deal`);
+      ob.type = 'button';
+      ob.addEventListener('click', () => showTable('Met partners with another kind of deal' + (from ? ', ' + periodName.toLowerCase() : ''), pmCols, pmSort(others), `${from ? 'Partners' : 'Met partners'}${scope} with no Referral Partner deal but a deal of another type linked to them or on their company (Platform Provider, client work and so on). They aren’t counted as missing a Referral Partner deal. ` + PM_OWNER_NOTE));
+      otherLine.append(ob, document.createTextNode(' (Platform Provider, client work and so on), so ' + (others.length === 1 ? 'isn’t' : 'aren’t') + ' counted as missing a Referral Partner deal.'));
+    }
+    otherLine.hidden = !others.length;
     const right = el('div', 'cc-pm-right');
     const periodLine = el('p', 'cc-pm-period');
     if (from) {
@@ -2466,12 +2497,12 @@
       b.addEventListener('click', () => showTable('Partners met, ' + periodName.toLowerCase(), pmCols, pmSort(all), `Partners${scope}, most recent meeting first. ` + PM_OWNER_NOTE));
       periodLine.append(b, document.createTextNode(` (since ${fullDayF(from)}). Their deals as they stand today:`));
     } else periodLine.textContent = 'Every partner met so far. Their deals as they stand today:';
-    right.append(pmTools, periodLine, pair);
+    right.append(pmTools, periodLine, pair, otherLine);
     pmBody.replaceChildren(metWrap, right);
     if (from) {
       const series = pmSeries(pmPeriod).map(([a, b, label], i, arr) => {
         const list = everyone.filter((r) => r.first && r.first >= a && r.first <= b);
-        return { a, b, label, now: i === arr.length - 1, list, made: list.filter((r) => r.created), miss: list.filter((r) => !r.created) };
+        return { a, b, label, now: i === arr.length - 1, list, made: list.filter((r) => r.created), other: list.filter((r) => !r.created && r.other), miss: list.filter((r) => !r.created && !r.other) };
       });
       const peak = Math.max(1, ...series.map((x) => x.list.length));
       const chart = el('div', 'cc-pm-chart');
@@ -2479,7 +2510,7 @@
       chart.setAttribute('aria-label', `Partners first met in each of the last five ${pmPeriod === 'week' ? 'weeks' : pmPeriod === 'month' ? 'months' : 'years'}, split by Referral Partner deal`);
       const head = el('div', 'cc-pm-chead');
       const key = el('p', 'cc-pm-key');
-      key.append(el('span', 'cc-pm-k cc-pm-k-ok', 'Deal created'), el('span', 'cc-pm-k cc-pm-k-bad', 'Deal not created'));
+      key.append(el('span', 'cc-pm-k cc-pm-k-ok', 'Deal created'), el('span', 'cc-pm-k cc-pm-k-bad', 'Deal not created'), ...(series.some((x) => x.other.length) ? [el('span', 'cc-pm-k cc-pm-k-other', 'Other deal type')] : []));
       head.append(el('h3', null, `${periodName} against the four before it`), key);
       const cols = el('div', 'cc-pm-cols');
       series.forEach((x) => {
@@ -2491,7 +2522,7 @@
         total.addEventListener('click', () => showTable(`Partners met, ${x.label.toLowerCase()}`, pmCols, pmSort(x.list), `Partners first met ${range}, most recent meeting first. ` + PM_OWNER_NOTE));
         const bar = el('div', 'cc-pm-bar');
         bar.style.height = (x.list.length / peak) * 100 + '%';
-        [['miss', 'cc-pm-seg-bad', 'without a Referral Partner deal', 'not created'], ['made', 'cc-pm-seg-ok', 'with a Referral Partner deal', 'created']].forEach(([k, cls, words, short]) => {
+        [['miss', 'cc-pm-seg-bad', 'without a Referral Partner deal', 'not created'], ['other', 'cc-pm-seg-other', 'with another kind of deal', 'other deal type'], ['made', 'cc-pm-seg-ok', 'with a Referral Partner deal', 'created']].forEach(([k, cls, words, short]) => {
           const n = x[k].length;
           if (!n) return;
           const seg = el('button', 'cc-pm-seg ' + cls);
@@ -2500,13 +2531,13 @@
           seg.title = `${x.label}: ${intF(n)} ${words}. Open the list.`;
           seg.setAttribute('aria-label', seg.title);
           if (n && x.list.length / peak > 0.25) seg.textContent = intF(n);
-          seg.addEventListener('click', () => showTable(`Referral Partner deal ${short}, ${x.label.toLowerCase()}`, pmCols, pmSort(x[k]), `Partners first met ${range} ${words}. ` + PM_OWNER_NOTE));
+          seg.addEventListener('click', () => showTable(k === 'other' ? `Other deal type, ${x.label.toLowerCase()}` : `Referral Partner deal ${short}, ${x.label.toLowerCase()}`, pmCols, pmSort(x[k]), `Partners first met ${range} ${words}. ` + PM_OWNER_NOTE));
           bar.append(seg);
         });
         const track = el('div', 'cc-pm-track');
         track.append(bar);
         const lab = el('p', 'cc-pm-clabel', x.label);
-        const sub = el('small', null, x.list.length ? `${intF(x.made.length)} created, ${intF(x.miss.length)} not` : 'Nobody met');
+        const sub = el('small', null, x.list.length ? `${intF(x.made.length)} created, ${intF(x.miss.length)} not` + (x.other.length ? `, ${intF(x.other.length)} other` : '') : 'Nobody met');
         lab.append(sub);
         col.append(total, track, lab);
         cols.append(col);
@@ -2519,7 +2550,7 @@
       right.append(chart);
     }
     const loose = missing.filter((r) => r.company_deals.length).length;
-    pmNote.textContent = `Met means at least one meeting held: marked Completed in Zoho, or (for Priority 1 and 99) a past uncancelled meeting on a team Outlook calendar${from ? `; ${periodName.toLowerCase()} counts partners whose first meeting falls in it (Central time${pmPeriod === 'week' ? ', weeks start Monday' : ''}), and their deals as they stand today` : ''}; ${intF(all.length)} = ${intF(made.length)} created + ${intF(missing.length)} not created. A deal counts only when its Deal Type is Referral Partner and its Contact Name is the person we met; a deal on the same company linked to someone else, or to no contact, doesn’t count${loose ? ` (${intF(loose)} met ${loose === 1 ? 'partner has' : 'partners have'} one; the list shows it so the link can be fixed)` : ''}.`;
+    pmNote.textContent = `Met means at least one meeting held: marked Completed in Zoho, or (for Priority 1 and 99) a past uncancelled meeting on a team Outlook calendar${from ? `; ${periodName.toLowerCase()} counts partners whose first meeting falls in it (Central time${pmPeriod === 'week' ? ', weeks start Monday' : ''}), and their deals as they stand today` : ''}; ${intF(all.length)} = ${intF(made.length)} created + ${intF(missing.length)} not created${others.length ? ` + ${intF(others.length)} with another kind of deal` : ''}. A deal counts only when its Deal Type is Referral Partner and its Contact Name is the person we met; a deal on the same company linked to someone else, or to no contact, doesn’t count; a met partner whose only deal is of another type (Platform Provider, client work) isn’t counted as missing one${loose ? ` (${intF(loose)} met ${loose === 1 ? 'partner has' : 'partners have'} one; the list shows it so the link can be fixed)` : ''}.`;
   };
 
   /* Account gaps: Priority 1 and met partners without an Account, and Referral Partner deals on the wrong Account. */

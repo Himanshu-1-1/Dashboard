@@ -322,7 +322,7 @@
 .cc-pm-left { display: grid; place-items: center; }
 .cc-pm-tile.cc-pm-main { width: 230px; height: 230px; padding: 0 26px; border-radius: 50%; border: 0; place-content: center; justify-items: center; text-align: center; gap: 2px;
   background: radial-gradient(closest-side, color-mix(in oklab, var(--b2-c1) 7%, var(--color-panel)) calc(100% - 9px), transparent calc(100% - 8px)),
-    conic-gradient(var(--color-ok) 0 var(--pm-share, 0%), var(--color-bad) var(--pm-share, 0%) 100%); }
+    conic-gradient(var(--color-ok) 0 var(--pm-share, 0%), var(--color-fg-muted) var(--pm-share, 0%) var(--pm-other, var(--pm-share, 0%)), var(--color-bad) var(--pm-other, var(--pm-share, 0%)) 100%); }
 .cc-pm-tile.cc-pm-main .cc-pm-num { margin: 2px 0; }
 .cc-pm-tile.cc-pm-main .cc-pm-sub { font-size: 11px; line-height: 1.35; }
 .cc-pm-tile.cc-pm-main .cc-pm-split { margin-top: 2px; padding-top: 6px; border-top-color: var(--color-border-line); color: var(--color-fg); }
@@ -643,3 +643,8 @@
 .cc-rw-link { appearance: none; font: inherit; background: none; border: 0; padding: 0; color: var(--color-fg); text-decoration: underline dotted; text-underline-offset: 3px; cursor: pointer; font-variant-numeric: tabular-nums; }
 .cc-rw-flagmark { color: var(--color-warn); cursor: help; }
 @media (max-width: 860px) { .cc-rw-panel { grid-template-columns: 1fr; } .cc-rw-box + .cc-rw-box { border-left: 0; } }
+
+.cc-pm-k-other { --k: var(--color-fg-muted); }
+.cc-pm-seg-other { background-color: var(--color-fg-muted); }
+.cc-pm-others { margin-top: -2px; }
+.cc-pm-otherdeal { color: var(--color-fg-muted); }
