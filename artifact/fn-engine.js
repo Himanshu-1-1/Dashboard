@@ -26,6 +26,7 @@
     prepDays: 2,
     taskStaleDays: 45,
     callActionDays: 60,
+    hiddenPriorities: ['9', '11', '99'], /* left off every list; P99 signed partners still count in the scorecard */
     outreachQuietDays: 14, /* someone emailed in the last two weeks isn't suggested again yet */ /* action items from recorded calls older than this stay on the timeline only */
     weights: { strategic: 25, opportunity: 20, relationship: 15, commitments: 15, intro: 10, recency: 10, upcoming: 5 },
     bands: { high: 55, normal: 30 },
@@ -567,6 +568,7 @@
 
   /* An action that can't wait: a commitment overdue but not so old it needs closing, or a meeting to prepare within
      `prepDays`. The same rule makes a founder Urgent. */
+  const isShown = (f, settings = DEFAULTS) => !settings.hiddenPriorities.includes(str(f.priority));
   const isUrgentAction = (a) => a.status !== 'Done' && ((a.kind === 'commitment' && a.status === 'Overdue' && !a.stale) || (a.category === 'Prepare for a meeting' && a.status === 'Due soon'));
 
   /* ---------- the priority engine ---------- */
@@ -654,7 +656,7 @@
     return settings.targets.map((t) => Object.assign({}, t, { actual: counts[t.id], rows: counts[t.id] == null ? [] : rows[t.id] }, metricStatus({ actual: counts[t.id], target: t.target, today, missing: counts[t.id] == null, baseline: baselines[t.id] || 0 }, settings), { baseline: baselines[t.id] || 0 }));
   }
 
-  const api = { DEFAULTS, STATUS, TONE, STAGES, STAGE_RULES, ctDay, daysBetween, nameToks, personKey, keyOfName, slugOf, lev, zohoIndex, matchPerson, buildFounders, facts, stageOf, actionsFor, actionStatus, metricStatus, sourceStatus, expectedShare, priorityOf, isUrgentAction, run, targets, targetRows, rankAction, outreach, draftFor };
+  const api = { DEFAULTS, STATUS, TONE, STAGES, STAGE_RULES, ctDay, daysBetween, nameToks, personKey, keyOfName, slugOf, lev, zohoIndex, matchPerson, buildFounders, facts, stageOf, actionsFor, actionStatus, metricStatus, sourceStatus, expectedShare, priorityOf, isShown, isUrgentAction, run, targets, targetRows, rankAction, outreach, draftFor };
   root.FN_ENGINE = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

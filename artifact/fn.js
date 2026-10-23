@@ -86,11 +86,11 @@
   const calcModel = (args) => { const d = {}; INPUTS.forEach((id, i) => { d[id] = args[i]; }); return E.run(buildSrc(d, new Date())); };
   dash.calc('fn_founders', {
     title: 'Founder Network founders', description: 'One row per founder: priority band and score, pipeline stage, identity check, last interaction, next meeting and next action, from Zoho, Telegram, Fireflies, Outlook and LinkedIn by the rules in fn-engine.js.',
-    inputs: INPUTS, fn: (...sources) => calcModel(sources).founders.map(flatFounder),
+    inputs: INPUTS, fn: (...sources) => calcModel(sources).founders.filter((f) => E.isShown(f)).map(flatFounder),
   });
   dash.calc('fn_actions', {
     title: 'Founder Network actions', description: 'Zoho tasks, meetings to prepare or record, Telegram asks and Fireflies action items to review, and rule-based follow-ups and reconnects, each with its evidence.',
-    inputs: INPUTS, fn: (...sources) => { const seen = new Set(); return calcModel(sources).founders.flatMap((f) => f.actions).filter((a) => !seen.has(a.key) && seen.add(a.key)).map(flatAction); },
+    inputs: INPUTS, fn: (...sources) => { const seen = new Set(); return calcModel(sources).founders.filter((f) => E.isShown(f)).flatMap((f) => f.actions).filter((a) => !seen.has(a.key) && seen.add(a.key)).map(flatAction); },
   });
   dash.calc('fn_targets', {
     title: 'Founder Network targets', description: 'Each scorecard target against the pace expected by today over Aug 17 to Dec 18, 2026, with its status.',
@@ -195,17 +195,20 @@
     const model = E.run(src);
     model.src = src;
     model.targets = E.targets(model, src);
+    /* Priority 9, 11 and 99 stay out of every view; the scorecard above was counted first, so signed P99 partners still count there */
+    model.all = model.founders;
+    model.byId = new Map(model.all.map((f) => [f.id, f]));
+    model.founders = model.all.filter((f) => E.isShown(f));
     /* a recorded call shared by two founders lists each action item once */
     const seenKeys = new Set();
     model.actions = model.founders.flatMap((f) => f.actions.map((a) => Object.assign(a, { f }))).filter((a) => !seenKeys.has(a.key) && seenKeys.add(a.key));
     model.issues = model.founders.flatMap((f) => f.issues.map((i) => Object.assign({}, i, { f })));
     model.timeline = model.founders.flatMap((f) => f.activities.filter((a) => a.day).map((a) => Object.assign({}, a, { f }))).sort((a, b) => String(b.day).localeCompare(String(a.day)));
-    model.byId = new Map(model.founders.map((f) => [f.id, f]));
     model.outreach = E.outreach(model, E.DEFAULTS, rowsOf('fn_reach') || []);
     memo = { key: keyParts, model };
     return model;
   };
-  const fnMembers = (m) => m.founders.filter((f) => f.inFN && !['9', '11'].includes(f.priority));
+  const fnMembers = (m) => m.founders.filter((f) => f.inFN);
 
   /* ---------- Overview ---------- */
   const targetCard = (t, today) => {
@@ -644,6 +647,7 @@
     const c = el('section', 'cc-fx-card');
     c.append(el('h3', null, 'Priority engine'), el('p', 'cc-fx-sub', `${S.bands.high}+ points is High priority, ${S.bands.normal}+ Normal, below that Nurture. An overdue commitment or a meeting within ${S.prepDays} days makes a founder Urgent; not in Zoho or an unconfirmed identity is Needs review.`));
     const t3 = tableWrap(['Signal', 'Up to', 'Scored from']);
+    c.append(el('p', 'cc-fx-sub', 'Priority 9, 11 and 99 are hidden from every list; signed P99 partners still count in the scorecard.'));
     const why = { strategic: 'Zoho Priority (1 full, 3 most, 5 some); the chat’s priority when Zoho has none', opportunity: 'An open deal, or a referral agreement sent and not signed', relationship: 'Meeting days held, two-way contact, or endorsements on LinkedIn', commitments: 'Any open recorded commitment', intro: 'An introduction or referral mentioned in the notes', recency: `Priority 1 or 3 (Zoho, else the chat) with no interaction for 30+ days, full points past 60`, upcoming: 'A meeting in the next 7 days' };
     Object.entries(S.weights).forEach(([k, v]) => { const tr = el('tr'); tr.append(el('td', null, k[0].toUpperCase() + k.slice(1)), el('td', null, String(v)), el('td', null, why[k])); t3.tbody.append(tr); });
     c.append(t3.wrap);
@@ -755,7 +759,8 @@
     }
     const members = fnMembers(m);
     const stale = SRC_ROWS.filter((r) => statusOf(r.id) !== 'ok').map((r) => r.label);
-    lede.textContent = `${intF(members.length)} in Zoho and ${intF(m.founders.filter((f) => !f.inFN).length)} more named in Telegram, as of ${dayF(m.today)} CT.${stale.length ? ' Not loaded: ' + stale.join(', ') + '.' : ''}`;
+    const hidden = m.all.length - m.founders.length;
+    lede.textContent = `${intF(members.length)} in Zoho and ${intF(m.founders.filter((f) => !f.inFN).length)} more named in Telegram, as of ${dayF(m.today)} CT.${hidden ? ` ${intF(hidden)} at Priority 9, 11 or 99 are hidden.` : ''}${stale.length ? ' Not loaded: ' + stale.join(', ') + '.' : ''}`;
     const view = { overview: drawOverview, actions: drawActions, founders: drawFounders, pipeline: drawPipeline, timeline: drawTimeline, quality: drawQuality, sources: drawSources, rules: drawRules }[st.view];
     const focusId = document.activeElement && root.contains(document.activeElement) && document.activeElement.matches('input') ? document.activeElement.className : null;
     body.replaceChildren(view(m));
