@@ -104,6 +104,7 @@
 .cc-mn-crm { white-space: nowrap; }
 .cc-mn-crm-none { color: var(--color-fg-muted); }
 .cc-mn-dnc { color: var(--color-bad); }
+.cc-mn-matchnote { display: block; color: var(--color-fg-muted); white-space: normal; }
 .cc-mn-pager { justify-content: center; }
 .cc-mn-pnum { font-size: 12px; color: var(--color-fg-muted); }
 .cc-mn-empty { margin: 0; color: var(--color-fg-muted); }

@@ -42,11 +42,11 @@
   const AGES = [['old', 'Before 2020'], ['mid', '2020 to 2025'], ['new', 'In 2026']];
   const SCOPES = [
     ['new', 'New people', 'not in Zoho and no sign we talk to them yet'],
-    ['known', 'Known to us, not in Zoho', 'on our calls, our team or our notes: add them to Zoho'],
+    ['known', 'Known to us, not in Zoho', 'on our Fireflies calls, in our Outlook, or our team: add them to Zoho'],
     ['zoho', 'Already in Zoho', 'their campaign and Priority, matched live'],
   ];
   const CRM_NAME = { b2b: 'B2B campaign', fn: 'Founder Network', client: 'Client', icp: 'ICP campaign', other: 'In Zoho, no campaign' };
-  const REL_NAME = { insider: 'Our team or advisor', works: 'Works with us regularly', talked: 'On our calls', known: 'In our notes' };
+  const REL_NAME = { insider: 'Our team or advisor', works: 'Works with us regularly', talked: 'On our calls', mail: 'In our Outlook' };
 
   /* ---------- helpers ---------- */
   const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
@@ -55,7 +55,23 @@
   const rows = (id) => { const d = dash.data(id); return d && d.status === 'ok' ? d.data || [] : []; };
   const status = (id) => (dash.data(id) || {}).status;
   const slugOf = (u) => { const m = String(u || '').match(/linkedin\.com\/(?:in|pub)\/([^/?#\s]+)/i); if (!m) return null; try { return decodeURIComponent(m[1]).toLowerCase().replace(/\/+$/, ''); } catch (e) { return m[1].toLowerCase(); } };
-  const nameKey = (f, l) => `${String(f || '').toLowerCase().replace(/[^a-z]/g, '')}|${String(l || '').toLowerCase().replace(/[^a-z]/g, '')}`;
+  /* Name matching. LinkedIn names carry credentials ("Shah, CPA", "Kotecha, CSPO®"), nicknames in brackets and middle
+     initials; Zoho often holds the whole name in Last_Name with First_Name empty. Both sides reduce to the first token of
+     the first name and the last token of the last name. */
+  const TITLES = new Set(['dr', 'mr', 'mrs', 'ms', 'prof', 'jr', 'sr', 'ii', 'iii', 'iv', 'phd', 'mba', 'cpa', 'pmp', 'md', 'esq']);
+  const nameToks = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\([^)]*\)/g, ' ').split(',')[0]
+    .toLowerCase().split(/[^a-z]+/).filter((t) => t.length > 1 && !TITLES.has(t));
+  const personKey = (first, last) => {
+    let f = nameToks(first);
+    let l = nameToks(last);
+    if (!f.length && l.length > 1) { f = l.slice(0, 1); l = l.slice(1); }
+    return f.length && l.length ? { first: f[0], last: l[l.length - 1] } : null;
+  };
+  const coToks = (v) => new Set(String(v || '').toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 2 && !['inc', 'llc', 'ltd', 'the', 'and', 'group', 'solutions', 'services', 'technologies', 'technology', 'consulting', 'company', 'corp', 'pvt', 'private', 'limited', 'global'].includes(t)));
+  const coOverlap = (a, b) => { const x = coToks(a); return [...coToks(b)].some((t) => x.has(t)); };
+  /* Among duplicate Zoho contacts for one person, keep the one with the most campaign evidence. */
+  const zWeight = (z) => (CC_RULES.isFN(z.Relationship_Type) ? 8 : 0) + (has(z.Tag, B2B_TAG) ? 8 : 0) + (z.Priority ? 4 : 0) + (slugOf(z.LinkedIn) ? 2 : 0) + Math.min(4, num(z.Total_Meetings_Created)) + (z.Account_Name ? 1 : 0);
+  const accName = (z) => (z.Account_Name && typeof z.Account_Name === 'object' ? z.Account_Name.name : z.Account_Name) || '';
   const has = (list, v) => String(list || '').split(',').map((x) => x.trim()).includes(v);
   const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
   const dayF = (s) => { if (!s) return '—'; const d = new Date(String(s).slice(0, 10) + 'T00:00:00Z'); return Number.isNaN(d.getTime()) ? String(s) : d.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' }); };
@@ -73,26 +89,46 @@
       const contacts = [...a, ...b, ...c, ...d].filter((z) => z && z.id && !seen.has(String(z.id)) && seen.add(String(z.id)));
       const bySlug = new Map();
       const byName = new Map();
+      const byLast = new Map();
+      const push = (m, k, z) => { if (!m.has(k)) m.set(k, []); m.get(k).push(z); };
       contacts.forEach((z) => {
         const s = slugOf(z.LinkedIn);
         if (s && !bySlug.has(s)) bySlug.set(s, z);
-        const k = nameKey(z.First_Name, z.Last_Name);
-        if (!byName.has(k)) byName.set(k, []);
-        byName.get(k).push(z);
+        const k = personKey(z.First_Name, z.Last_Name);
+        if (k) { push(byName, `${k.first}|${k.last}`, z); push(byLast, k.last, z); }
       });
+      /* A name shared by two of Mack's connections can't tell them apart, so those never match by name. */
+      const netKeys = new Map();
+      net.forEach((r) => { const k = personKey(r.first, r.last); if (k) { const key = `${k.first}|${k.last}`; netKeys.set(key, (netKeys.get(key) || 0) + 1); } });
+      const best = (list) => list.slice().sort((x, y) => zWeight(y) - zWeight(x) || String(x.id).localeCompare(String(y.id)))[0];
       /* The dashboard's file loader can hand nested fields over as JSON text; read them back as objects. */
       const obj = (v) => { if (typeof v !== 'string' || !/^[[{]/.test(v.trim())) return v; try { return JSON.parse(v); } catch (e) { return null; } };
       return net.map((raw) => {
-        const r = { ...raw, ties: obj(raw.ties) || [], brief: obj(raw.brief) || null, co_zoho: obj(raw.co_zoho) || null,
+        const r = { ...raw, ties: obj(raw.ties) || [], brief: obj(raw.brief) || null, co_zoho: obj(raw.co_zoho) || null, outlook: obj(raw.outlook) || null,
           client: raw.client === true || raw.client === 'true', calls: num(raw.calls), rel: raw.rel || null, insider: raw.insider || null, last_call: raw.last_call || null };
         if (r.brief && typeof r.brief !== 'object') r.brief = null;
         if (r.co_zoho && typeof r.co_zoho !== 'object') r.co_zoho = null;
+        if (r.outlook && typeof r.outlook !== 'object') r.outlook = null;
+        /* Outlook evidence counts only when the check found the same person and real mail or meetings with them. */
+        const ol = r.outlook && r.outlook.identity === 'same person' && (num(r.outlook.email_count) > 0 || num(r.outlook.meeting_count) > 0) ? r.outlook : null;
+        if (!r.rel && ol) r.rel = 'mail';
         if (r.brief && !Array.isArray(r.brief.sources)) r.brief.sources = [];
         if (r.co_zoho && !Array.isArray(r.co_zoho.camps)) r.co_zoho.camps = [];
         const s = slugOf(r.url);
         let z = s ? bySlug.get(s) : null;
         let by = z ? 'LinkedIn profile' : null;
-        if (!z) { const list = byName.get(nameKey(r.first, r.last)) || []; if (list.length === 1) { z = list[0]; by = 'Name'; } }
+        let dups = 0;
+        const k = personKey(r.first, r.last);
+        if (!z && k && netKeys.get(`${k.first}|${k.last}`) === 1) {
+          const list = byName.get(`${k.first}|${k.last}`) || [];
+          if (list.length) { z = best(list); by = 'Name'; dups = list.length - 1; }
+          else {
+            /* Short and long forms of a first name (Matt / Matthew, Vivek / Vivekanand): same last name, first names
+               sharing their first three letters, one candidate only, and either a distinctive last name or the same company. */
+            const cand = (byLast.get(k.last) || []).filter((zz) => { const zk = personKey(zz.First_Name, zz.Last_Name); return zk && zk.first !== k.first && zk.first.slice(0, 3) === k.first.slice(0, 3) && (zk.first.startsWith(k.first) || k.first.startsWith(zk.first)); });
+            if (cand.length === 1 && (k.last.length >= 7 || coOverlap(accName(cand[0]), r.company))) { z = cand[0]; by = 'Name (short form of the first name)'; }
+          }
+        }
         let crm = null;
         if (z) {
           if (CC_RULES.isFN(z.Relationship_Type)) crm = 'fn';
@@ -105,7 +141,7 @@
         const meetings = z ? num(z.Total_Meetings_Created) : 0;
         return {
           ...r,
-          zoho_id: z ? String(z.id) : null, zoho_by: by, crm, priority, meetings,
+          zoho_id: z ? String(z.id) : null, zoho_by: by, zoho_dups: dups, zoho_name: z ? [z.First_Name, z.Last_Name].filter(Boolean).join(' ') : null, zoho_account: z ? accName(z) || null : null, crm, priority, meetings,
           dnc: Boolean(z && (z.DO_NOT_CONTACT === true || z.DO_NOT_CONTACT === 'true')),
           progressed: Boolean(z && (priority === '1' || priority === '99' || meetings > 0)),
           scope: z ? 'zoho' : r.rel ? 'known' : 'new',
@@ -277,6 +313,11 @@
     if (r.zoho_id) {
       const label = r.crm === 'b2b' ? `B2B campaign${r.priority ? ', P' + r.priority : ''}` : CRM_NAME[r.crm];
       w.append(link(ZOHO + 'Contacts/' + r.zoho_id, label, `Open in Zoho (matched by ${String(r.zoho_by).toLowerCase()})`));
+      if (r.zoho_by && r.zoho_by !== 'LinkedIn profile') {
+        const m = el('small', 'cc-mn-matchnote', ` matched by name${r.zoho_dups ? `, ${r.zoho_dups} duplicate${r.zoho_dups === 1 ? '' : 's'} in Zoho` : ''}`);
+        m.title = `Zoho record: ${r.zoho_name || '—'}${r.zoho_account ? ` at ${r.zoho_account}` : ''}. Matched by ${String(r.zoho_by).toLowerCase()}, not by LinkedIn profile: add the LinkedIn URL in Zoho to make it certain.`;
+        w.append(m);
+      }
       if (r.dnc) w.append(el('small', 'cc-mn-dnc', ' Do Not Contact'));
     } else w.textContent = r.rel ? REL_NAME[r.rel] + ', not in Zoho' : 'Not in Zoho';
     return w;
@@ -418,23 +459,33 @@
   const drawKnown = (all) => {
     const rank = (r) => (r.rel === 'insider' ? 4 : r.rel === 'works' ? 3 : r.fit === 'A' || r.fit === 'B' ? 0 : r.rel === 'talked' ? 1 : 2);
     const kn = all.filter((r) => r.scope === 'known').sort((a, b) => rank(a) - rank(b) || a.fit.localeCompare(b.fit) || String(b.last_call || '').localeCompare(String(a.last_call || '')));
-    known.p.textContent = `${intF(kn.length)} people Mack is connected to whom we already talk to or work with, yet who have no Zoho contact. Partner prospects among them should go into Zoho first; team, advisors and day-to-day colleagues are kept out of the new list.`;
+    known.p.textContent = `${intF(kn.length)} people Mack is connected to who have no Zoho contact, yet we have met or emailed them. Each row shows the proof: the Fireflies call and how it was matched, and what the team’s Outlook holds (checked ${dayF(((kn.find((r) => r.outlook) || {}).outlook || {}).checked_on)}). Zoho was searched live by LinkedIn profile and by name, including records that hold the whole name in Last Name.`;
     const tbl = el('table', 'cc-tbl cc-mn-tbl');
     const th = el('thead'); const hr = el('tr');
-    ['Name', 'Title and company', 'How we know them', 'Grade', 'What to do'].forEach((h) => { const c = el('th', null, h); c.scope = 'col'; hr.append(c); });
+    ['Name', 'Title and company', 'Fireflies', 'Outlook', 'Grade', 'What to do'].forEach((h) => { const c = el('th', null, h); c.scope = 'col'; hr.append(c); });
     th.append(hr); tbl.append(th);
     const tb = el('tbody');
     kn.forEach((r) => {
       const tr = el('tr');
       const n = el('td'); n.append(personLink(r));
       const role = el('td', 'cc-mn-rolecell'); role.append(el('span', null, r.position || '—'), el('small', null, r.company || ''));
-      const how = el('td', 'cc-mn-whycell', [r.insider || REL_NAME[r.rel], r.calls ? `${r.calls} Fireflies call${r.calls === 1 ? '' : 's'}, last ${dayF(r.last_call)}` : null].filter(Boolean).join(' · '));
+      const ff = el('td', 'cc-mn-whycell', r.calls ? `${r.calls} call${r.calls === 1 ? '' : 's'}, last ${dayF(r.last_call)}${r.call_by ? ` (matched by ${r.call_by})` : ''}` : 'None');
+      const o = r.outlook;
+      const olText = !o ? 'Not checked'
+        : o.identity === 'not found' ? 'Nothing found'
+          : o.identity === 'different person' ? `Different person with the same name${o.note ? `: ${o.note}` : ''}`
+            : [num(o.email_count) ? `${num(o.email_count) >= 25 ? '25+' : num(o.email_count)} email${num(o.email_count) === 1 ? '' : 's'}, last ${dayF(o.last_email)}${o.two_way ? ', both ways' : ''}` : null,
+              num(o.meeting_count) ? `${num(o.meeting_count)} meeting${num(o.meeting_count) === 1 ? '' : 's'}, last ${dayF(o.last_meeting)}` : null,
+              o.their_domain ? `@${o.their_domain}` : null, o.note || null].filter(Boolean).join(' · ') || 'Nothing found';
+      const olCell = el('td', 'cc-mn-whycell', olText);
+      if (r.insider) ff.prepend(el('b', null, r.insider + ' · '));
       const g = el('td'); g.append(gradePill(r.fit));
       const todo = r.rel === 'insider' ? 'Nothing: our team or advisor'
         : r.rel === 'works' ? 'Nothing: we work with them day to day'
           : resFit(r) === 'Low' ? `Add to Zoho, not as a B2B prospect: ${r.brief.risks}`
+            : r.rel === 'mail' && !r.calls ? ((r.fit === 'A' || r.fit === 'B') ? 'Add to Zoho with the B2B tag and log the emails' : 'Add to Zoho if the emails were about business')
             : (r.fit === 'A' || r.fit === 'B') ? 'Add to Zoho with the B2B tag and log the call' : 'Add to Zoho if the call was about business';
-      tr.append(n, role, how, g, el('td', 'cc-mn-whycell', todo));
+      tr.append(n, role, ff, olCell, g, el('td', 'cc-mn-whycell', todo));
       tb.append(tr);
     });
     tbl.append(tb);
@@ -603,7 +654,7 @@
     drawKnown(all);
     drawKinds();
     drawList();
-    foot.textContent = 'How this works: every connection was read and graded by hand against the partners who have signed with us or reached Priority 1. We know someone when they were on a Fireflies call with us (Sep 2025 on; matched by their email, display name or name in the meeting title, and only by email for names shared by several connections), are on the TLS team or advisors list, or are in the team’s notes. Endorsements and recommendations come from Mack’s LinkedIn export. The chance comes from a logistic regression fitted live on Mack’s connections already in our campaigns (kind of partner, when Mack connected, endorsements, grade), so it changes as they progress; web research then nudges it up for a High fit and down for a Low one. Researched briefs use public web sources as of the research date; check before outreach. Nothing on this tab is written to Zoho.';
+    foot.textContent = 'How this works: every connection was read and graded by hand against the partners who have signed with us or reached Priority 1. Zoho is matched live by LinkedIn profile, else by first and last name (credentials, bracketed nicknames and middle initials ignored; records holding the whole name in Last Name included; short first-name forms such as Matt for Matthew only with a distinctive last name or the same company). We know someone when they were on a Fireflies call with us from Sep 2025 (an attendee whose name or email address is exactly theirs, or their first name at their own company’s domain; meeting titles are never used; calls with Asinpa and job interviews are left out), when the team’s Outlook holds mail or meetings with them (checked by hand for everyone on the Known list), or when they are on the TLS website’s team or advisors list (matched by LinkedIn profile). Endorsements and recommendations come from Mack’s LinkedIn export. The chance comes from a logistic regression fitted live on Mack’s connections already in our campaigns (kind of partner, when Mack connected, endorsements, grade), so it changes as they progress; web research then nudges it up for a High fit and down for a Low one. Researched briefs use public web sources as of the research date; check before outreach. Nothing on this tab is written to Zoho.';
   };
   dash.onData(draw);
 })();
