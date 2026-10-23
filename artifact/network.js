@@ -474,6 +474,7 @@
       const olText = !o ? 'Not checked'
         : o.identity === 'not found' ? 'Nothing found'
           : o.identity === 'different person' ? `Different person with the same name${o.note ? `: ${o.note}` : ''}`
+            : o.identity === 'unconfirmed' ? `Not confirmed as the same person${o.note ? `: ${o.note}` : ''}`
             : [num(o.email_count) ? `${num(o.email_count) >= 25 ? '25+' : num(o.email_count)} email${num(o.email_count) === 1 ? '' : 's'}, last ${dayF(o.last_email)}${o.two_way ? ', both ways' : ''}` : null,
               num(o.meeting_count) ? `${num(o.meeting_count)} meeting${num(o.meeting_count) === 1 ? '' : 's'}, last ${dayF(o.last_meeting)}` : null,
               o.their_domain ? `@${o.their_domain}` : null, o.note || null].filter(Boolean).join(' · ') || 'Nothing found';
@@ -485,7 +486,8 @@
           : resFit(r) === 'Low' ? `Add to Zoho, not as a B2B prospect: ${r.brief.risks}`
             : r.rel === 'mail' && !r.calls ? ((r.fit === 'A' || r.fit === 'B') ? 'Add to Zoho with the B2B tag and log the emails' : 'Add to Zoho if the emails were about business')
             : (r.fit === 'A' || r.fit === 'B') ? 'Add to Zoho with the B2B tag and log the call' : 'Add to Zoho if the call was about business';
-      tr.append(n, role, ff, olCell, g, el('td', 'cc-mn-whycell', todo));
+      const onAcc = r.co_zoho && r.co_zoho.name && r.rel !== 'insider' && r.rel !== 'works' ? ` Link them to the ${r.co_zoho.name} account, which Zoho already has (${r.co_zoho.n} contact${r.co_zoho.n === 1 ? '' : 's'}: ${r.co_zoho.camps.join(', ')}).` : '';
+      tr.append(n, role, ff, olCell, g, el('td', 'cc-mn-whycell', todo + (onAcc ? '.' + onAcc : '')));
       tb.append(tr);
     });
     tbl.append(tb);
