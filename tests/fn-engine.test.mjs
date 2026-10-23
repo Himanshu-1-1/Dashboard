@@ -288,3 +288,49 @@ test('review fixes: early-period pacing and imports with no date', () => {
   assert.equal(E.metricStatus({ actual: 0, target: 150, today: '2026-08-18' }).status, 'At risk');
   assert.equal(E.sourceStatus({ kind: 'imported', state: 'ok', at: null }, NOW).status, 'Needs verification');
 });
+
+test('outreach: who is suggested, who is left out, and why', () => {
+  const src = {
+    now: NOW,
+    fn: [
+      zc('a1', 'Hollis', 'Marrow', { Priority: '1', Account_Name: 'Marrow Labs LLC' }),
+      zc('a2', 'Ines', 'Vale', { Priority: '1' }),
+      zc('a3', 'Jory', 'Pell', { Priority: '1', DO_NOT_CONTACT: true }),
+      zc('a4', 'Kit', 'Arden', { Priority: '1', Relationship_Type: 'Founder Network, Client' }),
+      zc('a5', 'Lux', 'Fenn', { Priority: '3' }),
+      zc('a6', 'Mae', 'Corr', { Priority: '1' }),
+      zc('a7', 'Nils', 'Brae', { Priority: '1' }),
+      zc('a8', 'Oda', 'Quist', { Priority: '5' }),
+    ],
+    events: [{ id: 'e', Who_Id_id: 'a2', Start_DateTime: '2026-09-01T10:00:00-05:00', Meeting_Status: 'Completed' }],
+    tasks: [{ id: 't', Who_Id_id: 'a5', Subject: 'Call', Due_Date: '2026-11-01', Status: 'Not Started', Created_Time: '2026-10-01T10:00:00-05:00' }],
+    tgPeople: [{ name: 'Mae Corr', zoho_id: 'a6', zoho_by: 'Name', relationship: ['Mack had lunch with her in September'] }],
+    outlook: [{ key: 'a8', identity: 'same person', email_count: 3, first_email: '2026-05-01', last_email: '2026-06-10', two_way: true, meeting_count: 0 }],
+    linkedin: [{ first: 'Hollis', last: 'Marrow', url: 'https://www.linkedin.com/in/hollis-marrow', connected: '2016-04-02', ties: ['They endorsed Mack'] }],
+  };
+  const model = E.run(src);
+  const list = E.outreach(model, E.DEFAULTS, [{ zoho_id: 'a7', verdict: 'skip', why: 'Family' }]);
+  const ids = list.map((c) => c.f.zoho.id);
+  assert.deepEqual(ids.slice().sort(), ['a1', 'a8']);
+  assert.equal(ids[0], 'a1', 'Priority 1 and connected on LinkedIn ranks first');
+  assert.ok(list.leftOut.some((x) => x.f.zoho.id === 'a6' && x.by === 'rule'), 'a Telegram lunch counts as already talking');
+  assert.ok(list.leftOut.some((x) => x.f.zoho.id === 'a7' && x.why === 'Family'));
+  const hollis = list.find((c) => c.f.zoho.id === 'a1');
+  assert.equal(hollis.draft.channel, 'LinkedIn message');
+  assert.match(hollis.draft.body, /^Hi Hollis, I hope all is well at Marrow Labs\. Thank you again for the endorsement\./);
+  const oda = list.find((c) => c.f.zoho.id === 'a8');
+  assert.equal(oda.draft.channel, 'Email');
+  assert.match(oda.draft.body, /traded emails back in Jun 2026/);
+  assert.ok(!/@/.test(oda.draft.body), 'no address or earlier mail content in the draft');
+});
+
+test('outreach: hand-written drafts win, connection notes stay under 300 characters, recent email waits', () => {
+  const src = { now: NOW, fn: [zc('b1', 'Pia', 'Sorel', { Priority: '1' }), zc('b2', 'Quin', 'Tarrant-Whitlock', { Priority: '1', Account_Name: 'A Very Long Company Name For Testing Purposes Holdings International' }), zc('b3', 'Rue', 'Ambler', { Priority: '1' })],
+    outlook: [{ key: 'b3', identity: 'same person', email_count: 1, last_email: '2026-10-20', two_way: false }] };
+  const list = E.outreach(E.run(src), E.DEFAULTS, [{ zoho_id: 'b1', verdict: 'reach', why: 'Asked to catch up after her trip', channel: 'Text message', body: 'Hi Pia, welcome back.' }]);
+  const pia = list.find((c) => c.f.zoho.id === 'b1');
+  assert.equal(pia.draft.body, 'Hi Pia, welcome back.'); assert.equal(pia.draft.channel, 'Text message'); assert.equal(pia.reviewed, true);
+  const quin = list.find((c) => c.f.zoho.id === 'b2');
+  assert.equal(quin.draft.channel, 'LinkedIn connection note'); assert.ok(quin.draft.body.length <= 300);
+  assert.ok(!list.some((c) => c.f.zoho.id === 'b3'), 'emailed three days ago: not suggested again yet');
+});

@@ -4,9 +4,10 @@
 Every input and output stays in a scratch folder: never in the repo, never on a public branch. Python standard library only.
 
   fn_import.py telegram WORK OUT      WORK holds people_z.json, photos.json, photos_out_*.json and activity.json (the
-                                      reviewed Telegram reconstruction), and optionally review_notes.json. Writes fn_tg_people.json, fn_tg_photos.json and
-                                      fn_tg_log.json.
-  fn_import.py fireflies FF FN EMAILS TG OUT
+                                      reviewed Telegram reconstruction), and optionally review_notes.json
+                                      and reach_review.json (outreach candidates checked by hand: reach with a
+                                      draft, talked, or skip). Writes fn_tg_people.json, fn_tg_photos.json,
+                                      fn_tg_log.json and fn_reach.json.   fn_import.py fireflies FF FN EMAILS TG OUT
                                       FF: Fireflies meetings ({id: meeting}); FN: Zoho COQL answer for Founder Network
                                       contacts; EMAILS: {zoho id: email}, used only to match and never written; TG:
                                       fn_tg_people.json. Writes fn_ff_meetings.json and fn_ff_links.json.
@@ -97,6 +98,14 @@ def telegram(work, out):
                          'crm_counts': clean((o.get('crm_counts') or '').replace('(#DIV/0!)', '(the sheet showed a divide-by-zero error)'))})
     prow.sort(key=lambda r: r['n'])
     dump(prow, os.path.join(out, 'fn_tg_photos.json'))
+    reach_path = os.path.join(work, 'reach_review.json')  # optional hand review of outreach candidates
+    if os.path.exists(reach_path):
+        keep = ('zoho_id', 'verdict', 'why', 'channel', 'subject', 'body')
+        rows_r = [{k: (clean(r.get(k)) if isinstance(r.get(k), str) and k in ('why', 'subject', 'body') else r.get(k)) for k in keep} for r in load(reach_path)]
+        bad = [r for r in rows_r if r['verdict'] not in ('reach', 'talked', 'skip') or not r['zoho_id']]
+        if bad:
+            sys.exit(f'reach_review.json: {len(bad)} rows need a zoho_id and a verdict of reach, talked or skip')
+        dump(rows_r, os.path.join(out, 'fn_reach.json'))
     act = [{'date': a[0], 'kind': a[1], 'text': clean(a[2])} for a in load(os.path.join(work, 'activity.json'))]
     act += [{'date': r['date'], 'kind': 'Tracker snapshot (photo)', 'text': r['crm_counts']} for r in prow if r['crm_counts'] and r['date']]
     act.sort(key=lambda r: r['date'] or '')
@@ -185,7 +194,7 @@ def outlook(src, out):
 
 def sources(out):
     now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-    names = {'fn_tg_people': 'Telegram', 'fn_tg_photos': 'Telegram photos', 'fn_tg_log': 'Telegram', 'fn_ff_meetings': 'Fireflies', 'fn_ff_links': 'Fireflies', 'fn_outlook': 'Outlook mail and calendar'}
+    names = {'fn_reach': 'Outreach review', 'fn_tg_people': 'Telegram', 'fn_tg_photos': 'Telegram photos', 'fn_tg_log': 'Telegram', 'fn_ff_meetings': 'Fireflies', 'fn_ff_links': 'Fireflies', 'fn_outlook': 'Outlook mail and calendar'}
     rows = []
     for ds, label in names.items():
         p = os.path.join(out, ds + '.json')

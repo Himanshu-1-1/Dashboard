@@ -13,7 +13,7 @@
   const PAGE = 25;
   const CONTACT_IDS = ['qa_contacts', 'qa_contacts_2', 'qa_contacts_3', 'qa_contacts_4'];
   const LIVE = ['fn_events', 'fn_tasks', 'deals', 'sign_docs'];
-  const FILES = ['fn_tg_people', 'fn_tg_photos', 'fn_tg_log', 'fn_ff_meetings', 'fn_ff_links', 'fn_outlook', 'mack_network', 'fn_sources'];
+  const FILES = ['fn_reach', 'fn_tg_people', 'fn_tg_photos', 'fn_tg_log', 'fn_ff_meetings', 'fn_ff_links', 'fn_outlook', 'mack_network', 'fn_sources'];
 
   /* ---------- loaders for the two Founder Network queries (same shape as the page's other Zoho queries) ---------- */
   const coql = ({ answer }) => {
@@ -169,6 +169,7 @@
     founders: { band: null, stage: '', ver: '', source: '', soon: false, q: '', sort: 'score', page: 0 },
     timeline: { source: '', q: '', page: 0 },
     quality: { type: '', sev: '', page: 0 },
+    outreach: { at: 0 },
   };
   const go = (view, patch) => {
     st.view = view;
@@ -197,6 +198,7 @@
     model.issues = model.founders.flatMap((f) => f.issues.map((i) => Object.assign({}, i, { f })));
     model.timeline = model.founders.flatMap((f) => f.activities.filter((a) => a.day).map((a) => Object.assign({}, a, { f }))).sort((a, b) => String(b.day).localeCompare(String(a.day)));
     model.byId = new Map(model.founders.map((f) => [f.id, f]));
+    model.outreach = E.outreach(model, E.DEFAULTS, rowsOf('fn_reach') || []);
     memo = { key: keyParts, model };
     return model;
   };
@@ -216,6 +218,66 @@
     bar.append(fill, tick); bar.setAttribute('aria-label', `${intF(t.actual)} of ${intF(t.target)}; ${intF(t.expected)} expected by today`);
     c.append(top, num, bar, el('p', 'cc-fx-treason', t.reason));
     return c;
+  };
+  /* Start a conversation: two founders we haven't built a relationship with, each with a draft for Mack to send. */
+  const copyBtn = (text, label) => {
+    const b = btn('cc-fx-copy', label);
+    b.addEventListener('click', async () => {
+      let ok = false;
+      try { await navigator.clipboard.writeText(text); ok = true; } catch (e) { ok = false; }
+      b.textContent = ok ? 'Copied' : 'Select the text and copy it';
+      setTimeout(() => { b.textContent = label; }, 1800);
+    });
+    return b;
+  };
+  const drawOutreach = (m) => {
+    const list = m.outreach;
+    const sec2 = el('section', 'cc-fx-card cc-fx-reach');
+    sec2.setAttribute('aria-labelledby', 'fnx-reach-title');
+    const head2 = el('div', 'cc-fx-reachhead');
+    const h = el('h3', null, 'Start a conversation'); h.id = 'fnx-reach-title';
+    const count = el('span', 'cc-fx-reachcount', `${intF(list.length)} founders we haven’t met yet`);
+    head2.append(h, count);
+    sec2.append(head2, el('p', 'cc-fx-sub', 'Founder Network contacts with no meeting held or booked, no deal and no open task, and not already in an active conversation according to the team’s Telegram. Ranked by priority and how warm the way in is. Each draft is written for Mack and picks up from any earlier messages on record; nothing is sent from here. After sending, log it in Zoho so they leave this list.'));
+    if (!list.length) { sec2.append(el('p', 'cc-fx-empty', 'Everyone in the Founder Network has a meeting, a deal or an open task. Nobody to start with.')); return sec2; }
+    const at = st.outreach.at % list.length;
+    const pick = [list[at], list.length > 1 ? list[(at + 1) % list.length] : null].filter(Boolean);
+    const grid = el('div', 'cc-fx-reachgrid');
+    for (const c of pick) {
+      const f = c.f; const d = c.draft;
+      const card = el('article', 'cc-fx-reachcard');
+      const top = el('div', 'cc-fx-reachtop');
+      const who = el('div');
+      who.append(btn('cc-fx-name cc-fx-reachname', f.name, () => openProfile(f.id)), el('p', 'cc-fx-sub', [f.title, f.company].filter(Boolean).join(', ') || 'No role or company on record'));
+      const talkedBefore = (c.reviewed && c.reasons[0] && /agreed|talked|introduc|asked|started|outreach|messag/i.test(c.reasons[0].why)) || (f.outlook && f.outlook.identity === 'same person' && f.outlook.email_count > 0);
+      top.append(who, pill(talkedBefore ? 'Messaged, never met' : 'Not talked to yet', 'bad'));
+      const why = el('ul', 'cc-fx-reachwhy'); c.reasons.forEach((r) => why.append(el('li', null, r.why)));
+      const hist = el('ul', 'cc-fx-reachhist'); c.history.forEach((x) => hist.append(el('li', null, x)));
+      const dh = el('div', 'cc-fx-drafthead'); dh.append(el('b', null, d.channel), el('small', null, d.basis));
+      const box = el('div', 'cc-fx-draft');
+      if (d.subject) box.append(el('p', 'cc-fx-subject', 'Subject: ' + d.subject));
+      box.append(el('pre', null, d.body));
+      const acts = el('div', 'cc-fx-reachacts');
+      acts.append(copyBtn((d.subject ? 'Subject: ' + d.subject + '\n\n' : '') + d.body, 'Copy the draft'));
+      const slug = E.slugOf(f.linkedin);
+      if (slug && d.channel !== 'Email') acts.append(link('https://www.linkedin.com/in/' + encodeURIComponent(slug) + '/', 'Open LinkedIn'));
+      if (f.zoho) acts.append(link(contactHref(f), 'Open in Zoho'));
+      if (d.reviewed) dh.append(el('small', 'cc-fx-checked', 'Checked by hand against the team’s notes'));
+      card.append(top, el('h4', null, 'Why them'), why, el('h4', null, 'What’s on record'), hist, dh, box, acts);
+      grid.append(card);
+    }
+    const nav2 = el('div', 'cc-fx-reachnav');
+    if (list.length > 2) nav2.append(btn('cc-chip', 'Show two others', () => { st.outreach.at = (at + 2) % list.length; render(); }), el('small', null, `${at + 1}–${Math.min(list.length, at + 2)} of ${intF(list.length)}`));
+    sec2.append(grid, nav2);
+    if (list.leftOut && list.leftOut.length) {
+      const det = el('details', 'cc-fx-leftout');
+      det.append(el('summary', null, `${intF(list.leftOut.length)} more left out because the team is already talking to them, or they aren’t prospects`));
+      const ul = el('ul', 'cc-fx-rules');
+      list.leftOut.slice().sort((a, b) => String(a.f.name).localeCompare(String(b.f.name))).forEach((x) => { const li = el('li'); li.append(btn('cc-fx-name', x.f.name, () => openProfile(x.f.id)), document.createTextNode(': ' + x.why)); ul.append(li); });
+      det.append(ul);
+      sec2.append(det);
+    }
+    return sec2;
   };
   const drawOverview = (m) => {
     const wrap = el('div', 'cc-fx-ov');
@@ -281,7 +343,7 @@
     log.append(lul);
 
     const grid = el('div', 'cc-fx-two'); grid.append(focus, el('div', 'cc-fx-stack')); grid.lastChild.append(stages, log);
-    wrap.append(tiles, tgrid, grid);
+    wrap.append(tiles, drawOutreach(m), tgrid, grid);
     return wrap;
   };
 

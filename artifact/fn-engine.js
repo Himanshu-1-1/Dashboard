@@ -25,7 +25,8 @@
     followUpDays: 7,
     prepDays: 2,
     taskStaleDays: 45,
-    callActionDays: 60, /* action items from recorded calls older than this stay on the timeline only */
+    callActionDays: 60,
+    outreachQuietDays: 14, /* someone emailed in the last two weeks isn't suggested again yet */ /* action items from recorded calls older than this stay on the timeline only */
     weights: { strategic: 25, opportunity: 20, relationship: 15, commitments: 15, intro: 10, recency: 10, upcoming: 5 },
     bands: { high: 55, normal: 30 },
     team: ['Mack', 'Hemang', 'Shruti', 'Vansh', 'Himanshu', 'Priya', 'Harsh', 'Pulkit'],
@@ -422,6 +423,102 @@
     return out.filter((a) => (seen.has(a.key) ? false : seen.add(a.key)));
   }
 
+  /* ---------- outreach: founders we haven't built a relationship with, and a first message for each ---------- */
+  /* A candidate is a Founder Network contact in Zoho with a full name, not Do Not Contact or Priority 9, 11 or 99, with no
+     meeting held or booked, no deal or agreement, no open commitment already on someone's list, and no email in the last
+     `outreachQuietDays`. The draft is written for Mack and follows the evidence: an email when the team's Outlook shows
+     earlier mail (dates only, never its content), a LinkedIn message when they're connected with Mack, else a LinkedIn
+     connection note (300 characters at most). It never claims anything the sources don't hold. */
+  const firstName = (f) => { const t = str(f.zoho && f.zoho.First_Name) || str(f.name).split(/\s+/)[0]; return t ? t[0].toUpperCase() + t.slice(1) : ''; };
+  const monthYear = (d) => (d ? MON[Number(d.slice(5, 7)) - 1] + ' ' + d.slice(0, 4) : '');
+  const cleanCo = (c) => str(c).replace(/,?\s+(llc|inc\.?|ltd\.?|l\.l\.c\.|corp\.?|co\.)$/i, '').trim();
+  function outreachHistory(f) {
+    const o = f.outlook && f.outlook.identity === 'same person' ? f.outlook : null;
+    const li = f.linkedinConn;
+    const parts = [];
+    if (o && num(o.email_count)) parts.push(`${num(o.email_count) >= 25 ? '25+' : num(o.email_count)} email${num(o.email_count) === 1 ? '' : 's'} in the team’s Outlook${o.two_way ? ', both ways' : ', one way'}, last ${shortDay(o.last_email)}${o.last_email ? ' ' + o.last_email.slice(0, 4) : ''}`);
+    else if (f.outlook) parts.push('No email with them in the team’s Outlook');
+    else parts.push('Outlook not checked yet');
+    if (li) parts.push(`Connected with Mack on LinkedIn${li.connected ? ' since ' + monthYear(li.connected) : ''}${li.ties.length ? '; ' + li.ties.map((t) => t.replace(/^They\b/, 'they')).join(', ') : ''}`);
+    else parts.push('Not connected with Mack on LinkedIn');
+    const tg = f.activities.filter((a) => a.source === 'Telegram');
+    if (tg.length) {
+      const last = tg.filter((a) => a.day).sort((a, b) => str(b.day).localeCompare(str(a.day)))[0] || tg[0];
+      parts.push(`Mentioned ${tg.length} time${tg.length === 1 ? '' : 's'} in the team’s Telegram; latest${last.day ? ' (' + shortDay(last.day) + ')' : ''}: ${str(last.text).slice(0, 220)}${str(last.text).length > 220 ? '…' : ''}`);
+    }
+    for (const n of f.notes.slice(0, 2)) parts.push('Team note: ' + str(n.text).slice(0, 200));
+    if (!tg.length && !f.notes.length) parts.push('No notes from the team');
+    return parts;
+  }
+  function draftFor(f) {
+    const first = firstName(f);
+    const co = cleanCo(f.company);
+    const o = f.outlook && f.outlook.identity === 'same person' && num(f.outlook.email_count) ? f.outlook : null;
+    const li = f.linkedinConn;
+    const ties = li ? li.ties.join(' ').toLowerCase() : '';
+    const thanks = /they recommended|recommendation from/.test(ties) ? ' Thank you again for the recommendation.' : /they endorsed/.test(ties) ? ' Thank you again for the endorsement.' : '';
+    const at = co ? ` at ${co}` : '';
+    if (o) {
+      const when = monthYear(o.last_email);
+      const body = o.two_way
+        ? `Hi ${first},\n\nIt’s been a while since we last traded emails${when ? ' back in ' + when : ''}. I’d like to hear how things are going${at} and what you’re focused on for the rest of the year.\n\nWould you have 20 minutes for a call or a coffee in the next couple of weeks?\n\nBest,\nMack`
+        : `Hi ${first},\n\nOur last email was${when ? ' back in ' + when : ' a while ago'}, and I’d like to pick the conversation up again. I’d value hearing what you’re working on${at} these days.\n\nWould a 20-minute call in the next couple of weeks work for you?\n\nBest,\nMack`;
+      return { channel: 'Email', subject: o.two_way ? 'Catching up' : 'Picking up where we left off', body, basis: `Email, because the team’s Outlook has ${o.two_way ? 'mail both ways' : 'earlier mail'} with them${when ? ', last in ' + when : ''}.` };
+    }
+    if (li) {
+      const since = li.connected ? ` since ${li.connected.slice(0, 4)}` : '';
+      const body = `Hi ${first}, I hope all is well${at}.${thanks} I’d like to catch up and hear what you’re working on these days. Would you be open to a 20-minute call or a coffee in the next few weeks?\n\nMack`;
+      return { channel: 'LinkedIn message', subject: null, body, basis: `LinkedIn message, because they’re connected with Mack${since} and there’s no email with them on record.` };
+    }
+    let body = `Hi ${first}, I’ve been meaning to reach out. I’d like to connect and hear what you’re building${at}.\n\nMack`;
+    if (body.length > 300) body = `Hi ${first}, I’d like to connect and hear what you’re working on.\n\nMack`;
+    return { channel: 'LinkedIn connection note', subject: null, body, basis: 'A LinkedIn connection note (300 characters at most), because there’s no email or LinkedIn connection on record.' };
+  }
+  /* Telegram notes that show a conversation or meeting already happened, or a relationship that isn't a prospect. Used
+     only for people nobody has reviewed by hand. */
+  const TALKED_RE = /\b(met (him|her|them|with)|great call|teams meeting|call (today|with mack)|agreed to (meet|call|connect|catch up|an in-person)|in-person (meeting|catch-up)|lunch|brunch|breakfast|dinner|cousin|brother|sister|uncle|aunt|client contact|vendor contact)\b/i;
+  const talkedPerTelegram = (f) => f.notes.some((n) => TALKED_RE.test(str(n.text))) || f.activities.some((a) => a.source === 'Telegram' && TALKED_RE.test(str(a.text)));
+  function outreach(model, settings = DEFAULTS, reviews = []) {
+    const today = model.today;
+    const out = [];
+    const review = new Map((reviews || []).filter((r) => r && r.zoho_id).map((r) => [str(r.zoho_id), r]));
+    const leftOut = [];
+    for (const f of model.founders) {
+      if (!f.zoho || !f.inFN || f.dnc || ['9', '11', '99'].includes(f.priority)) continue;
+      if (!keyOfName(f.name) || placeholderName(f.name)) continue;
+      if (/client|referral partner|vendor/i.test(str(f.zoho.Relationship_Type).replace(/founder network/i, ''))) continue;
+      const rv = review.get(str(f.zoho.id));
+      if (rv && rv.verdict !== 'reach') { leftOut.push({ f, why: rv.why || (rv.verdict === 'talked' ? 'Already talking, per the team' : 'Left out after review'), by: 'review' }); continue; }
+      const F = f.facts;
+      if (F.meetingDays.length || F.upcoming || F.deals.length || F.agreements.length) continue;
+      if (f.actions.some((a) => a.kind === 'commitment' && a.status !== 'Done')) continue;
+      const o = f.outlook && f.outlook.identity === 'same person' ? f.outlook : null;
+      if (o && o.last_email && daysBetween(o.last_email, today) < settings.outreachQuietDays) continue;
+      if (!rv && talkedPerTelegram(f)) { leftOut.push({ f, why: 'Telegram shows a conversation or meeting already; log it in Zoho', by: 'rule' }); continue; }
+      const reasons = [];
+      let score = 0;
+      const add = (pts, why) => { score += pts; reasons.push({ points: pts, why }); };
+      const p = f.priority || str(f.telegramPriority).replace(/^P/i, '') || null;
+      if (p === '1') add(40, `Priority 1${f.priority ? ' in Zoho' : ' in the team’s chat'}`);
+      else if (p === '3') add(25, `Priority 3${f.priority ? ' in Zoho' : ' in the team’s chat'}`);
+      else if (p === '5') add(10, 'Priority 5 in Zoho');
+      if (f.linkedinConn) add(15, 'Connected with Mack on LinkedIn');
+      if (f.linkedinConn && f.linkedinConn.ties.length) add(10, 'Endorsements or recommendations with Mack');
+      if (o && o.two_way) add(10, 'Has written back to us before');
+      else if (o && num(o.email_count)) add(5, 'Earlier email on record');
+      const tgDays = f.activities.filter((a) => a.source === 'Telegram' && a.day).map((a) => a.day).sort();
+      if (tgDays.length && daysBetween(tgDays[tgDays.length - 1], today) <= 45) add(10, 'The team mentioned them in Telegram in the last 45 days');
+      if (F.intro) add(10, 'An introduction is mentioned');
+      if (f.company || f.title) add(5, 'We know their role or company');
+      if (rv && rv.why) reasons.unshift({ points: 0, why: rv.why });
+      const draft = rv && rv.body ? { channel: rv.channel || 'Message', subject: rv.subject || null, body: rv.body, basis: `${rv.channel || 'Message'}, written from the team’s Telegram notes.`, reviewed: true } : draftFor(f);
+      out.push({ f, score, reasons, history: outreachHistory(f), draft, reviewed: Boolean(rv) });
+    }
+    const list = out.sort((a, b) => b.score - a.score || str(a.f.name).localeCompare(str(b.f.name)));
+    list.leftOut = leftOut;
+    return list;
+  }
+
   /* ---------- the status engine: one place decides every color ---------- */
   const STATUS = { CRITICAL: 'Critical', BELOW: 'Below target', AT_RISK: 'At risk', ON_TRACK: 'On track', DONE: 'Completed', VERIFY: 'Needs verification', STALE: 'Stale data' };
   const TONE = { Critical: 'bad', 'Below target': 'bad', 'At risk': 'warn', 'On track': 'ok', Completed: 'ok', 'Needs verification': 'muted', 'Stale data': 'muted' };
@@ -538,7 +635,7 @@
     return settings.targets.map((t) => Object.assign({}, t, { actual: counts[t.id] }, metricStatus({ actual: counts[t.id], target: t.target, today, missing: counts[t.id] == null, baseline: baselines[t.id] || 0 }, settings), { baseline: baselines[t.id] || 0 }));
   }
 
-  const api = { DEFAULTS, STATUS, TONE, STAGES, STAGE_RULES, ctDay, daysBetween, nameToks, personKey, keyOfName, slugOf, lev, zohoIndex, matchPerson, buildFounders, facts, stageOf, actionsFor, actionStatus, metricStatus, sourceStatus, expectedShare, priorityOf, run, targets, rankAction };
+  const api = { DEFAULTS, STATUS, TONE, STAGES, STAGE_RULES, ctDay, daysBetween, nameToks, personKey, keyOfName, slugOf, lev, zohoIndex, matchPerson, buildFounders, facts, stageOf, actionsFor, actionStatus, metricStatus, sourceStatus, expectedShare, priorityOf, run, targets, rankAction, outreach, draftFor };
   root.FN_ENGINE = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
