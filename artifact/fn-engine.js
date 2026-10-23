@@ -26,7 +26,7 @@
     prepDays: 2,
     taskStaleDays: 45,
     callActionDays: 60,
-    b2bTag: 'May 2026 - 100 B2B', /* someone in the B2B partner campaign may also be in the Founder Network: not an issue */
+    b2bTag: 'May 2026 - 100 B2B', /* contacts with this tag belong to the B2B campaign and are left off this tab */
     hiddenPriorities: ['9', '11', '99'], /* left off every list; P99 signed partners still count in the scorecard */
     outreachQuietDays: 14, /* someone emailed in the last two weeks isn't suggested again yet */ /* action items from recorded calls older than this stay on the timeline only */
     weights: { strategic: 25, opportunity: 20, relationship: 15, commitments: 15, intro: 10, recency: 10, upcoming: 5 },
@@ -39,6 +39,9 @@
   const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
   const list = (v) => (Array.isArray(v) ? v : str(v).split(',').map((x) => x.trim()).filter(Boolean));
   const isFN = (rel) => list(rel).includes('Founder Network');
+  /* Mack, Oct 24, 2026: once a contact carries the B2B tag, Shruti tracks that journey on B2B, so the Founder Network
+     tab leaves it out everywhere, scorecard included. Zoho itself is not changed. */
+  const isB2BTagged = (z, settings = DEFAULTS) => Boolean(z) && list(z.Tag).includes(settings.b2bTag);
   const inB2B = (z, settings = DEFAULTS) => Boolean(z) && (list(z.Tag).includes(settings.b2bTag) || list(z.Relationship_Type).includes('Referral Partner'));
   const ctDay = (v, tz = DEFAULTS.tz) => {
     if (!v) return null;
@@ -570,7 +573,7 @@
 
   /* An action that can't wait: a commitment overdue but not so old it needs closing, or a meeting to prepare within
      `prepDays`. The same rule makes a founder Urgent. */
-  const isShown = (f, settings = DEFAULTS) => !settings.hiddenPriorities.includes(str(f.priority));
+  const isShown = (f, settings = DEFAULTS) => !settings.hiddenPriorities.includes(str(f.priority)) && !isB2BTagged(f.zoho, settings);
   const isUrgentAction = (a) => a.status !== 'Done' && ((a.kind === 'commitment' && a.status === 'Overdue' && !a.stale) || (a.category === 'Prepare for a meeting' && a.status === 'Due soon'));
 
   /* ---------- the priority engine ---------- */
@@ -623,7 +626,7 @@
   /* The records behind each target, so every count is the length of a list someone can open. */
   function targetRows(model, settings = DEFAULTS) {
     const today = model.today; const start = settings.campaign.start;
-    const fn = model.founders.filter((f) => f.inFN && !['9', '11'].includes(f.priority));
+    const fn = model.founders.filter((f) => f.inFN && !['9', '11'].includes(f.priority) && !isB2BTagged(f.zoho, settings));
     const meetings = [];
     for (const f of fn) {
       for (const d of f.facts.meetingDays) {
@@ -658,7 +661,7 @@
     return settings.targets.map((t) => Object.assign({}, t, { actual: counts[t.id], rows: counts[t.id] == null ? [] : rows[t.id] }, metricStatus({ actual: counts[t.id], target: t.target, today, missing: counts[t.id] == null, baseline: baselines[t.id] || 0 }, settings), { baseline: baselines[t.id] || 0 }));
   }
 
-  const api = { DEFAULTS, STATUS, TONE, STAGES, STAGE_RULES, ctDay, daysBetween, nameToks, personKey, keyOfName, slugOf, lev, zohoIndex, matchPerson, buildFounders, facts, stageOf, actionsFor, actionStatus, metricStatus, sourceStatus, expectedShare, priorityOf, inB2B, isShown, isUrgentAction, run, targets, targetRows, rankAction, outreach, draftFor };
+  const api = { DEFAULTS, STATUS, TONE, STAGES, STAGE_RULES, ctDay, daysBetween, nameToks, personKey, keyOfName, slugOf, lev, zohoIndex, matchPerson, buildFounders, facts, stageOf, actionsFor, actionStatus, metricStatus, sourceStatus, expectedShare, priorityOf, inB2B, isB2BTagged, isShown, isUrgentAction, run, targets, targetRows, rankAction, outreach, draftFor };
   root.FN_ENGINE = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

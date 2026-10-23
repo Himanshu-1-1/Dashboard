@@ -355,3 +355,14 @@ test('a B2B campaign contact named in the Founder Network chat is not a data iss
   assert.equal(wren.verification, 'In the B2B campaign');
   assert.ok(founders.find((f) => f.name === 'Yuri Banfield').issues.some((i) => i.type === 'In Zoho, not Founder Network'), 'outside any campaign it is still flagged');
 });
+
+test('anyone tagged for the B2B campaign is left out of the tab and the scorecard', () => {
+  const src = { now: NOW, fn: [zc('d1', 'Odile', 'Brannock', { Priority: '1' }), zc('d2', 'Pell', 'Ivers', { Priority: '1', Tag: 'May 2026 - 100 B2B, Founder_Network' })],
+    deals: [{ id: 'w1', Contact_Name_id: 'd2', Deal_Name: 'Referral', Stage: 'Closed', Created_Time: '2026-09-01T10:00:00-05:00' }] };
+  const model = E.run(src);
+  const shown = model.founders.filter((f) => E.isShown(f)).map((f) => f.zoho.id);
+  assert.deepEqual(shown, ['d1']);
+  const t = E.targets(model, src);
+  assert.equal(t.find((x) => x.id === 'members').actual, 1);
+  assert.equal(t.find((x) => x.id === 'closed').actual, 0, 'a B2B partner’s closed deal counts on B2B, not here');
+});

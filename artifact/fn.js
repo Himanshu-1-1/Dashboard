@@ -653,7 +653,7 @@
     const c = el('section', 'cc-fx-card');
     c.append(el('h3', null, 'Priority engine'), el('p', 'cc-fx-sub', `${S.bands.high}+ points is High priority, ${S.bands.normal}+ Normal, below that Nurture. An overdue commitment or a meeting within ${S.prepDays} days makes a founder Urgent; not in Zoho or an unconfirmed identity is Needs review.`));
     const t3 = tableWrap(['Signal', 'Up to', 'Scored from']);
-    c.append(el('p', 'cc-fx-sub', 'Priority 9, 11 and 99 are hidden from every list; signed P99 partners still count in the scorecard.'));
+    c.append(el('p', 'cc-fx-sub', 'Anyone tagged for the B2B campaign is left out everywhere, scorecard included; Shruti tracks them on B2B. Priority 9, 11 and 99 are hidden from every list; signed P99 partners outside B2B still count in the scorecard.'));
     const why = { strategic: 'Zoho Priority (1 full, 3 most, 5 some); the chat’s priority when Zoho has none', opportunity: 'An open deal, or a referral agreement sent and not signed', relationship: 'Meeting days held, two-way contact, or endorsements on LinkedIn', commitments: 'Any open recorded commitment', intro: 'An introduction or referral mentioned in the notes', recency: `Priority 1 or 3 (Zoho, else the chat) with no interaction for 30+ days, full points past 60`, upcoming: 'A meeting in the next 7 days' };
     Object.entries(S.weights).forEach(([k, v]) => { const tr = el('tr'); tr.append(el('td', null, k[0].toUpperCase() + k.slice(1)), el('td', null, String(v)), el('td', null, why[k])); t3.tbody.append(tr); });
     c.append(t3.wrap);
@@ -767,7 +767,7 @@
     const missingRows = SRC_ROWS.filter((r) => statusOf(r.id) !== 'ok');
     const stale = window.CC_MAIL_PRIVATE && missingRows.length && missingRows.every((r) => r.kind === 'imported') ? ['Telegram, Fireflies, Outlook and LinkedIn (not in this build yet)'] : missingRows.map((r) => r.label);
     const hidden = m.all.length - m.founders.length;
-    lede.textContent = `${intF(members.length)} in Zoho and ${intF(m.founders.filter((f) => !f.inFN).length)} more from Telegram or the Founder_Network tag, as of ${dayF(m.today)} CT.${hidden ? ` ${intF(hidden)} at Priority 9, 11 or 99 are hidden.` : ''}${stale.length ? ' Not loaded: ' + stale.join(', ') + '.' : ''}`;
+    lede.textContent = `${intF(members.length)} in Zoho and ${intF(m.founders.filter((f) => !f.inFN).length)} more from Telegram or the Founder_Network tag, as of ${dayF(m.today)} CT.${hidden ? ` ${intF(hidden)} hidden: in the B2B campaign, or at Priority 9, 11 or 99.` : ''}${stale.length ? ' Not loaded: ' + stale.join(', ') + '.' : ''}`;
     const view = { overview: drawOverview, actions: drawActions, founders: drawFounders, pipeline: drawPipeline, timeline: drawTimeline, quality: drawQuality, sources: drawSources, rules: drawRules }[st.view];
     const focusId = document.activeElement && root.contains(document.activeElement) && document.activeElement.matches('input') ? document.activeElement.className : null;
     body.replaceChildren(view(m));
