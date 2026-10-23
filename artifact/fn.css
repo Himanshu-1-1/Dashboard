@@ -50,16 +50,55 @@
 .cc-fx-pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--k); flex: none; }
 .cc-fx-warntext { color: color-mix(in oklab, var(--fx-warn) 75%, var(--color-fg)); }
 
-/* ---------- overview tiles ---------- */
+/* ---------- overview tiles: one semantic family per card, set by the existing tone ---------- */
+.cc-fx-root {
+  --fx-t-crit: #b7373f; --fx-t-crit-bg: #fff6f5; --fx-t-crit-bg2: #fdeeed;
+  --fx-t-amber: #a66a16; --fx-t-amber-bg: #fffaf0;
+  --fx-t-orange: #b0571f; --fx-t-orange-bg: #fff7f1;
+  --fx-t-indigo: #405ca6; --fx-t-indigo-bg: #f4f7fd;
+  --fx-t-green: var(--fx-ok); --fx-t-green-bg: color-mix(in oklab, var(--fx-ok) 5%, var(--color-panel));
+  --fx-t-gray: color-mix(in oklab, var(--color-fg-muted) 65%, var(--color-panel)); --fx-t-gray-bg: color-mix(in oklab, var(--color-fg) 3%, var(--color-panel));
+  --fx-t-border: #e6e9ef;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .cc-fx-root {
+    --fx-t-crit: #f07a80; --fx-t-crit-bg: color-mix(in oklab, #f07a80 8%, var(--color-panel)); --fx-t-crit-bg2: color-mix(in oklab, #f07a80 12%, var(--color-panel));
+    --fx-t-amber: #e2ad5b; --fx-t-amber-bg: color-mix(in oklab, #e2ad5b 7%, var(--color-panel));
+    --fx-t-orange: #ec9b63; --fx-t-orange-bg: color-mix(in oklab, #ec9b63 7%, var(--color-panel));
+    --fx-t-indigo: #9aa8f0; --fx-t-indigo-bg: color-mix(in oklab, #9aa8f0 8%, var(--color-panel));
+    --fx-t-border: var(--color-border-line);
+  }
+}
+:root[data-theme="dark"] .cc-fx-root {
+  --fx-t-crit: #f07a80; --fx-t-crit-bg: color-mix(in oklab, #f07a80 8%, var(--color-panel)); --fx-t-crit-bg2: color-mix(in oklab, #f07a80 12%, var(--color-panel));
+  --fx-t-amber: #e2ad5b; --fx-t-amber-bg: color-mix(in oklab, #e2ad5b 7%, var(--color-panel));
+  --fx-t-orange: #ec9b63; --fx-t-orange-bg: color-mix(in oklab, #ec9b63 7%, var(--color-panel));
+  --fx-t-indigo: #9aa8f0; --fx-t-indigo-bg: color-mix(in oklab, #9aa8f0 8%, var(--color-panel));
+  --fx-t-border: var(--color-border-line);
+}
 .cc-fx-tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
-.cc-fx-tile { --k: var(--color-fg-muted); appearance: none; font: inherit; color: inherit; text-align: left; cursor: pointer; display: grid; gap: 4px; align-content: start; padding: 14px 16px; border-radius: var(--fx-radius);
-  border: 1px solid var(--fx-line-strong); background: var(--color-panel); box-shadow: var(--fx-shadow); transition: border-color var(--fx-ease), background-color var(--fx-ease); }
-.cc-fx-tile:hover { border-color: color-mix(in oklab, var(--k) 40%, var(--fx-line-strong)); background: color-mix(in oklab, var(--k) 3%, var(--color-panel)); }
+.cc-fx-tile { --k: var(--fx-t-gray); --surf: var(--fx-t-gray-bg); appearance: none; font: inherit; color: inherit; text-align: left; cursor: pointer; display: grid; gap: 4px; align-content: start; padding: 13px 16px 14px; border-radius: var(--fx-radius);
+  border: 1px solid var(--fx-t-border); border-top: 3px solid var(--k); background: var(--surf); box-shadow: var(--fx-shadow); transition: border-color var(--fx-ease), background-color var(--fx-ease); }
+.cc-fx-tile:hover { border-color: color-mix(in oklab, var(--k) 35%, var(--fx-t-border)); border-top-color: var(--k); background: color-mix(in oklab, var(--k) 4%, var(--surf)); }
 .cc-fx-tile:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklab, var(--k) 25%, transparent); }
-.cc-fx-tilelab { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: var(--cds-font-weight-medium); color: var(--fx-ink); }
+.cc-fx-tiletop { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; min-width: 0; min-height: 36px; }
+.cc-fx-tilelab { line-height: 1.35; padding-top: 1px; }
+.cc-fx-tilelab { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: var(--cds-font-weight-medium); color: var(--fx-ink); min-width: 0; }
 .cc-fx-tilelab::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--k); flex: none; }
-.cc-fx-tile b { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: 34px; line-height: 1.1; letter-spacing: -0.01em; color: color-mix(in oklab, var(--k) 70%, var(--color-fg)); }
+.cc-fx-tileflag { flex: none; font-size: 11px; line-height: 1.3; font-weight: var(--cds-font-weight-medium); letter-spacing: .01em; padding: 1px 7px; border-radius: 999px; white-space: nowrap;
+  color: color-mix(in oklab, var(--k) 85%, var(--color-fg)); background: color-mix(in oklab, var(--k) 10%, var(--color-panel)); border: 1px solid color-mix(in oklab, var(--k) 22%, transparent); }
+.cc-fx-tile b { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: 34px; line-height: 1.1; letter-spacing: -0.01em; color: var(--k); }
 .cc-fx-tile small { font-size: 12px; line-height: 1.4; color: var(--color-fg-muted); }
+/* families: red for founders and commitments, amber for review, warm orange for Zoho data fixes, indigo for scheduling */
+.cc-fx-tile.cc-fx-bad { --k: var(--fx-t-crit); --surf: var(--fx-t-crit-bg); }
+.cc-fx-tile-overdue.cc-fx-bad { --surf: var(--fx-t-crit-bg2); border-color: color-mix(in oklab, var(--fx-t-crit) 22%, var(--fx-t-border)); border-top-color: var(--k); }
+.cc-fx-tile-overdue.cc-fx-bad b { font-weight: 500; }
+.cc-fx-tile-review.cc-fx-warn { --k: var(--fx-t-amber); --surf: var(--fx-t-amber-bg); }
+.cc-fx-tile-fix.cc-fx-warn { --k: var(--fx-t-orange); --surf: var(--fx-t-orange-bg); }
+.cc-fx-tile-meet.cc-fx-info { --k: var(--fx-t-indigo); --surf: var(--fx-t-indigo-bg); }
+.cc-fx-tile.cc-fx-ok { --k: var(--fx-t-green); --surf: var(--fx-t-green-bg); }
+.cc-fx-tile.cc-fx-muted { --k: var(--fx-t-gray); --surf: var(--fx-t-gray-bg); }
+.cc-fx-tile.cc-fx-muted b { color: color-mix(in oklab, var(--color-fg) 75%, var(--color-fg-muted)); }
 
 /* ---------- targets ---------- */
 .cc-fx-targets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
@@ -269,6 +308,7 @@
 @media (max-width: 900px) { .cc-fx-reachgrid { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 640px) {
   .cc-fx-root { gap: 14px; }
+  .cc-fx-tiletop { min-height: 0; }
   .cc-fx-card { padding: 16px; }
   .cc-fx-tiles, .cc-fx-targets, .cc-fx-board { grid-template-columns: minmax(0, 1fr); }
   .cc-fx-tile b { font-size: 30px; }
@@ -284,8 +324,8 @@
 }
 
 /* tones last, so they win over each component's default */
-:is(.cc-fx-pill, .cc-fx-tile, .cc-fx-qtile).cc-fx-ok { --k: var(--fx-ok); }
-:is(.cc-fx-pill, .cc-fx-tile, .cc-fx-qtile).cc-fx-warn { --k: var(--fx-warn); }
-:is(.cc-fx-pill, .cc-fx-tile, .cc-fx-qtile).cc-fx-bad { --k: var(--fx-bad); }
-:is(.cc-fx-pill, .cc-fx-tile, .cc-fx-qtile).cc-fx-info { --k: var(--fx-accent); }
-:is(.cc-fx-pill, .cc-fx-tile, .cc-fx-qtile).cc-fx-muted { --k: var(--fx-muted); }
+:is(.cc-fx-pill, .cc-fx-qtile).cc-fx-ok { --k: var(--fx-ok); }
+:is(.cc-fx-pill, .cc-fx-qtile).cc-fx-warn { --k: var(--fx-warn); }
+:is(.cc-fx-pill, .cc-fx-qtile).cc-fx-bad { --k: var(--fx-bad); }
+:is(.cc-fx-pill, .cc-fx-qtile).cc-fx-info { --k: var(--fx-accent); }
+:is(.cc-fx-pill, .cc-fx-qtile).cc-fx-muted { --k: var(--fx-muted); }

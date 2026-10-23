@@ -291,13 +291,22 @@
     const urgent = m.founders.filter((f) => f.priorityInfo.band === 'Urgent');
 
     const tiles = el('div', 'cc-fx-tiles');
-    const tile = (tone, label, n, hint, fn) => { const b = btn('cc-fx-tile cc-fx-' + tone, null, fn); b.append(el('span', 'cc-fx-tilelab', label), el('b', null, intF(n)), el('small', null, hint)); return b; };
+    /* Each tile keeps its tone from the existing rules (anything open is red or amber, nothing open is clear); the kind
+       only picks the color family, and the flag says the status in words so it never rests on color alone. */
+    const tile = (tone, kind, label, n, hint, flag, fn) => {
+      const b = btn(`cc-fx-tile cc-fx-tile-${kind} cc-fx-${tone}`, null, fn);
+      const top = el('span', 'cc-fx-tiletop'); top.append(el('span', 'cc-fx-tilelab', label), el('span', 'cc-fx-tileflag', flag));
+      b.append(top, el('b', null, intF(n)), el('small', null, hint));
+      b.setAttribute('aria-label', `${label}: ${intF(n)}. ${flag}. ${hint}`);
+      return b;
+    };
+    const outlookIn = statusOf('fn_outlook') === 'ok';
     tiles.append(
-      tile(urgent.length ? 'bad' : 'ok', 'Urgent founders', urgent.length, 'an overdue commitment or a meeting within 2 days', () => go('founders', { band: 'Urgent' })),
-      tile(overdue.length ? 'bad' : 'ok', 'Overdue commitments', overdue.length, 'Zoho tasks and meetings past due', () => go('actions', { status: 'Overdue', done: false })),
-      tile('info', 'Meeting in the next 7 days', soon.length, 'founders with a meeting on Zoho or the team calendars', () => go('founders', { soon: true, band: null, stage: '', sort: 'meeting' })),
-      tile(review ? 'warn' : 'ok', 'Waiting for review', review, 'asks from Telegram and recorded calls to confirm', () => go('actions', { status: 'Needs review', done: false })),
-      tile(fixes.length ? 'warn' : 'ok', 'Zoho fixes', fixes.length, 'people missing from Zoho or not marked Founder Network', () => go('quality', { type: '', sev: 'high' })),
+      tile(urgent.length ? 'bad' : 'ok', 'urgent', 'Urgent founders', urgent.length, 'an overdue commitment or a meeting within 2 days', urgent.length ? 'Critical' : 'Clear', () => go('founders', { band: 'Urgent' })),
+      tile(overdue.length ? 'bad' : 'ok', 'overdue', 'Overdue commitments', overdue.length, 'Zoho tasks and meetings past due', overdue.length ? 'Overdue' : 'Clear', () => go('actions', { status: 'Overdue', done: false })),
+      tile(outlookIn ? 'info' : 'muted', 'meet', 'Meeting in the next 7 days', soon.length, outlookIn ? 'founders with a meeting on Zoho or the team calendars' : 'founders with a meeting in Zoho; the team calendars aren’t loaded yet', outlookIn ? 'Schedule' : 'Partial', () => go('founders', { soon: true, band: null, stage: '', sort: 'meeting' })),
+      tile(review ? 'warn' : 'ok', 'review', 'Waiting for review', review, 'asks from Telegram and recorded calls to confirm', review ? 'Pending' : 'Clear', () => go('actions', { status: 'Needs review', done: false })),
+      tile(fixes.length ? 'warn' : 'ok', 'fix', 'Zoho fixes', fixes.length, 'people missing from Zoho or not marked Founder Network', fixes.length ? 'Data to fix' : 'Clear', () => go('quality', { type: '', sev: 'high' })),
     );
 
     const tgrid = el('section', 'cc-fx-card');
