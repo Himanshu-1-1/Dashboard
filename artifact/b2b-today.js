@@ -2743,12 +2743,14 @@
     (a.next ? 0 : 1) - (b.next ? 0 : 1) || String(a.next || '').localeCompare(String(b.next || ''))
     || (a.priority === '1' ? 0 : 1) - (b.priority === '1' ? 0 : 1)
     || String(b.last || '').localeCompare(String(a.last || '')) || String(a.name).localeCompare(String(b.name)));
-  /* Partner meeting briefs (private dashboard only). */
+  /* Partner meeting briefs. On the public site they arrive sealed (b2b.sealed.json); without them the section stays hidden. */
   let brQuery = '';
   brSearch.addEventListener('input', () => { brQuery = brSearch.value.trim().toLowerCase(); drawBriefs(); });
   const drawBriefs = () => {
-    if (window.CC_MAIL_PRIVATE) { br.hidden = true; return; }
-    const st = state(['b2b_briefs', 'b2b_people', 'b2b_ff']);
+    const briefsStatus = dash.data('b2b_briefs').status;
+    if (window.CC_MAIL_PRIVATE && briefsStatus !== 'ok') { br.hidden = true; return; }
+    br.hidden = false;
+    const st = state(['b2b_briefs', 'b2b_people']);
     if (st !== 'ok') {
       brCount.textContent = '';
       brBody.replaceChildren(el('p', st === 'error' ? 'cc-b2-bad' : 'cc-b2-insight', st === 'error' ? 'The briefs didn’t load. Reload, or check the source in the dashboard menu.' : 'Loading the briefs…'));
@@ -2756,12 +2758,12 @@
     }
     const people = new Map(rows('b2b_people').map((p) => [String(p.id), p]));
     const lastRec = new Map();
-    rows('b2b_ff').forEach((r) => { if ((r.held === true || r.held === 'true') && r.ff_id) { const k = String(r.Zoho_Id); const prev = lastRec.get(k); if (!prev || r.at > prev.at) lastRec.set(k, r); } });
+    if (dash.data('b2b_ff').status === 'ok') rows('b2b_ff').forEach((r) => { if ((r.held === true || r.held === 'true') && r.ff_id) { const k = String(r.Zoho_Id); const prev = lastRec.get(k); if (!prev || r.at > prev.at) lastRec.set(k, r); } });
     const all = rows('b2b_briefs').map((b) => ({ ...b, p: people.get(String(b.zoho_id)) || null })).filter((b) => b.p)
       .sort((a, b) => String(b.last_call || '').localeCompare(String(a.last_call || '')) || String(a.p.name).localeCompare(String(b.p.name)));
     const hay = (b) => [b.p.name, b.p.account, b.talked_about, ...(b.open_points || []), ...(b.ask_next || []), b.next_meeting].join(' ').toLowerCase();
     const list = brQuery ? all.filter((b) => hay(b).includes(brQuery)) : all;
-    brCount.textContent = brQuery ? `${intF(list.length)} of ${intF(all.length)} partners` : `${intF(all.length)} partners`;
+    brCount.textContent = brQuery ? `${intF(list.length)} of ${intF(all.length)} partners` : `${intF(all.length)} partner${all.length === 1 ? '' : 's'}`;
     if (!list.length) { brBody.replaceChildren(el('p', 'cc-b2-empty', all.length ? 'No brief matches. Try another word.' : 'No briefs yet.')); return; }
     brBody.replaceChildren(...list.map((b) => {
       const d = el('details', 'cc-br-item');
@@ -2780,7 +2782,8 @@
       const foot = el('div', 'cc-br-foot');
       foot.append(link('Contacts', b.p.id, 'Open in Zoho'));
       const rec = lastRec.get(String(b.zoho_id));
-      if (rec) { const a = el('a', 'cc-zlink', 'Open the last recording'); a.href = 'https://app.fireflies.ai/view/' + encodeURIComponent(rec.ff_id); a.target = '_blank'; a.rel = 'noopener'; foot.append(a); }
+      const ffId = rec ? rec.ff_id : b.last_ff_id;
+      if (ffId) { const a = el('a', 'cc-zlink', 'Open the last recording'); a.href = 'https://app.fireflies.ai/view/' + encodeURIComponent(ffId); a.target = '_blank'; a.rel = 'noopener'; foot.append(a); }
       body.append(foot);
       d.append(sm, body);
       return d;
