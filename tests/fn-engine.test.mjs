@@ -334,3 +334,11 @@ test('outreach: hand-written drafts win, connection notes stay under 300 charact
   assert.equal(quin.draft.channel, 'LinkedIn connection note'); assert.ok(quin.draft.body.length <= 300);
   assert.ok(!list.some((c) => c.f.zoho.id === 'b3'), 'emailed three days ago: not suggested again yet');
 });
+
+test('every target count is the length of the list it opens', () => {
+  const src = fixture();
+  const model = E.run(src);
+  for (const t of E.targets(model, src)) assert.equal(t.actual, t.rows.length, t.id);
+  const meetings = E.targets(model, src).find((t) => t.id === 'meetings').rows;
+  assert.ok(meetings.every((r) => r.f && r.day && r.sources.length));
+});

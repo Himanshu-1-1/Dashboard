@@ -172,6 +172,7 @@
     timeline: { source: '', q: '', page: 0 },
     quality: { type: '', sev: '', page: 0 },
     outreach: { at: 0 },
+    overview: { target: null },
   };
   const go = (view, patch) => {
     st.view = view;
@@ -209,6 +210,13 @@
   /* ---------- Overview ---------- */
   const targetCard = (t, today) => {
     const c = el('article', 'cc-fx-target cc-fx-t-' + toneOf(t.status));
+    /* the whole card opens the records behind its number */
+    const open = st.overview.target === t.id;
+    c.dataset.tid = t.id; c.tabIndex = 0; c.setAttribute('role', 'button'); c.setAttribute('aria-pressed', String(open)); c.setAttribute('aria-controls', 'fnx-target-list');
+    c.setAttribute('aria-label', `${t.label}: ${intF(t.actual)} of ${intF(t.target)}, ${t.status}. ${open ? 'Hide' : 'Show'} the records`);
+    const toggle = () => { st.overview.target = open ? null : t.id; render(); const again = root.querySelector(`.cc-fx-target[data-tid="${t.id}"]`); if (again) again.focus({ preventScroll: true }); const l = document.getElementById('fnx-target-list'); if (l && !open) l.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); };
+    c.addEventListener('click', (e) => { if (!e.target.closest('a')) toggle(); });
+    c.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
     c.dataset.source = 'fn_targets'; c.dataset.where = 'id=' + t.id;
     const top = el('div', 'cc-fx-ttop'); top.append(el('span', 'cc-fx-tlab', t.label), pill(t.status));
     const num = el('div', 'cc-fx-tnum');
@@ -218,8 +226,34 @@
     const fill = el('i'); fill.style.width = `${Math.min(100, ((t.actual || 0) / t.target) * 100)}%`;
     const tick = el('s'); tick.style.left = `${Math.min(100, ((t.expected || 0) / t.target) * 100)}%`; tick.title = `Expected by today: ${intF(t.expected)}`;
     bar.append(fill, tick); bar.setAttribute('aria-label', `${intF(t.actual)} of ${intF(t.target)}; ${intF(t.expected)} expected by today`);
-    c.append(top, num, bar, el('p', 'cc-fx-treason', t.reason));
+    c.append(top, num, bar, el('p', 'cc-fx-treason', t.reason), el('span', 'cc-fx-topen', open ? 'Hide the list' : `View ${intF(t.actual)} ${t.actual === 1 ? 'record' : 'records'}`));
     return c;
+  };
+  /* The list behind one target: same rows the count came from. */
+  const targetList = (t) => {
+    const box = el('div', 'cc-fx-tlist'); box.id = 'fnx-target-list';
+    const hd = el('div', 'cc-fx-cardhead');
+    hd.append(el('h3', null, `${t.label}: ${intF(t.rows.length)}`), btn('cc-chip', 'Close', () => { st.overview.target = null; render(); const again = root.querySelector(`.cc-fx-target[data-tid="${t.id}"]`); if (again) again.focus({ preventScroll: true }); }));
+    box.append(hd);
+    const nameCell = (f) => { const td = el('td'); td.append(btn('cc-fx-name', f.name, () => openProfile(f.id))); if (f.company) td.append(el('small', null, f.company)); return td; };
+    const zLink = (ref, text) => { const td = el('td'); if (ref) td.append(link(zohoHref(ref), text)); return td; };
+    let t2;
+    if (t.id === 'members') {
+      t2 = tableWrap(['Founder', 'Priority', 'Stage', 'Added to Zoho', '']);
+      t.rows.forEach(({ f }) => { const tr = el('tr'); tr.append(nameCell(f), el('td', null, f.priority ? 'P' + f.priority : '—'), el('td', null, f.stage), el('td', null, dayF(f.zoho && f.zoho.Created_Time)), zLink(f.zoho ? 'Contacts/' + f.zoho.id : null, 'Open in Zoho')); t2.tbody.append(tr); });
+    } else if (t.id === 'meetings') {
+      t2 = tableWrap(['Date', 'Founder', 'Recorded in', '']);
+      t.rows.forEach((r) => { const tr = el('tr'); const srcs = el('td', 'cc-fx-srcs'); r.sources.forEach((x) => srcs.append(srcChip(x))); tr.append(el('td', null, dayF(r.day)), nameCell(r.f), srcs, zLink(r.ref, /fireflies/.test(r.ref || '') ? 'Open call' : 'Open in Zoho')); t2.tbody.append(tr); });
+    } else if (t.id === 'agreements_sent' || t.id === 'agreements_signed') {
+      t2 = tableWrap(['Founder', 'State', 'Sent', 'Signed', '']);
+      t.rows.forEach(({ f, a }) => { const tr = el('tr'); const stt = el('td'); stt.append(pill(a.state, a.state === 'Signed' ? 'ok' : /expired/i.test(a.state) ? 'bad' : 'warn')); tr.append(nameCell(f), stt, el('td', null, dayF(a.sent)), el('td', null, a.state === 'Signed' ? dayF(a.completed) : '—'), zLink(a.id ? 'CustomModule1/' + a.id : (f.zoho ? 'Contacts/' + f.zoho.id : null), 'Open in Zoho')); t2.tbody.append(tr); });
+    } else {
+      t2 = tableWrap(['Deal', 'Founder', 'Stage', 'Type', 'Created', '']);
+      t.rows.forEach(({ f, d }) => { const tr = el('tr'); tr.append(el('td', null, d.Deal_Name || '—'), nameCell(f), el('td', null, d.Stage || '—'), el('td', null, d.Deal_Type || '—'), el('td', null, dayF(d.Created_Time)), zLink('Potentials/' + d.id, 'Open in Zoho')); t2.tbody.append(tr); });
+    }
+    if (!t.rows.length) { const tr = el('tr'); const td = el('td', 'cc-fx-empty', t.actual == null ? 'This source didn’t load, so there’s nothing to list.' : 'Nothing yet.'); td.colSpan = 6; tr.append(td); t2.tbody.append(tr); }
+    box.append(t2.wrap);
+    return box;
   };
   /* Start a conversation: two founders we haven't built a relationship with, each with a draft for Mack to send. */
   const copyBtn = (text, label) => {
@@ -317,6 +351,8 @@
     const tgrid = el('section', 'cc-fx-card');
     tgrid.append(cardHead('Scorecard targets', `Pace to ${dayF(E.DEFAULTS.campaign.end)}`));
     const tg = el('div', 'cc-fx-targets'); m.targets.forEach((t) => tg.append(targetCard(t, today))); tgrid.append(tg);
+    const picked = m.targets.find((t) => t.id === st.overview.target);
+    if (picked) tgrid.append(targetList(picked));
 
     const focus = el('section', 'cc-fx-card');
     focus.append(cardHead('Who needs attention first'));

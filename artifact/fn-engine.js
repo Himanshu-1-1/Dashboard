@@ -612,30 +612,45 @@
   function rankAction(a) { return ACTION_ORDER.indexOf(a.statusLabel || actionStatus(a)) * 1000 + (a.stale ? 500 : 0) - Math.min(a.overdueDays || 0, 499); }
 
   /* ---------- targets ---------- */
-  function targets(model, src, settings = DEFAULTS) {
+  /* The records behind each target, so every count is the length of a list someone can open. */
+  function targetRows(model, settings = DEFAULTS) {
     const today = model.today; const start = settings.campaign.start;
     const fn = model.founders.filter((f) => f.inFN && !['9', '11'].includes(f.priority));
-    const meetingDays = new Set();
-    for (const f of fn) for (const d of f.facts.meetingDays) if (d >= start && d <= today) meetingDays.add(f.id + '|' + d);
-    const ag = fn.flatMap((f) => f.facts.agreements);
+    const meetings = [];
+    for (const f of fn) {
+      for (const d of f.facts.meetingDays) {
+        if (d < start || d > today) continue;
+        const src = [...new Set(f.activities.filter((a) => a.day === d && ((a.type === 'Meeting' && a.held) || a.type === 'Recorded call')).map((a) => a.source))];
+        const ref = (f.activities.find((a) => a.day === d && a.ref && ((a.type === 'Meeting' && a.held) || a.type === 'Recorded call')) || {}).ref || null;
+        meetings.push({ f, day: d, sources: src, ref });
+      }
+    }
+    const ag = fn.flatMap((f) => f.facts.agreements.map((a) => ({ f, a })));
+    return {
+      members: fn.map((f) => ({ f })),
+      meetings: meetings.sort((x, y) => str(y.day).localeCompare(str(x.day))),
+      agreements_sent: ag,
+      agreements_signed: ag.filter((x) => x.a.state === 'Signed'),
+      opportunities: fn.flatMap((f) => f.facts.openDeals.map((d) => ({ f, d }))),
+      closed: fn.flatMap((f) => f.facts.won.map((d) => ({ f, d }))),
+    };
+  }
+  function targets(model, src, settings = DEFAULTS) {
+    const today = model.today; const start = settings.campaign.start;
+    const rows = targetRows(model, settings);
     const before = (d) => { const x = ctDay(d, settings.tz); return Boolean(x && x < start); };
     const baselines = {
-      members: fn.filter((f) => f.zoho && before(f.zoho.Created_Time)).length,
-      agreements_sent: ag.filter((a) => before(a.sent)).length,
-      agreements_signed: ag.filter((a) => a.state === 'Signed' && before(a.completed)).length,
+      members: rows.members.filter((x) => x.f.zoho && before(x.f.zoho.Created_Time)).length,
+      agreements_sent: rows.agreements_sent.filter((x) => before(x.a.sent)).length,
+      agreements_signed: rows.agreements_signed.filter((x) => before(x.a.completed)).length,
     };
-    const counts = {
-      members: src.missing && src.missing.fn ? null : fn.length,
-      meetings: src.missing && src.missing.events ? null : meetingDays.size,
-      agreements_sent: src.missing && src.missing.agreements ? null : ag.length,
-      agreements_signed: src.missing && src.missing.agreements ? null : ag.filter((a) => a.state === 'Signed').length,
-      opportunities: src.missing && src.missing.deals ? null : fn.reduce((t, f) => t + f.facts.openDeals.length, 0),
-      closed: src.missing && src.missing.deals ? null : fn.reduce((t, f) => t + f.facts.won.length, 0),
-    };
-    return settings.targets.map((t) => Object.assign({}, t, { actual: counts[t.id] }, metricStatus({ actual: counts[t.id], target: t.target, today, missing: counts[t.id] == null, baseline: baselines[t.id] || 0 }, settings), { baseline: baselines[t.id] || 0 }));
+    const missingFor = { members: 'fn', meetings: 'events', agreements_sent: 'agreements', agreements_signed: 'agreements', opportunities: 'deals', closed: 'deals' };
+    const counts = {};
+    for (const id of Object.keys(rows)) counts[id] = src.missing && src.missing[missingFor[id]] ? null : rows[id].length;
+    return settings.targets.map((t) => Object.assign({}, t, { actual: counts[t.id], rows: counts[t.id] == null ? [] : rows[t.id] }, metricStatus({ actual: counts[t.id], target: t.target, today, missing: counts[t.id] == null, baseline: baselines[t.id] || 0 }, settings), { baseline: baselines[t.id] || 0 }));
   }
 
-  const api = { DEFAULTS, STATUS, TONE, STAGES, STAGE_RULES, ctDay, daysBetween, nameToks, personKey, keyOfName, slugOf, lev, zohoIndex, matchPerson, buildFounders, facts, stageOf, actionsFor, actionStatus, metricStatus, sourceStatus, expectedShare, priorityOf, run, targets, rankAction, outreach, draftFor };
+  const api = { DEFAULTS, STATUS, TONE, STAGES, STAGE_RULES, ctDay, daysBetween, nameToks, personKey, keyOfName, slugOf, lev, zohoIndex, matchPerson, buildFounders, facts, stageOf, actionsFor, actionStatus, metricStatus, sourceStatus, expectedShare, priorityOf, run, targets, targetRows, rankAction, outreach, draftFor };
   root.FN_ENGINE = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
