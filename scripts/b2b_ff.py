@@ -6,6 +6,11 @@ addresses, Fireflies titles, attendee lists and summaries) stay there and are ne
 
   build   DIR   DIR/contacts.json + DIR/meetings.json -> DIR/b2b_ff.json: one row per (prospect, recorded call)
                 {Zoho_Id, at, held, minutes, by, ff_id, as_of}
+  pages   DIR   DIR/p*.json (fireflies_get_transcripts pages, format json) -> DIR/meetings.json, one entry per call ID
+  merge   DIR FROM
+                daily refresh: DIR/meetings.json holds only calls from FROM (YYYY-MM-DD, UTC) on, so after build this keeps
+                the rows of DIR/prev/b2b_ff.json that start before FROM (for prospects still in contacts.json) and adds
+                the rows just built; DIR/b2b_ff.json is rewritten
   jsfile  DIR   DIR/b2b_ff.json -> DIR/ff.js (window.__FF__) for the locked public site; drops ff_id and refuses any
                 field that isn't an ID, time, number or flag
 
@@ -194,7 +199,49 @@ def jsfile(d):
     print('wrote', d + '/ff.js')
 
 
+def pages(d):
+    import glob
+    files = sorted(glob.glob(d + '/p*.json'))
+    if not files:
+        sys.exit('no page files (p*.json) in ' + d)
+    meetings = {}
+    for f in files:
+        body = json.load(open(f))
+        if isinstance(body, dict):
+            body = body.get('transcripts') or body.get('data') or []
+        if not isinstance(body, list):
+            sys.exit(f + ' is not a list of calls')
+        for m in body:
+            if isinstance(m, dict) and m.get('id'):
+                meetings[str(m['id'])] = m
+    with open(d + '/meetings.json', 'w') as f:
+        json.dump(meetings, f)
+    print(json.dumps({'pages': len(files), 'calls': len(meetings)}))
+
+
+def merge(d, since):
+    if not re.fullmatch(r'\d{4}-\d\d-\d\d', since):
+        sys.exit('FROM must be YYYY-MM-DD')
+    prev = json.load(open(d + '/prev/b2b_ff.json'))
+    if not isinstance(prev, list) or not prev:
+        sys.exit('prev/b2b_ff.json is empty; run a full build instead')
+    fresh = json.load(open(d + '/b2b_ff.json'))
+    ids = set(load_contacts(d))
+    cut = since + 'T00:00:00Z'
+    kept = [r for r in prev if r['at'] < cut and str(r['Zoho_Id']) in ids]
+    seen = {(str(r['Zoho_Id']), r['ff_id']) for r in fresh}
+    out = sorted(fresh + [r for r in kept if (str(r['Zoho_Id']), r['ff_id']) not in seen], key=lambda r: (r['Zoho_Id'], r['at']))
+    with open(d + '/b2b_ff.json', 'w') as f:
+        json.dump(out, f)
+    print(json.dumps({'kept_before_window': len(kept), 'built_in_window': len(fresh), 'rows': len(out),
+                      'prospects_met': len({r['Zoho_Id'] for r in out if r['held']})}))
+
+
 if __name__ == '__main__':
-    if len(sys.argv) != 3 or sys.argv[1] not in ('build', 'jsfile'):
+    cmd = sys.argv[1] if len(sys.argv) > 1 else ''
+    if cmd in ('build', 'jsfile', 'pages') and len(sys.argv) == 3:
+        {'build': build, 'jsfile': jsfile, 'pages': pages}[cmd](sys.argv[2].rstrip('/'))
+    elif cmd == 'merge' and len(sys.argv) == 4:
+        merge(sys.argv[2].rstrip('/'), sys.argv[3])
+    else:
         sys.exit(__doc__)
-    {'build': build, 'jsfile': jsfile}[sys.argv[1]](sys.argv[2].rstrip('/'))
