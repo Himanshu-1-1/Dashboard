@@ -124,6 +124,8 @@
     p.append(prev, el('span', null, total ? `${page * PAGE + 1}–${Math.min(total, (page + 1) * PAGE)} of ${intF(total)}` : 'Nothing to show'), next);
     return p;
   };
+  /* card heading with an optional short note on the right */
+  const cardHead = (title, meta, id) => { const h = el('div', 'cc-fx-cardhead'); const t = el('h3', null, title); if (id) t.id = id; h.append(t); if (meta) h.append(el('span', 'cc-fx-meta', meta)); return h; };
   const chip = (label, on, fn, title) => { const b = btn('cc-chip', label, fn, title); b.setAttribute('aria-pressed', String(Boolean(on))); return b; };
   const select = (label, options, value, fn) => {
     const w = el('label', 'cc-fx-field'); w.append(el('span', null, label));
@@ -236,9 +238,9 @@
     sec2.setAttribute('aria-labelledby', 'fnx-reach-title');
     const head2 = el('div', 'cc-fx-reachhead');
     const h = el('h3', null, 'Start a conversation'); h.id = 'fnx-reach-title';
-    const count = el('span', 'cc-fx-reachcount', `${intF(list.length)} founders we haven’t met yet`);
+    const count = el('span', 'cc-fx-reachcount', `${intF(list.length)} not met yet`);
     head2.append(h, count);
-    sec2.append(head2, el('p', 'cc-fx-sub', 'Founder Network contacts with no meeting held or booked, no deal and no open task, and not already in an active conversation according to the team’s Telegram. Ranked by priority and how warm the way in is. Each draft is written for Mack and picks up from any earlier messages on record; nothing is sent from here. After sending, log it in Zoho so they leave this list.'));
+    sec2.append(head2);
     if (!list.length) { sec2.append(el('p', 'cc-fx-empty', 'Everyone in the Founder Network has a meeting, a deal or an open task. Nobody to start with.')); return sec2; }
     const at = st.outreach.at % list.length;
     const pick = [list[at], list.length > 1 ? list[(at + 1) % list.length] : null].filter(Boolean);
@@ -251,9 +253,12 @@
       who.append(btn('cc-fx-name cc-fx-reachname', f.name, () => openProfile(f.id)), el('p', 'cc-fx-sub', [f.title, f.company].filter(Boolean).join(', ') || 'No role or company on record'));
       const talkedBefore = (c.reviewed && c.reasons[0] && /agreed|talked|introduc|asked|started|outreach|messag/i.test(c.reasons[0].why)) || (f.outlook && f.outlook.identity === 'same person' && f.outlook.email_count > 0);
       top.append(who, pill(talkedBefore ? 'Messaged, never met' : 'Not talked to yet', 'bad'));
-      const why = el('ul', 'cc-fx-reachwhy'); c.reasons.forEach((r) => why.append(el('li', null, r.why)));
+      const top3 = c.reasons.filter((r) => r.points === 0).concat(c.reasons.filter((r) => r.points > 0).sort((a, b) => b.points - a.points)).slice(0, 3).map((r) => r.why);
+      const why = el('p', 'cc-fx-why', top3.join('; '));
+      const histBox = el('details', 'cc-fx-hist');
       const hist = el('ul', 'cc-fx-reachhist'); c.history.forEach((x) => hist.append(el('li', null, x)));
-      const dh = el('div', 'cc-fx-drafthead'); dh.append(el('b', null, d.channel), el('small', null, d.basis));
+      histBox.append(el('summary', null, 'What’s on record'), hist);
+      const dh = el('div', 'cc-fx-drafthead'); const ch = el('b', null, d.channel); ch.title = d.basis; dh.append(ch);
       const box = el('div', 'cc-fx-draft');
       if (d.subject) box.append(el('p', 'cc-fx-subject', 'Subject: ' + d.subject));
       box.append(el('pre', null, d.body));
@@ -262,8 +267,8 @@
       const slug = E.slugOf(f.linkedin);
       if (slug && d.channel !== 'Email') acts.append(link('https://www.linkedin.com/in/' + encodeURIComponent(slug) + '/', 'Open LinkedIn'));
       if (f.zoho) acts.append(link(contactHref(f), 'Open in Zoho'));
-      if (d.reviewed) dh.append(el('small', 'cc-fx-checked', 'Checked by hand against the team’s notes'));
-      card.append(top, el('h4', null, 'Why them'), why, el('h4', null, 'What’s on record'), hist, dh, box, acts);
+      if (d.reviewed) dh.append(el('small', 'cc-fx-checked', 'Checked by hand'));
+      card.append(top, why, histBox, dh, box, acts);
       grid.append(card);
     }
     const nav2 = el('div', 'cc-fx-reachnav');
@@ -271,7 +276,7 @@
     sec2.append(grid, nav2);
     if (list.leftOut && list.leftOut.length) {
       const det = el('details', 'cc-fx-leftout');
-      det.append(el('summary', null, `${intF(list.leftOut.length)} more left out because the team is already talking to them, or they aren’t prospects`));
+      det.append(el('summary', null, `${intF(list.leftOut.length)} left out: already talking, or not prospects`));
       const ul = el('ul', 'cc-fx-rules');
       list.leftOut.slice().sort((a, b) => String(a.f.name).localeCompare(String(b.f.name))).forEach((x) => { const li = el('li'); li.append(btn('cc-fx-name', x.f.name, () => openProfile(x.f.id)), document.createTextNode(': ' + x.why)); ul.append(li); });
       det.append(ul);
@@ -302,19 +307,19 @@
     };
     const outlookIn = statusOf('fn_outlook') === 'ok';
     tiles.append(
-      tile(urgent.length ? 'bad' : 'ok', 'urgent', 'Urgent founders', urgent.length, 'an overdue commitment or a meeting within 2 days', urgent.length ? 'Critical' : 'Clear', () => go('founders', { band: 'Urgent' })),
-      tile(overdue.length ? 'bad' : 'ok', 'overdue', 'Overdue commitments', overdue.length, 'Zoho tasks and meetings past due', overdue.length ? 'Overdue' : 'Clear', () => go('actions', { status: 'Overdue', done: false })),
-      tile(outlookIn ? 'info' : 'muted', 'meet', 'Meeting in the next 7 days', soon.length, outlookIn ? 'founders with a meeting on Zoho or the team calendars' : 'founders with a meeting in Zoho; the team calendars aren’t loaded yet', outlookIn ? 'Schedule' : 'Partial', () => go('founders', { soon: true, band: null, stage: '', sort: 'meeting' })),
-      tile(review ? 'warn' : 'ok', 'review', 'Waiting for review', review, 'asks from Telegram and recorded calls to confirm', review ? 'Pending' : 'Clear', () => go('actions', { status: 'Needs review', done: false })),
-      tile(fixes.length ? 'warn' : 'ok', 'fix', 'Zoho fixes', fixes.length, 'people missing from Zoho or not marked Founder Network', fixes.length ? 'Data to fix' : 'Clear', () => go('quality', { type: '', sev: 'high' })),
+      tile(urgent.length ? 'bad' : 'ok', 'urgent', 'Urgent founders', urgent.length, 'overdue or meeting within 2 days', urgent.length ? 'Critical' : 'Clear', () => go('founders', { band: 'Urgent' })),
+      tile(overdue.length ? 'bad' : 'ok', 'overdue', 'Overdue commitments', overdue.length, 'Zoho tasks and meetings', overdue.length ? 'Overdue' : 'Clear', () => go('actions', { status: 'Overdue', done: false })),
+      tile(outlookIn ? 'info' : 'muted', 'meet', 'Meeting in the next 7 days', soon.length, outlookIn ? 'founders, Zoho and calendars' : 'Zoho only; calendars not loaded', outlookIn ? 'Schedule' : 'Partial', () => go('founders', { soon: true, band: null, stage: '', sort: 'meeting' })),
+      tile(review ? 'warn' : 'ok', 'review', 'Waiting for review', review, 'asks from Telegram and calls', review ? 'Pending' : 'Clear', () => go('actions', { status: 'Needs review', done: false })),
+      tile(fixes.length ? 'warn' : 'ok', 'fix', 'Zoho fixes', fixes.length, 'missing or not marked in Zoho', fixes.length ? 'Data to fix' : 'Clear', () => go('quality', { type: '', sev: 'high' })),
     );
 
     const tgrid = el('section', 'cc-fx-card');
-    tgrid.append(el('h3', null, 'Scorecard targets'), el('p', 'cc-fx-sub', `Counted live against the pace expected by ${dayF(today)}, from ${dayF(E.DEFAULTS.campaign.start)} to ${dayF(E.DEFAULTS.campaign.end)}. Missing data shows as stale, never as zero.`));
+    tgrid.append(cardHead('Scorecard targets', `Pace to ${dayF(E.DEFAULTS.campaign.end)}`));
     const tg = el('div', 'cc-fx-targets'); m.targets.forEach((t) => tg.append(targetCard(t, today))); tgrid.append(tg);
 
     const focus = el('section', 'cc-fx-card');
-    focus.append(el('h3', null, 'Who needs attention first'), el('p', 'cc-fx-sub', 'Ranked by the priority engine. Each line says why; open a founder for the full evidence.'));
+    focus.append(cardHead('Who needs attention first'));
     const ranked = m.founders.filter((f) => ['Urgent', 'High priority'].includes(f.priorityInfo.band)).sort((a, b) => (a.priorityInfo.band === 'Urgent' ? -1 : 0) - (b.priorityInfo.band === 'Urgent' ? -1 : 0) || b.priorityInfo.score - a.priorityInfo.score).slice(0, 10);
     const ul = el('ol', 'cc-fx-focus');
     for (const f of ranked) {
@@ -329,7 +334,7 @@
     focus.append(ul);
 
     const stages = el('section', 'cc-fx-card');
-    stages.append(el('h3', null, 'Relationship pipeline'), el('p', 'cc-fx-sub', 'Where every founder stands, from the evidence in the sources. Select a stage to list them.'));
+    stages.append(cardHead('Relationship pipeline'));
     const bar = el('div', 'cc-fx-stagebar');
     const counts = E.STAGES.map((s) => [s, m.founders.filter((f) => f.stage === s).length]);
     const maxN = Math.max(1, ...counts.map((c) => c[1]));
@@ -344,7 +349,7 @@
     stages.append(bar);
 
     const log = el('section', 'cc-fx-card');
-    log.append(el('h3', null, 'Recent team activity in Telegram'), el('p', 'cc-fx-sub', 'Decisions, counts and tasks the team posted in the Founder Network group, newest first.'));
+    log.append(cardHead('Team activity', 'Telegram'));
     const lg = rowsOf('fn_tg_log');
     const lul = el('ul', 'cc-fx-log');
     if (!lg) lul.append(el('li', 'cc-fx-empty', statusOf('fn_tg_log') === 'loading' ? 'Loading…' : 'The Telegram activity log isn’t loaded.'));
@@ -388,7 +393,7 @@
     };
     vis.sort(sorters[a.sort]);
     const wrap = el('section', 'cc-fx-card');
-    wrap.append(el('h3', null, 'Action Center'), el('p', 'cc-fx-sub', 'Everything open across the Founder Network. Recorded commitments come from Zoho; proposed actions were found in Telegram or on a recorded call and need a person to confirm them; recommendations come from the rules. Owners and due dates are shown only where a source records them. Complete or create tasks in Zoho: this page doesn’t write anywhere.'));
+    wrap.append(cardHead('Action Center', 'Complete tasks in Zoho'));
     const counts = Object.fromEntries(ACTION_STATUS.map((s) => [s, all.filter((x) => x.status === s).length]));
     const chips = el('div', 'cc-fx-chips');
     chips.append(chip(`All open (${intF(all.filter((x) => x.status !== 'Done').length)})`, !a.status && !a.done, () => { Object.assign(a, { status: null, done: false, page: 0 }); render(); }));
@@ -429,7 +434,7 @@
     };
     vis.sort(sorters[s.sort]);
     const wrap = el('section', 'cc-fx-card');
-    wrap.append(el('h3', null, 'Founders'), el('p', 'cc-fx-sub', `${intF(fnMembers(m).length)} Founder Network contacts in Zoho (Priority 9 and 11 left out of that count), plus the people the team named in Telegram who aren’t one yet. Select a name for the profile.`));
+    wrap.append(cardHead('Founders', `${intF(fnMembers(m).length)} in Zoho, ${intF(m.founders.filter((f) => !f.inFN).length)} more from Telegram`));
     const chips = el('div', 'cc-fx-chips');
     chips.append(chip(`Everyone (${intF(m.founders.length)})`, !s.band && !s.soon, () => { Object.assign(s, { band: null, soon: false, page: 0 }); render(); }));
     if (s.soon) chips.append(chip('Meeting in the next 7 days', true, () => { s.soon = false; s.page = 0; render(); }));
@@ -465,7 +470,7 @@
   /* ---------- Pipeline ---------- */
   const drawPipeline = (m) => {
     const wrap = el('section', 'cc-fx-card');
-    wrap.append(el('h3', null, 'Relationship pipeline'), el('p', 'cc-fx-sub', 'Each founder sits in the furthest stage the evidence supports. Stages are worked out from the sources, not typed in, so fix the source (log the meeting, record the deal) to move someone.'));
+    wrap.append(cardHead('Relationship pipeline', 'Worked out from the sources'));
     const board = el('div', 'cc-fx-board');
     E.STAGES.forEach((s, i) => {
       const people = m.founders.filter((f) => f.stage === s).sort((a, b) => b.priorityInfo.score - a.priorityInfo.score);
@@ -488,7 +493,7 @@
     const s = st.timeline; const today = m.today;
     const vis = m.timeline.filter((a) => a.day <= today || a.upcoming).filter((a) => (!s.source || a.source === s.source) && has(s.q, a.text, a.f.name, a.type));
     const wrap = el('section', 'cc-fx-card');
-    wrap.append(el('h3', null, 'Activity across all sources'), el('p', 'cc-fx-sub', 'Meetings, calls, email counts, tasks, deals, agreements, Telegram mentions and LinkedIn connections, newest first. Outlook shows dates and counts only.'));
+    wrap.append(cardHead('Activity', 'Newest first'));
     const chips = el('div', 'cc-fx-chips');
     chips.append(chip(`All (${intF(vis.length)})`, !s.source, () => { s.source = ''; s.page = 0; render(); }));
     TL_SOURCES.forEach((x) => { const n = m.timeline.filter((a) => a.source === x).length; if (n) chips.append(chip(`${x} (${intF(n)})`, s.source === x, () => { s.source = s.source === x ? '' : x; s.page = 0; render(); })); });
@@ -513,7 +518,7 @@
     const types = [...new Set(m.issues.map((i) => i.type))].map((t) => [t, m.issues.filter((i) => i.type === t)]).sort((a, b) => (a[1][0].severity === 'high' ? 0 : a[1][0].severity === 'medium' ? 1 : 2) - (b[1][0].severity === 'high' ? 0 : b[1][0].severity === 'medium' ? 1 : 2) || b[1].length - a[1].length);
     const vis = m.issues.filter((i) => (!s.type || i.type === s.type) && (!s.sev || i.severity === s.sev)).sort((a, b) => ({ high: 0, medium: 1, low: 2 }[a.severity] - { high: 0, medium: 1, low: 2 }[b.severity]) || String(a.f.name || '').localeCompare(String(b.f.name || '')));
     const wrap = el('section', 'cc-fx-card');
-    wrap.append(el('h3', null, 'Data quality'), el('p', 'cc-fx-sub', 'What stops Zoho from being a complete record of the Founder Network, each with its evidence and the change to make. Nothing is changed or merged from here: confirm it, then make the change in Zoho. Records are never joined on a similar name alone; close names wait here for a person to confirm.'));
+    wrap.append(cardHead('Data quality', 'Fix in Zoho'));
     const sevChips = el('div', 'cc-fx-chips');
     [['', 'All severities'], ['high', 'High'], ['medium', 'Medium'], ['low', 'Low']].forEach(([k, l]) => { const n = m.issues.filter((i) => !k || i.severity === k).length; sevChips.append(chip(`${l} (${intF(n)})`, s.sev === k, () => { s.sev = k; s.page = 0; render(); })); });
     const grid = el('div', 'cc-fx-qgrid');
@@ -543,22 +548,22 @@
 
   /* ---------- Sources ---------- */
   const SRC_ROWS = [
-    { id: 'qa_contacts', label: 'Zoho CRM contacts', kind: 'live', how: 'Live Zoho query each time the page opens (read-only)', limits: 'Read-only: fixes are made in Zoho', count: (m) => m.src.contacts.length, unit: 'contacts' },
-    { id: 'fn_events', label: 'Zoho CRM meetings', kind: 'live', how: 'Live Zoho query: Events linked to a Founder Network contact', limits: 'Only meetings linked to the contact count', count: (m) => (rowsOf('fn_events') || []).length, unit: 'meetings' },
-    { id: 'fn_tasks', label: 'Zoho CRM tasks', kind: 'live', how: 'Live Zoho query: Tasks linked to a Founder Network contact', limits: 'Tasks are completed in Zoho, not here', count: (m) => (rowsOf('fn_tasks') || []).length, unit: 'tasks' },
-    { id: 'deals', label: 'Zoho CRM deals', kind: 'live', how: 'Live Zoho query shared with the other tabs', limits: 'Counted for a founder when the deal’s Contact Name is them', count: (m) => (rowsOf('deals') || []).length, unit: 'deals' },
-    { id: 'sign_docs', label: 'Zoho Sign agreements', kind: 'live', how: 'Live Zoho query shared with the other tabs', limits: 'Referral agreements and MNDAs only', count: (m) => m.src.agreements.length, unit: 'agreements' },
-    { id: 'fn_tg_people', label: 'Telegram group', kind: 'imported', how: 'Exported chat, read and reviewed by hand, imported with scripts/fn_import.py telegram', limits: 'No live connection: re-export the chat and import again', count: () => (rowsOf('fn_tg_people') || []).length, unit: 'people' },
-    { id: 'fn_tg_photos', label: 'Telegram photos', kind: 'imported', how: 'Each photo in the export described by hand', limits: 'Phone numbers and email addresses removed', count: () => (rowsOf('fn_tg_photos') || []).length, unit: 'photos' },
-    { id: 'fn_ff_meetings', label: 'Fireflies calls', kind: 'imported', how: 'Matched by Zoho email or exact attendee name, imported with scripts/fn_import.py fireflies', limits: 'Asinpa calls and job interviews left out', count: () => (rowsOf('fn_ff_meetings') || []).length, unit: 'calls' },
-    { id: 'fn_outlook', label: 'Outlook mail and calendar', kind: 'imported', how: 'Team mailboxes and calendars checked by hand for each founder, imported with scripts/fn_import.py outlook', limits: 'Dates, counts and the other side’s domain only: never subjects, text or addresses', count: () => (rowsOf('fn_outlook') || []).length, unit: 'people checked' },
-    { id: 'mack_network', label: 'Mack’s LinkedIn export', kind: 'imported', how: 'Mack’s LinkedIn data export (no scraping)', limits: 'Emails dropped; refreshed when Mack exports again', count: () => (rowsOf('mack_network') || []).length, unit: 'connections' },
+    { id: 'qa_contacts', label: 'Zoho CRM contacts', kind: 'live', how: 'Live from Zoho', limits: 'Read-only', count: (m) => m.src.contacts.length, unit: 'contacts' },
+    { id: 'fn_events', label: 'Zoho CRM meetings', kind: 'live', how: 'Live from Zoho', limits: 'Linked to the contact only', count: (m) => (rowsOf('fn_events') || []).length, unit: 'meetings' },
+    { id: 'fn_tasks', label: 'Zoho CRM tasks', kind: 'live', how: 'Live from Zoho', limits: 'Complete tasks in Zoho', count: (m) => (rowsOf('fn_tasks') || []).length, unit: 'tasks' },
+    { id: 'deals', label: 'Zoho CRM deals', kind: 'live', how: 'Live from Zoho', limits: 'Matched by Contact Name', count: (m) => (rowsOf('deals') || []).length, unit: 'deals' },
+    { id: 'sign_docs', label: 'Zoho Sign agreements', kind: 'live', how: 'Live from Zoho Sign', limits: 'Referral agreements and MNDAs', count: (m) => m.src.agreements.length, unit: 'agreements' },
+    { id: 'fn_tg_people', label: 'Telegram group', kind: 'imported', how: 'Chat export, reviewed by hand', limits: 'Re-export to update', count: () => (rowsOf('fn_tg_people') || []).length, unit: 'people' },
+    { id: 'fn_tg_photos', label: 'Telegram photos', kind: 'imported', how: 'Described by hand', limits: 'No phone numbers or emails', count: () => (rowsOf('fn_tg_photos') || []).length, unit: 'photos' },
+    { id: 'fn_ff_meetings', label: 'Fireflies calls', kind: 'imported', how: 'Matched by email or exact name', limits: 'No Asinpa calls or interviews', count: () => (rowsOf('fn_ff_meetings') || []).length, unit: 'calls' },
+    { id: 'fn_outlook', label: 'Outlook mail and calendar', kind: 'imported', how: 'Checked by hand', limits: 'Dates and counts only', count: () => (rowsOf('fn_outlook') || []).length, unit: 'people checked' },
+    { id: 'mack_network', label: 'Mack’s LinkedIn export', kind: 'imported', how: 'Mack’s data export', limits: 'Emails dropped', count: () => (rowsOf('mack_network') || []).length, unit: 'connections' },
   ];
   const drawSources = (m) => {
     const wrap = el('section', 'cc-fx-card');
-    wrap.append(el('h3', null, 'Sources'), el('p', 'cc-fx-sub', 'Where each piece comes from, how current it is, and what it can’t do. Zoho is read live; the rest are imported files, marked stale when older than two weeks.'));
+    wrap.append(cardHead('Sources', 'Zoho live, the rest imported'));
     const built = new Map((rowsOf('fn_sources') || []).map((r) => [r.dataset, r.built]));
-    const t = tableWrap(['Source', 'How it arrives', 'Status', 'Records', 'Last imported', 'Limits']);
+    const t = tableWrap(['Source', 'How', 'Status', 'Records', 'Updated', 'Limits']);
     const now = new Date();
     for (const r of SRC_ROWS) {
       const s0 = statusOf(r.id);
@@ -573,7 +578,7 @@
     const id = el('section', 'cc-fx-card');
     const conf = { confirmed: 0, likely: 0, possible: 0, unmatched: 0, partial: 0 };
     m.founders.forEach((f) => f.identities.filter((i) => i.source !== 'Zoho CRM').forEach((i) => { conf[i.confidence] = (conf[i.confidence] || 0) + 1; }));
-    id.append(el('h3', null, 'How records are joined'), el('p', 'cc-fx-sub', 'A person is the same across sources by, in order: the Zoho record ID, the same LinkedIn profile or Zoho email (confirmed), the same first and last name when only one person has it (likely), or a close spelling or reordered name (possible, waits for review). A rejected match is never proposed again.'));
+    id.append(cardHead('How records are joined'), el('p', 'cc-fx-sub', 'Matched by Zoho ID, then LinkedIn profile or Zoho email, then a unique exact name. Close names wait for review.'));
     const ul = el('ul', 'cc-fx-conf');
     [['confirmed', 'Confirmed'], ['likely', 'Likely, same name'], ['possible', 'Possible, needs review'], ['unmatched', 'Named in Telegram, not in Zoho'], ['partial', 'First name only']].forEach(([k, l]) => { const li = el('li'); li.append(el('b', null, intF(conf[k] || 0)), el('span', null, l)); ul.append(li); });
     id.append(ul);
@@ -587,19 +592,19 @@
     const S = E.DEFAULTS;
     const out = el('div', 'cc-fx-stack');
     const a = el('section', 'cc-fx-card');
-    a.append(el('h3', null, 'Targets'), el('p', 'cc-fx-sub', `From the Founder Network scorecard Mack shared on Oct 17, 2026, for ${dayF(S.campaign.start)} to ${dayF(S.campaign.end)}. Expected by today grows evenly over the period, from where each count stood on Aug 17 (contacts by their Zoho created date, agreements by their sent and signed dates; meetings and deals from zero).`));
+    a.append(el('h3', null, 'Targets'), el('p', 'cc-fx-sub', `Mack’s Oct 17 scorecard, ${dayF(S.campaign.start)} to ${dayF(S.campaign.end)}, paced from where each count stood on Aug 17.`));
     const t = tableWrap(['Target', 'Goal', 'Counted from']);
     const from = { members: 'Zoho contacts with Founder Network in Relationship Type, not Priority 9 or 11', meetings: 'Days with a meeting held since Aug 17: Zoho Completed, team calendar or Fireflies call, one per founder per day', agreements_sent: 'Referral agreements in Zoho Sign to a Founder Network contact, any state', agreements_signed: 'Those signed', opportunities: 'Open deals (Identify, Discovery, Proposals, Hold) whose contact is a founder', closed: 'Deals at Closed whose contact is a founder' };
     S.targets.forEach((x) => { const tr = el('tr'); tr.append(el('td', null, x.label), el('td', null, intF(x.target)), el('td', null, from[x.id])); t.tbody.append(tr); });
     a.append(t.wrap);
     const b = el('section', 'cc-fx-card');
-    b.append(el('h3', null, 'Status rules'), el('p', 'cc-fx-sub', 'One engine decides every color on this tab.'));
+    b.append(cardHead('Status rules'));
     const t2 = tableWrap(['Status', 'When']);
     [['Completed', 'The target is met, or the action is done in Zoho'], ['On track', `At least ${Math.round(S.atRiskShare * 100)}% of the pace expected by today`], ['At risk', `${Math.round(S.belowShare * 100)}% to ${Math.round(S.atRiskShare * 100)}% of the expected pace, or a meeting to prepare within ${S.prepDays} days`], ['Below target', `Under ${Math.round(S.belowShare * 100)}% of the expected pace, or a commitment past due`], ['Critical', `A Highest-priority Zoho task past due, or a past Zoho meeting from the last ${S.taskStaleDays} days still not marked Completed`], ['Needs verification', 'Found in Telegram or on a call, or an identity that isn’t confirmed'], ['Stale data', `A source that didn’t load, or an import older than ${S.staleHours.imported / 24} days`]]
       .forEach(([k, v]) => { const tr = el('tr'); const td = el('td'); td.append(pill(k)); tr.append(td, el('td', null, v)); t2.tbody.append(tr); });
     b.append(t2.wrap);
     const c = el('section', 'cc-fx-card');
-    c.append(el('h3', null, 'Priority engine'), el('p', 'cc-fx-sub', `Points add up to a score; ${S.bands.high}+ is High priority, ${S.bands.normal}+ Normal, below that Nurture. An overdue commitment (not one more than ${S.taskStaleDays} days old, which is listed for clean-up instead) or a meeting within ${S.prepDays} days makes a founder Urgent whatever the score; someone not in Zoho or with an unconfirmed identity is Needs review. Missing signals are named on the profile, never counted as zero evidence.`));
+    c.append(el('h3', null, 'Priority engine'), el('p', 'cc-fx-sub', `${S.bands.high}+ points is High priority, ${S.bands.normal}+ Normal, below that Nurture. An overdue commitment or a meeting within ${S.prepDays} days makes a founder Urgent; not in Zoho or an unconfirmed identity is Needs review.`));
     const t3 = tableWrap(['Signal', 'Up to', 'Scored from']);
     const why = { strategic: 'Zoho Priority (1 full, 3 most, 5 some); the chat’s priority when Zoho has none', opportunity: 'An open deal, or a referral agreement sent and not signed', relationship: 'Meeting days held, two-way contact, or endorsements on LinkedIn', commitments: 'Any open recorded commitment', intro: 'An introduction or referral mentioned in the notes', recency: `Priority 1 or 3 (Zoho, else the chat) with no interaction for 30+ days, full points past 60`, upcoming: 'A meeting in the next 7 days' };
     Object.entries(S.weights).forEach(([k, v]) => { const tr = el('tr'); tr.append(el('td', null, k[0].toUpperCase() + k.slice(1)), el('td', null, String(v)), el('td', null, why[k])); t3.tbody.append(tr); });
@@ -609,7 +614,7 @@
     const ul = el('ul', 'cc-fx-rules');
     [`Zoho tasks for a founder are recorded commitments; more than ${S.taskStaleDays} days overdue asks to close or re-date them`, `A meeting in Zoho or on the team calendar that hasn’t happened yet asks for preparation; due soon within ${S.prepDays} days`, 'A past Zoho meeting still Scheduled or blank asks to record the outcome', 'A team-calendar meeting with no Zoho meeting that day asks to log it in Zoho', `A meeting held ${S.followUpDays} to 60 days ago with no later email, task or meeting asks for a follow-up`, `Priority 1 with no interaction in ${S.reconnectDays.P1} days, or Priority 3 in ${S.reconnectDays.P3}, asks to reconnect, unless a meeting is booked`, 'Asks in Telegram and our team’s action items on a recorded call are proposals until someone confirms them in Zoho', 'Nothing gets an owner or a due date the source doesn’t record']
       .forEach((x) => ul.append(el('li', null, x)));
-    d.append(ul, el('p', 'cc-fx-sub', 'These settings are part of the dashboard’s code (fn-engine.js); the page can’t save changes to them. Ask for a change and it is made, tested and republished.'));
+    d.append(ul, el('p', 'cc-fx-sub', 'Set in fn-engine.js; ask for a change.'));
     out.append(a, b, c, d);
     return out;
   };
@@ -636,7 +641,7 @@
     f.priorityInfo.reasons.forEach((r) => { const li = el('li'); li.append(el('b', null, '+' + r.points), el('span', null, r.why)); rl.append(li); });
     if (!f.priorityInfo.reasons.length) rl.append(el('li', null, 'No scoring signal yet.'));
     pr.append(rl);
-    if (f.priorityInfo.incomplete.length) pr.append(el('p', 'cc-fx-sub', 'Not known yet: ' + f.priorityInfo.incomplete.join(', ') + '. The score may be low because of it.'));
+    if (f.priorityInfo.incomplete.length) pr.append(el('p', 'cc-fx-sub', 'Not known yet: ' + f.priorityInfo.incomplete.join(', ') + '.'));
 
     const facts = sec2('At a glance');
     const dl = el('dl', 'cc-fx-facts');
@@ -712,12 +717,12 @@
     }
     const members = fnMembers(m);
     const stale = SRC_ROWS.filter((r) => statusOf(r.id) !== 'ok').map((r) => r.label);
-    lede.textContent = `${intF(members.length)} Founder Network contacts in Zoho and ${intF(m.founders.length - m.founders.filter((f) => f.inFN).length)} more people the team named in Telegram or tagged in Zoho, joined with meetings, tasks, deals, agreements, recorded calls, the team’s Outlook and Mack’s LinkedIn. As of ${dayF(m.today)} (CT).${stale.length ? ' Not loaded: ' + stale.join(', ') + '; see Sources.' : ''}`;
+    lede.textContent = `${intF(members.length)} in Zoho and ${intF(m.founders.filter((f) => !f.inFN).length)} more named in Telegram, as of ${dayF(m.today)} CT.${stale.length ? ' Not loaded: ' + stale.join(', ') + '.' : ''}`;
     const view = { overview: drawOverview, actions: drawActions, founders: drawFounders, pipeline: drawPipeline, timeline: drawTimeline, quality: drawQuality, sources: drawSources, rules: drawRules }[st.view];
     const focusId = document.activeElement && root.contains(document.activeElement) && document.activeElement.matches('input') ? document.activeElement.className : null;
     body.replaceChildren(view(m));
     if (focusId) { const i = body.querySelector('input.' + focusId.split(' ')[0]); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }
-    foot.textContent = 'Read-only. Zoho is the system of record: tasks are completed, records added and duplicates merged there, never from this page. Telegram, Fireflies, Outlook and LinkedIn details stay on this private dashboard. Outlook is recorded as dates and counts only. Calls with Asinpa and job interviews are left out.';
+    foot.textContent = 'Read-only: make every change in Zoho. Private to this dashboard.';
   };
   dash.onData(render);
 })();
