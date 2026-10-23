@@ -556,15 +556,20 @@
   const SEV = { high: 'bad', medium: 'warn', low: 'muted' };
   const drawQuality = (m) => {
     const s = st.quality;
-    const types = [...new Set(m.issues.map((i) => i.type))].map((t) => [t, m.issues.filter((i) => i.type === t)]).sort((a, b) => (a[1][0].severity === 'high' ? 0 : a[1][0].severity === 'medium' ? 1 : 2) - (b[1][0].severity === 'high' ? 0 : b[1][0].severity === 'medium' ? 1 : 2) || b[1].length - a[1].length);
-    const vis = m.issues.filter((i) => (!s.type || i.type === s.type) && (!s.sev || i.severity === s.sev)).sort((a, b) => ({ high: 0, medium: 1, low: 2 }[a.severity] - { high: 0, medium: 1, low: 2 }[b.severity]) || String(a.f.name || '').localeCompare(String(b.f.name || '')));
+    /* the issue tiles and the table both follow the severity filter */
+    const RANK = { high: 0, medium: 1, low: 2 };
+    const pool = m.issues.filter((i) => !s.sev || i.severity === s.sev);
+    const worst = (list) => list.reduce((w, i) => (RANK[i.severity] < RANK[w] ? i.severity : w), 'low');
+    const types = [...new Set(pool.map((i) => i.type))].map((t) => [t, pool.filter((i) => i.type === t)]).sort((a, b) => RANK[worst(a[1])] - RANK[worst(b[1])] || b[1].length - a[1].length);
+    if (s.type && !types.some(([t]) => t === s.type)) s.type = '';
+    const vis = pool.filter((i) => !s.type || i.type === s.type).sort((a, b) => (RANK[a.severity] - RANK[b.severity]) || String(a.f.name || '').localeCompare(String(b.f.name || '')));
     const wrap = el('section', 'cc-fx-card');
     wrap.append(cardHead('Data quality', 'Fix in Zoho'));
     const sevChips = el('div', 'cc-fx-chips');
     [['', 'All severities'], ['high', 'High'], ['medium', 'Medium'], ['low', 'Low']].forEach(([k, l]) => { const n = m.issues.filter((i) => !k || i.severity === k).length; sevChips.append(chip(`${l} (${intF(n)})`, s.sev === k, () => { s.sev = k; s.page = 0; render(); })); });
     const grid = el('div', 'cc-fx-qgrid');
     for (const [t, list] of types) {
-      const b = btn('cc-fx-qtile cc-fx-' + SEV[list[0].severity], null, () => { s.type = s.type === t ? '' : t; s.page = 0; render(); });
+      const b = btn('cc-fx-qtile cc-fx-' + SEV[worst(list)], null, () => { s.type = s.type === t ? '' : t; s.page = 0; render(); });
       b.setAttribute('aria-pressed', String(s.type === t));
       b.append(el('b', null, intF(list.length)), el('span', null, t));
       grid.append(b);
