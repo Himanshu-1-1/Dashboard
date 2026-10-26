@@ -103,7 +103,7 @@ jobs:
       - name: Add the B2B Today, Quality Assurance and Founder Network tabs
         run: |
           # Source lives in artifact/ (shared with the private Claude Dashboard); the public page loads the same files.
-          cp artifact/b2b-today.js artifact/b2b-today.css artifact/qa.js artifact/qa.css artifact/fn-engine.js artifact/fn.js artifact/fn.css site/
+          cp artifact/b2b-today.js artifact/b2b-today.css artifact/qa.js artifact/qa.css artifact/fn-engine.js artifact/fn.js artifact/fn.css artifact/network.js artifact/network.css site/
 
       - name: Lock the data behind the team passcode
         env:

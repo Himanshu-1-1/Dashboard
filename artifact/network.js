@@ -3,7 +3,8 @@
    advisors, and LinkedIn endorsements and recommendations between Mack and them. A chance of a real conversation is
    estimated live from how Mack's connections already in our B2B and Founder Network campaigns have done (by kind of
    partner, how long Mack has known them and endorsement ties), and the most likely people carry a researched brief.
-   Private dashboard only: never on the public site or written to Zoho. Uses the page's dash and CC_RULES. */
+   On the private Claude dashboard and, by Hemang's decision (Oct 26, 2026), the passcode-locked public site, where
+   mack_network arrives only sealed. Never written to Zoho. Uses the page's dash and CC_RULES. */
 (() => {
   const root = document.getElementById('mn-root');
   if (!root) return;
@@ -642,7 +643,7 @@
       parts.forEach((p) => { p.hidden = true; });
       stats.replaceChildren();
       const missing = status('mack_network') === 'error' || (status('mack_network') === 'ok' && !rows('mack_network').length);
-      head.p.textContent = missing ? 'Mack’s LinkedIn analysis isn’t loaded on this dashboard. It lives on the private Claude dashboard only.' : (s === 'error' ? 'The connections or Zoho contacts didn’t load. Reload, or check the sources in the dashboard menu.' : 'Loading Mack’s connections and Zoho contacts…');
+      head.p.textContent = missing ? 'Mack’s LinkedIn analysis isn’t in this build. It arrives sealed with the Founder Network files; until then it’s on the private Claude dashboard.' : (s === 'error' ? 'The connections or Zoho contacts didn’t load. Reload, or check the sources in the dashboard menu.' : 'Loading Mack’s connections and Zoho contacts…');
       foot.textContent = '';
       return;
     }
