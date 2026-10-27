@@ -308,7 +308,7 @@
           action: 'Read their last email and answer it, or close the loop',
           why: p.signed ? 'Signed partner' : p.met ? `Met ${p.met === 1 ? 'once' : p.met + ' times'}` : p.priority ? `P${p.priority}` : 'Campaign contact',
           why_now: `They emailed ${p.in_days === 0 ? 'today' : p.in_days === 1 ? 'yesterday' : p.in_days + ' days ago'}; ${p.last_out ? 'our last email was before that' : 'we have not emailed them'}`,
-          late: p.in_days, mail: true, done: 'Your reply is sent, or no reply is needed', record: 'Log the email in Zoho; set the next task with a due date' }));
+          late: p.in_days, mail: true, in_at: p.last_in, done: 'Your reply is sent, or no reply is needed', record: 'Log the email in Zoho; set the next task with a due date' }));
       return [...b2b_actions, ...add].sort((a, b) => a.order - b.order || b.late - a.late || String(a.name).localeCompare(String(b.name)));
     },
   });
@@ -960,7 +960,7 @@
   const nextCard = card('b2-next', 'Do this next', 'The first item in today’s queue, with everything needed to do it right.', 'cc-b2-nextcard');
   const nextBody = el('div', 'cc-b2-nextbody');
   nextCard.append(nextBody);
-  const queueCard = card('b2-queue', 'Today’s queue', 'In order: replies (tasks, and emails waiting on us), follow-ups, agreements, meeting asks, first introductions, stalled deals. Select a row to make it the next action.');
+  const queueCard = card('b2-queue', 'Today’s queue', 'In order: replies (tasks, and emails waiting on us), follow-ups, agreements, meeting asks, first introductions, stalled deals. Select a row to make it the next action; tick it when the work is done.');
   const queueTools = el('div', 'cc-tools cc-b2-chips');
   const queueBody = el('div', 'cc-b2-wrap');
   queueCard.append(queueTools, queueBody);
@@ -1254,7 +1254,48 @@
     });
     return out;
   };
-  const queueRows = () => groupQueue(!mailMissing() && state(['b2b_queue']) === 'ok' ? rows('b2b_queue') : rows('b2b_actions'));
+  const queueRaw = () => (!mailMissing() && state(['b2b_queue']) === 'ok' ? rows('b2b_queue') : rows('b2b_actions'));
+  const queueRows = () => groupQueue(queueRaw());
+  /* Queue ticks live in this browser only (localStorage), never in Zoho. A tick lasts for the Central-time day it was made.
+     On a later day an item still in the queue comes back unticked and flagged; an item gone from the queue drops its tick. */
+  const TICK_KEY = 'cc-b2-queue-ticks-v1';
+  const itemKey = (a) => [a.type, a.id, a.task_id || a.in_at || a.action].join('|');
+  const tickLoad = () => {
+    try {
+      const v = JSON.parse(localStorage.getItem(TICK_KEY) || '{}') || {};
+      const obj = (o) => (o && typeof o === 'object' && !Array.isArray(o) ? o : {});
+      return { done: obj(v.done), flag: obj(v.flag) };
+    } catch (e) { return { done: {}, flag: {} }; }
+  };
+  let ticks = tickLoad();
+  const tickSave = () => { try { localStorage.setItem(TICK_KEY, JSON.stringify(ticks)); } catch (e) { /* storage blocked: ticks last for this visit */ } };
+  const tickSync = (raw, complete) => {
+    const today = todayCT();
+    const live = new Set(raw.map(itemKey));
+    let changed = false;
+    Object.keys(ticks.done).forEach((k) => {
+      if (!live.has(k)) { if (complete) { delete ticks.done[k]; changed = true; } return; }
+      if (String(ticks.done[k]) < today) { ticks.flag[k] = ticks.done[k]; delete ticks.done[k]; changed = true; }
+    });
+    if (complete) Object.keys(ticks.flag).forEach((k) => { if (!live.has(k)) { delete ticks.flag[k]; changed = true; } });
+    if (changed) tickSave();
+  };
+  const queueSplit = () => {
+    const raw = queueRaw();
+    tickSync(raw, mailMissing() || state(['b2b_queue']) === 'ok');
+    const isDone = (a) => Boolean(ticks.done[itemKey(a)]);
+    return {
+      open: groupQueue(raw.filter((a) => !isDone(a)).map((a) => ({ ...a, ticked_before: ticks.flag[itemKey(a)] || null }))),
+      done: raw.filter(isDone),
+    };
+  };
+  const setTick = (a, on) => {
+    ticks = tickLoad();
+    const k = itemKey(a);
+    if (on) { ticks.done[k] = todayCT(); delete ticks.flag[k]; } else delete ticks.done[k];
+    tickSave();
+    drawQueue();
+  };
   const ctDay = (iso) => (iso ? new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }) : null);
   const daysF = (n) => (n == null ? '—' : n === 0 ? 'today' : n === 1 ? '1 day ago' : intF(n) + ' days ago');
   let picked = 0;
@@ -1501,8 +1542,9 @@
   };
 
   const drawQueue = () => {
-    const acts = queueRows();
-    const types = ['All', ...['Reply', 'Follow-up', 'Agreement', 'Meeting ask', 'First introduction', 'Revive deal', 'Close in Zoho'].filter((t) => acts.some((a) => a.type === t))];
+    const split = queueSplit();
+    const acts = split.open;
+    const types = ['All', ...['Reply', 'Follow-up', 'Agreement', 'Meeting ask', 'First introduction', 'Revive deal', 'Close in Zoho'].filter((t) => acts.some((a) => a.type === t) || split.done.some((a) => a.type === t))];
     if (!types.includes(queueFilter)) queueFilter = 'All';
     queueTools.replaceChildren(...types.map((t) => {
       const b = el('button', 'cc-chip', t === 'All' ? `All (${acts.length})` : `${t} (${acts.filter((a) => a.type === t).length})`);
@@ -1510,34 +1552,67 @@
       b.addEventListener('click', () => { queueFilter = t; picked = 0; queueAll = false; drawQueue(); });
       return b;
     }));
-    const list = acts.filter((a) => queueFilter === 'All' || a.type === queueFilter);
+    const inView = (a) => queueFilter === 'All' || a.type === queueFilter;
+    const list = acts.filter(inView);
+    const doneList = split.done.filter(inView);
     if (picked >= list.length) picked = 0;
     drawNext(list[picked] || null);
-    if (!list.length) { queueBody.replaceChildren(el('p', 'cc-b2-insight', 'Nothing in this part of the queue.')); return; }
-    const tbl = el('table', 'cc-tbl cc-b2-qtbl');
-    const th = el('thead'); const hr = el('tr');
-    ['#', 'Type', 'Who', 'What to do', 'Why now', 'SOP'].forEach((x) => { const c = el('th', null, x); c.scope = 'col'; hr.append(c); });
-    th.append(hr); tbl.append(th);
-    const tb = el('tbody');
-    list.slice(0, queueAll ? 200 : 12).forEach((a, i) => {
-      const tr = el('tr', i === picked ? 'cc-b2-picked' : null);
-      const who = el('td'); who.append(link('Contacts', a.id, a.name)); if (a.account) who.append(el('small', null, a.account));
-      const what = el('td', null, a.action);
-      if (a.more && a.more.length) what.append(el('small', null, `+${intF(a.more.length)} more open for them`));
-      tr.append(el('td', null, String(i + 1)), el('td', a.type === 'Close in Zoho' ? 'cc-b2-closecell' : null, a.mail ? 'Reply by email' : a.type), who, what);
-      tr.append(el('td', a.late ? 'cc-b2-late' : null, a.why_now));
-      const s = el('td'); s.append(sopBtn(a.sop)); tr.append(s);
-      tr.addEventListener('click', (e) => { if (e.target.closest('a, button')) return; picked = i; drawQueue(); nextCard.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
-      tb.append(tr);
-    });
-    tbl.append(tb);
-    queueBody.replaceChildren(tbl);
-    if (list.length > 12) {
-      const more = el('button', 'cc-go', queueAll ? 'Show the first 12' : `Show all ${intF(Math.min(list.length, 200))}`);
-      more.type = 'button';
-      more.addEventListener('click', () => { queueAll = !queueAll; drawQueue(); });
-      const bar = el('div', 'cc-tools'); bar.append(more);
-      queueBody.append(bar);
+    const box = (a, on) => {
+      const cb = el('input', 'cc-b2-tick');
+      cb.type = 'checkbox';
+      cb.checked = on;
+      cb.setAttribute('aria-label', `${on ? 'Mark not done' : 'Mark done'}: ${a.mail ? 'Reply by email' : a.type} for ${a.name}`);
+      cb.addEventListener('change', () => setTick(a, cb.checked));
+      return cb;
+    };
+    queueBody.replaceChildren();
+    if (!list.length) queueBody.append(el('p', 'cc-b2-insight', doneList.length ? 'Everything in this part of the queue is ticked for today.' : 'Nothing in this part of the queue.'));
+    else {
+      const tbl = el('table', 'cc-tbl cc-b2-qtbl');
+      const th = el('thead'); const hr = el('tr');
+      ['Done', '#', 'Type', 'Who', 'What to do', 'Why now', 'SOP'].forEach((x) => { const c = el('th', null, x); c.scope = 'col'; hr.append(c); });
+      th.append(hr); tbl.append(th);
+      const tb = el('tbody');
+      list.slice(0, queueAll ? 200 : 12).forEach((a, i) => {
+        const tr = el('tr', i === picked ? 'cc-b2-picked' : null);
+        const tick = el('td', 'cc-b2-tickcell'); tick.append(box(a, false));
+        const who = el('td'); who.append(link('Contacts', a.id, a.name)); if (a.account) who.append(el('small', null, a.account));
+        const what = el('td', null, a.action);
+        if (a.more && a.more.length) what.append(el('small', null, `+${intF(a.more.length)} more open for them`));
+        tr.append(tick, el('td', null, String(i + 1)), el('td', a.type === 'Close in Zoho' ? 'cc-b2-closecell' : null, a.mail ? 'Reply by email' : a.type), who, what);
+        const why = el('td', a.late ? 'cc-b2-late' : null, a.why_now);
+        if (a.ticked_before) why.append(el('small', 'cc-b2-reflag', `Ticked on ${dayF(a.ticked_before)}, but Zoho still shows it open. Close or update it in Zoho.`));
+        tr.append(why);
+        const s = el('td'); s.append(sopBtn(a.sop)); tr.append(s);
+        tr.addEventListener('click', (e) => { if (e.target.closest('a, button, input, label')) return; picked = i; drawQueue(); nextCard.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+        tb.append(tr);
+      });
+      tbl.append(tb);
+      queueBody.append(tbl);
+      if (list.length > 12) {
+        const more = el('button', 'cc-go', queueAll ? 'Show the first 12' : `Show all ${intF(Math.min(list.length, 200))}`);
+        more.type = 'button';
+        more.addEventListener('click', () => { queueAll = !queueAll; drawQueue(); });
+        const bar = el('div', 'cc-tools'); bar.append(more);
+        queueBody.append(bar);
+      }
+    }
+    if (doneList.length) {
+      const sec = el('section', 'cc-b2-done');
+      sec.setAttribute('aria-label', 'Done today');
+      sec.append(el('h4', null, `Done today (${intF(doneList.length)})`));
+      const ul = el('ul');
+      doneList.forEach((a) => {
+        const li = el('li');
+        const lab = el('label');
+        const txt = el('span');
+        txt.append(document.createTextNode(`${a.mail ? 'Reply by email' : a.type}: `), link('Contacts', a.id, a.name), document.createTextNode(`. ${a.action}`));
+        lab.append(box(a, true), txt);
+        li.append(lab);
+        ul.append(li);
+      });
+      sec.append(ul, el('p', 'cc-b2-donenote', 'Ticks are saved in this browser only and don’t change Zoho. Close or update the task in Zoho too, or the item comes back tomorrow.'));
+      queueBody.append(sec);
     }
   };
 

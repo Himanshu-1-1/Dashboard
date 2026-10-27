@@ -52,6 +52,16 @@
 .cc-b2-qtbl tbody tr:hover { background: var(--color-bg); }
 .cc-b2-picked { background: color-mix(in srgb, var(--b2-c1) 10%, transparent); }
 .cc-b2-late { color: var(--color-bad); }
+.cc-b2-qtbl .cc-b2-tickcell { width: 1%; text-align: center; cursor: default; }
+.cc-b2-tick { width: 18px; height: 18px; margin: 0; cursor: pointer; accent-color: var(--b2-c1); }
+.cc-b2-tick:focus-visible { outline: 2px solid var(--b2-c1); outline-offset: 2px; }
+.cc-b2-qtbl td small.cc-b2-reflag { color: var(--color-bad); font-weight: var(--cds-font-weight-medium); margin-top: 4px; }
+.cc-b2-done { margin-top: var(--cds-gap-md); border-top: 1px solid var(--color-border-line); padding-top: var(--cds-gap-sm); }
+.cc-b2-done h4 { margin: 0 0 6px; font-size: var(--cds-font-size-caption); font-weight: var(--cds-font-weight-medium); color: var(--color-fg-muted); }
+.cc-b2-done ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.cc-b2-done label { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }
+.cc-b2-done label span { text-decoration: line-through; color: var(--color-fg-muted); overflow-wrap: anywhere; }
+.cc-b2-donenote { margin: 8px 0 0; font-size: 11px; color: var(--color-fg-muted); }
 .cc-b2-ev { display: flex; flex-wrap: wrap; gap: 4px; }
 .cc-b2-ev span { font-size: 11px; border: 1px solid var(--color-border-line); border-radius: 999px; padding: 1px 7px; white-space: nowrap; }
 .cc-b2-ev .cc-b2-none { color: var(--color-fg-muted); border-style: dashed; }
