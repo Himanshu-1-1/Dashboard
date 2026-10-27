@@ -270,7 +270,8 @@
   const likely = section('cc-mn-likely', 'Most likely to become partners', '');
   const likelyBody = el('div', 'cc-mn-briefs');
   const likelyMore = el('div', 'cc-tools');
-  likely.s.append(likelyBody, likelyMore);
+  const likelyHelp = el('div');
+  likely.s.append(likelyHelp, likelyBody, likelyMore);
   const known = section('cc-mn-known', 'Known to us, but not in Zoho', '');
   const knownBody = el('div', 'cc-mn-tablewrap');
   known.s.append(knownBody);
@@ -321,6 +322,137 @@
       }
       if (r.dnc) w.append(el('small', 'cc-mn-dnc', ' Do Not Contact'));
     } else w.textContent = r.rel ? REL_NAME[r.rel] + ', not in Zoho' : 'Not in Zoho';
+    return w;
+  };
+  /* ---------- Add to Zoho ----------
+     The dashboard never writes to Zoho. "Add to Zoho" copies the person's details (tagged CCZOHO1) and opens Zoho's own
+     New Contact page; the "Fill from dashboard" bookmark, run on that page, reads the clipboard and fills the form.
+     The person checks it, picks the Account and presses Save in Zoho. Field ids are this org's Contacts layout. */
+  const ZOHO_NEW = ZOHO + 'Contacts/create';
+  const FILL_MARK = 'CCZOHO1 ';
+  const ZOHO_TAGS = ['Founder_Network', 'May 2026 - 100 B2B'];
+  async function ccZohoFill() {
+    const ORG = 'org899412015';
+    const MARK = 'CCZOHO1 ';
+    const toast = (msg, bad) => {
+      let t = document.getElementById('cc-zfill-toast');
+      if (!t) { t = document.createElement('div'); t.id = 'cc-zfill-toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
+      t.style.cssText = 'position:fixed;z-index:2147483647;right:20px;bottom:20px;max-width:440px;padding:12px 16px;border-radius:10px;font:13px/1.5 system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.28);white-space:pre-line;color:#fff;background:' + (bad ? '#b7373f' : '#1f6f43');
+      t.textContent = msg;
+      clearTimeout(t.ccTimer);
+      t.ccTimer = setTimeout(() => { t.remove(); }, 20000);
+    };
+    if (location.hostname !== 'crm.zoho.com' || location.pathname.indexOf('/crm/' + ORG + '/tab/Contacts/create') !== 0) {
+      toast('Open Zoho’s New Contact page first (Add to Zoho on the dashboard opens it), then click this bookmark.', true);
+      return;
+    }
+    let raw = '';
+    try { raw = await navigator.clipboard.readText(); } catch (e) {
+      toast('Chrome blocked reading the clipboard. Allow clipboard access for crm.zoho.com, then click the bookmark again.', true);
+      return;
+    }
+    if (typeof raw !== 'string' || raw.indexOf(MARK) !== 0) {
+      toast('Nothing to fill. Press Add to Zoho on the dashboard card first, then click this bookmark.', true);
+      return;
+    }
+    let d;
+    try { d = JSON.parse(raw.slice(MARK.length)); } catch (e) { toast('The copied details are damaged. Press Add to Zoho on the card again.', true); return; }
+    const sleep = (ms) => new Promise((r) => { setTimeout(r, ms); });
+    const q = (s) => document.querySelector(s);
+    for (let i = 0; i < 40 && !q('#Crm_Contacts_LASTNAME_LInput'); i += 1) await sleep(250);
+    if (!q('#Crm_Contacts_LASTNAME_LInput')) { toast('The New Contact form didn’t finish loading. Wait a moment and click the bookmark again.', true); return; }
+    const missed = [];
+    const put = (sel, val, label, keepFocus) => {
+      if (!val) return;
+      const box = q(sel);
+      if (!box) { missed.push(label); return; }
+      box.focus();
+      if (box.select) box.select();
+      document.execCommand('insertText', false, String(val));
+      box.dispatchEvent(new Event('change', { bubbles: true }));
+      if (!keepFocus) box.blur();
+      if (String(box.value).trim() !== String(val).trim()) missed.push(label);
+    };
+    const shown = (btn) => (btn.textContent || '').replace(/\s+/g, ' ').trim();
+    const pick = async (id, val, label) => {
+      const dd = q('#' + id);
+      const btn = dd && dd.querySelector('lyte-drop-button');
+      if (!btn) { missed.push(label); return; }
+      if (shown(btn).split(/\s*,\s*|\s{2,}/).indexOf(val) !== -1 || shown(btn) === val) return;
+      btn.click();
+      await sleep(450);
+      const open = Array.prototype.slice.call(document.querySelectorAll('lyte-drop-box')).filter((b) => getComputedStyle(b).display !== 'none' && b.querySelector('lyte-drop-item'));
+      const items = open.length ? Array.prototype.slice.call(open[open.length - 1].querySelectorAll('lyte-drop-item')) : [];
+      const it = items.find((x) => x.getAttribute('data-value') === val) || items.find((x) => x.textContent.trim() === val);
+      if (!it) { document.body.click(); missed.push(label); return; }
+      it.click();
+      await sleep(300);
+      document.body.click();
+      await sleep(150);
+    };
+    put('#Crm_Contacts_FIRSTNAME_LInput', d.first, 'First Name');
+    put('#Crm_Contacts_LASTNAME_LInput', d.last, 'Last Name');
+    put('#Crm_Contacts_TITLE_LInput', d.title, 'Title');
+    put('#Crm_Contacts_CONTACTCF11_LInput', d.linkedin, 'LinkedIn');
+    put('#Crm_Contacts_DESCRIPTION textarea', d.description, 'Description');
+    await pick('Crm_Contacts_CONTACTCF25', d.priority, 'Priority');
+    await pick('Crm_Contacts_CONTACTCF16', d.li_connect, 'LI Connect');
+    await pick('Crm_Contacts_CONTACTCF23', d.relationship, 'Relationship Type');
+    put('#Crm_Contacts_ACCOUNTID', d.company, 'Account Name', true);
+    const lines = [missed.length ? 'Filled, except: ' + missed.join(', ') + '. Enter those by hand.' : 'Filled ' + (d.name || 'the contact') + '.'];
+    if (d.company) lines.push('Account: pick ' + d.company + ' from the list, or New Account if it isn’t there.');
+    lines.push('Contact Type is required: check it before saving.');
+    lines.push('After Save, add the tags: ' + (d.tags || []).join(' and ') + '.');
+    toast(lines.join('\n'), missed.length > 0);
+  }
+  const ZOHO_BOOKMARK = 'javascript:' + encodeURIComponent('(' + ccZohoFill.toString() + ')();');
+  const cleanLast = (s) => String(s || '').split(',')[0].replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
+  const cleanFirst = (s) => String(s || '').replace(/\([^)]*\)|"[^"]*"/g, ' ').replace(/\s+/g, ' ').trim();
+  const zohoPayload = (r) => {
+    const b = r.brief || {};
+    const y = yearOf(r.connected);
+    const why = String(b.why || r.why || '').trim();
+    return {
+      name: r.name,
+      first: cleanFirst(r.first),
+      last: cleanLast(r.last) || cleanLast(r.name),
+      title: r.position || '',
+      company: r.company || '',
+      linkedin: r.url || '',
+      description: [why, `From Mack’s LinkedIn network${y ? ', connected since ' + y : ''}.`].filter(Boolean).join(' '),
+      priority: '5',
+      li_connect: 'Connected',
+      relationship: 'Founder Network',
+      tags: ZOHO_TAGS,
+    };
+  };
+  const addZohoBtn = (r) => {
+    const label = 'Add to Zoho';
+    const b = el('button', 'cc-go cc-mn-addz', label);
+    b.type = 'button';
+    b.title = 'Copies their details and opens Zoho’s New Contact page. There, click your “Fill from dashboard” bookmark, check the form, pick the Account and press Save.';
+    b.addEventListener('click', async () => {
+      let ok = true;
+      try { await navigator.clipboard.writeText(FILL_MARK + JSON.stringify(zohoPayload(r))); } catch (e) { ok = false; }
+      const a = document.createElement('a');
+      a.href = ZOHO_NEW; a.target = '_blank'; a.rel = 'noopener';
+      document.body.appendChild(a); a.click(); a.remove();
+      b.textContent = ok ? 'Copied: use the bookmark in Zoho' : 'Couldn’t copy: allow the clipboard and retry';
+      setTimeout(() => { b.textContent = label; }, 4000);
+    });
+    return b;
+  };
+  const bookmarkHelp = () => {
+    const w = el('div', 'cc-mn-zhelp');
+    const t = el('p');
+    t.append(el('b', null, 'Add to Zoho: '), document.createTextNode('opens Zoho’s New Contact page with their details copied. One-time setup: copy the bookmark below, add a bookmark in Chrome, paste it as the URL and name it “Fill from dashboard”. On the New Contact page, click it to fill the form, then check it, pick the Account and press Save. Add the tags Founder_Network and May 2026 - 100 B2B after saving.'));
+    const c = el('button', 'cc-go cc-mn-copy', 'Copy the bookmark');
+    c.type = 'button';
+    c.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(ZOHO_BOOKMARK); c.textContent = 'Copied'; } catch (e) { c.textContent = 'Couldn’t copy'; }
+      setTimeout(() => { c.textContent = 'Copy the bookmark'; }, 1600);
+    });
+    w.append(t, c);
     return w;
   };
   const copyBtn = (text) => {
@@ -412,6 +544,7 @@
     const lows = all.filter((r) => r.scope === 'new' && resFit(r) === 'Low').length;
     const waiting = all.filter((r) => r.scope === 'new' && r.brief && r.brief.check === 'none').length;
     likely.p.textContent = `New people with the highest chance, each looked up on the web, those who endorsed or recommended Mack (or he them) first: current role, firm, who they serve, risks, and how Mack should open. ${intF(pool.length)} shown${lows ? `; ${intF(lows)} ruled out by research (competitor, inactive or outside our market) and moved down the list` : ''}${waiting ? `; ${intF(waiting)} more are still waiting for research` : ''}.`;
+    likelyHelp.replaceChildren(...(pool.length ? [bookmarkHelp()] : []));
     const show = likelyAll ? pool : pool.slice(0, SHORTLIST);
     likelyBody.replaceChildren(...show.map((r) => {
       const b = r.brief;
@@ -438,6 +571,9 @@
         box.append(el('p', null, b.opener), copyBtn(b.opener));
         c.append(box);
       }
+      const acts = el('div', 'cc-mn-bacts');
+      acts.append(addZohoBtn(r));
+      c.append(acts);
       if (Array.isArray(b.sources) && b.sources.length) {
         const src = el('p', 'cc-mn-bsrc');
         src.append(document.createTextNode('Sources: '));

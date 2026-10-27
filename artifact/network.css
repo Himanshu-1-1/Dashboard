@@ -73,6 +73,10 @@
 .cc-mn-opener { display: grid; gap: 6px; padding: 10px 12px; border-radius: 10px; background: color-mix(in oklab, var(--mn-new) 7%, var(--color-panel)); border-left: 3px solid var(--mn-new); }
 .cc-mn-opener p { font-style: italic; }
 .cc-mn-copy { justify-self: start; font-size: 12px; }
+.cc-mn-bacts { display: flex; flex-wrap: wrap; gap: 8px; }
+.cc-mn-addz { font-size: 12.5px; font-weight: 600; color: #fff; background: var(--mn-new); border-color: var(--mn-new); }
+.cc-mn-addz:hover, .cc-mn-addz:focus-visible { background: color-mix(in oklab, var(--mn-new) 85%, #000); }
+.cc-mn-zhelp { display: grid; gap: 8px; margin: 0 0 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--color-border-line); background: color-mix(in oklab, var(--mn-new) 4%, var(--color-panel)); font-size: 12.5px; line-height: 1.5; }
 
 /* Scope switch: Not in Zoho / Already in Zoho */
 .cc-mn-scope { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border: 1px solid var(--color-border-line); border-radius: 12px; overflow: hidden; }
