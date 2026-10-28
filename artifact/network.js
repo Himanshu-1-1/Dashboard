@@ -250,7 +250,7 @@
   });
 
   /* ---------- static structure ---------- */
-  const st = { scope: 'new', grade: new Set(['A', 'B']), type: null, crm: null, q: '', page: 0, sort: 'chance', researched: false };
+  const st = { scope: 'new', grade: new Set(['A', 'B']), type: null, crm: null, q: '', page: 0, sort: 'chance', researched: false, pick: null };
   const section = (cls, title, sub) => {
     const s = el('section', 'cc-card ' + cls);
     const h = el('div', 'cc-card-head');
@@ -466,7 +466,11 @@
   };
 
   /* ---------- head ---------- */
-  const goList = (patch) => { Object.assign(st, { page: 0 }, patch); drawKinds(); drawList(); list.s.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+  const goList = (patch) => { Object.assign(st, { page: 0, pick: null }, patch); drawKinds(); drawList(); list.s.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+  /* Any count on the tab lists exactly the people it counts (Hemang, Oct 29, 2026): a picked set overrides scope and grade. */
+  const pickList = (label, people) => goList({ pick: { label, ids: new Set(people.map((r) => r.url || r.name)) }, q: '', type: null, crm: null, researched: false });
+  const keyOfR = (r) => r.url || r.name;
+  const numBtn = (n, label, people, text) => { const b = el('button', 'cc-mn-numbtn', text || intF(n)); b.type = 'button'; b.title = `Show ${label.toLowerCase()}`; b.addEventListener('click', (e) => { e.stopPropagation(); pickList(label, people); }); return b; };
   const drawHead = (all) => {
     const fresh = all.filter((r) => r.scope === 'new' && (r.fit === 'A' || r.fit === 'B'));
     const hot = fresh.filter((r) => r.chance >= LIKELY);
@@ -474,7 +478,7 @@
     const knownN = all.filter((r) => r.scope === 'known').length;
     const inZoho = all.filter((r) => r.scope === 'zoho').length;
     const asof = (all[0] || {}).export_date;
-    head.p.textContent = `${intF(all.length)} connections from Mack’s LinkedIn export${asof ? ' of ' + dayF(asof) : ''}, each checked against Zoho (live), our Fireflies calls, the TLS team and advisors, and endorsements between Mack and them, and ranked by the chance of a real conversation learned from our own results. ${intF(fresh.length)} of them are new strong or possible fits: not in Zoho and not yet talking to us.`;
+    head.p.replaceChildren(numBtn(all.length, 'Every connection', all), document.createTextNode(` connections from Mack’s LinkedIn export${asof ? ' of ' + dayF(asof) : ''}, each checked against Zoho (live), our Fireflies calls, the TLS team and advisors, and endorsements between Mack and them, and ranked by the chance of a real conversation learned from our own results. `), numBtn(fresh.length, 'New strong or possible fits', fresh), document.createTextNode(' of them are new strong or possible fits: not in Zoho and not yet talking to us.'));
     const tile = (cls, label, n, hint, fn) => {
       const b = el('button', 'cc-mn-stat ' + cls);
       b.type = 'button';
@@ -483,8 +487,8 @@
       return b;
     };
     stats.replaceChildren(
-      tile('cc-mn-sA', 'Best bets, researched', best.length, 'high chance and a High fit on the web: approach first', () => likely.s.scrollIntoView({ behavior: 'smooth', block: 'start' })),
-      tile('cc-mn-sB', `Above-average chance, ${LIKELY}%+`, hot.length, `${LIKELY_X}× our average of ${AVG}%: research these next`, () => goList({ scope: 'new', grade: new Set(['A', 'B']), type: null, crm: null, sort: 'chance' })),
+      tile('cc-mn-sA', 'Best bets, researched', best.length, 'high chance and a High fit on the web: approach first', () => pickList('Best bets, researched High', best)),
+      tile('cc-mn-sB', `Above-average chance, ${LIKELY}%+`, hot.length, `${LIKELY_X}× our average of ${AVG}%: research these next`, () => pickList(`Above-average chance, ${LIKELY}%+`, hot)),
       tile('cc-mn-sKnown', 'Known to us, not in Zoho', knownN, 'on our calls or team: add to Zoho', () => known.s.scrollIntoView({ behavior: 'smooth', block: 'start' })),
       tile('cc-mn-sIn', 'Already in Zoho', inZoho, 'matched by LinkedIn profile or name', () => goList({ scope: 'zoho', grade: new Set(), type: null, crm: null, sort: 'chance' })),
     );
@@ -494,7 +498,9 @@
   const drawLearn = () => {
     const m = rows('mn_model')[0];
     if (!m || !m.n) { learn.p.textContent = 'Not enough of Mack’s connections are in our campaigns yet to learn from.'; learnBody.replaceChildren(); learnTake.replaceChildren(); return; }
-    learn.p.textContent = `Measured live on the ${intF(m.n)} of Mack’s connections already in our B2B campaign or Founder Network: ${pctF(m.base)} of them reached Priority 1, signed, or had a meeting. This is what the chances below are built on.`;
+    const pool0 = rows('mn_rows').filter((r) => r.crm === 'b2b' || r.crm === 'fn');
+    learn.p.replaceChildren(document.createTextNode('Measured live on the '), numBtn(m.n, 'Mack’s connections in our B2B campaign or Founder Network', pool0), document.createTextNode(' of Mack’s connections already in our B2B campaign or Founder Network: '), numBtn(m.ok, 'Progressed: Priority 1, signed or met', pool0.filter((r) => r.progressed), pctF(m.base)), document.createTextNode(' of them reached Priority 1, signed, or had a meeting. This is what the chances below are built on.'));
+    const pool = rows('mn_rows').filter((r) => r.crm === 'b2b' || r.crm === 'fn');
     const block = (title, entries) => {
       const w = el('div', 'cc-mn-learnblock');
       w.append(el('h4', null, title));
@@ -503,18 +509,22 @@
         if (!e.g.n) return;
         const row = el('div', 'cc-mn-lrow');
         const bar = el('span', 'cc-mn-ltrack'); const f = el('i'); f.style.width = ((e.g.raw || 0) / peak) * 100 + '%'; bar.append(f);
-        row.append(el('span', 'cc-mn-llab', e.label), bar, el('b', null, pctF(e.g.raw || 0)), el('small', null, `${e.g.ok} of ${e.g.n}`));
-        row.title = `${e.label}: ${e.g.ok} of ${e.g.n} progressed (${pctF(e.g.raw || 0)}).`;
+        const grp = e.keep ? pool.filter(e.keep) : [];
+        const sm = el('small');
+        if (e.keep) sm.append(numBtn(e.g.ok, `${e.label}: progressed`, grp.filter((r) => r.progressed)), document.createTextNode(' of '), numBtn(e.g.n, `${e.label}: everyone in the campaigns`, grp));
+        else sm.textContent = `${e.g.ok} of ${e.g.n}`;
+        row.append(el('span', 'cc-mn-llab', e.label), bar, el('b', null, pctF(e.g.raw || 0)), sm);
+        row.title = `${e.label}: ${e.g.ok} of ${e.g.n} progressed (${pctF(e.g.raw || 0)}). Select a number to list the people.`;
         w.append(row);
       });
       return w;
     };
-    const types = TYPES.map(([k, label]) => ({ k, label, g: m.byType[k] })).filter((x) => x.g && x.g.n >= 5).sort((x, y) => (y.g.raw || 0) - (x.g.raw || 0));
+    const types = TYPES.map(([k, label]) => ({ k, label, g: m.byType[k], keep: (r) => r.type === k })).filter((x) => x.g && x.g.n >= 5).sort((x, y) => (y.g.raw || 0) - (x.g.raw || 0));
     learnBody.replaceChildren(
       block('By kind of partner (5 or more people)', types),
-      block('By when Mack connected', AGES.map(([k, label]) => ({ label, g: m.byAge[k] }))),
-      block('By endorsements or recommendations', [{ label: 'Endorsement or recommendation', g: m.byTie.yes }, { label: 'Neither', g: m.byTie.no }]),
-      block('By grade from the title', GRADES.slice(0, 3).map(([k, label]) => ({ label: `${k} ${label}`, g: m.byGrade[k] }))),
+      block('By when Mack connected', AGES.map(([k, label]) => ({ label, g: m.byAge[k], keep: (r) => r.age === k }))),
+      block('By endorsements or recommendations', [{ label: 'Endorsement or recommendation', g: m.byTie.yes, keep: (r) => Boolean(r.tie) }, { label: 'Neither', g: m.byTie.no, keep: (r) => !r.tie }]),
+      block('By grade from the title', GRADES.slice(0, 3).map(([k, label]) => ({ label: `${k} ${label}`, g: m.byGrade[k], keep: (r) => r.fit === k }))),
     );
     const take = [];
     if (types.length >= 2) {
@@ -543,7 +553,11 @@
       .sort((a, b) => Number(b.tie) - Number(a.tie) || b.chance - a.chance || (a.brief.check === 'confirmed' ? -1 : 1) - (b.brief.check === 'confirmed' ? -1 : 1) || String(a.connected).localeCompare(String(b.connected)));
     const lows = all.filter((r) => r.scope === 'new' && resFit(r) === 'Low').length;
     const waiting = all.filter((r) => r.scope === 'new' && r.brief && r.brief.check === 'none').length;
-    likely.p.textContent = `New people with the highest chance, each looked up on the web, those who endorsed or recommended Mack (or he them) first: current role, firm, who they serve, risks, and how Mack should open. ${intF(pool.length)} shown${lows ? `; ${intF(lows)} ruled out by research (competitor, inactive or outside our market) and moved down the list` : ''}${waiting ? `; ${intF(waiting)} more are still waiting for research` : ''}.`;
+    const lowL = all.filter((r) => r.scope === 'new' && resFit(r) === 'Low');
+    const waitL = all.filter((r) => r.scope === 'new' && r.brief && r.brief.check === 'none');
+    likely.p.replaceChildren(document.createTextNode('New people with the highest chance, each looked up on the web, those who endorsed or recommended Mack (or he them) first: current role, firm, who they serve, risks, and how Mack should open. '), numBtn(pool.length, 'Researched, not ruled out', pool), document.createTextNode(' shown'),
+      ...(lows ? [document.createTextNode('; '), numBtn(lows, 'Ruled out by research', lowL), document.createTextNode(' ruled out by research (competitor, inactive or outside our market) and moved down the list')] : []),
+      ...(waiting ? [document.createTextNode('; '), numBtn(waiting, 'Still waiting for research', waitL), document.createTextNode(' more are still waiting for research')] : []), document.createTextNode('.'));
     likelyHelp.replaceChildren(...(pool.length ? [bookmarkHelp()] : []));
     const show = likelyAll ? pool : pool.slice(0, SHORTLIST);
     likelyBody.replaceChildren(...show.map((r) => {
@@ -661,6 +675,7 @@
   const inScope = (r) => r.scope === st.scope;
   const visible = (all) => {
     const q = st.q.trim().toLowerCase();
+    if (st.pick) return all.filter((r) => st.pick.ids.has(keyOfR(r)) && (!q || `${r.name} ${r.position} ${r.company}`.toLowerCase().includes(q)));
     return all.filter((r) => inScope(r) && (!st.grade.size || st.grade.has(r.fit)) && (!st.type || r.type === st.type)
       && (st.scope !== 'zoho' || !st.crm || r.crm === st.crm) && (!st.researched || researched(r))
       && (!q || `${r.name} ${r.position} ${r.company} ${r.why} ${r.refer} ${(researched(r) && r.brief.why) || ''}`.toLowerCase().includes(q)));
@@ -676,8 +691,9 @@
     scopeBar.replaceChildren(...SCOPES.map(([k, label, hint]) => {
       const b = el('button', 'cc-mn-scopetab');
       b.type = 'button'; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', String(st.scope === k));
-      b.append(el('b', null, `${label} (${intF(all.filter((r) => r.scope === k).length)})`), el('span', null, hint));
-      b.addEventListener('click', () => { if (st.scope === k) return; Object.assign(st, { scope: k, crm: null, page: 0, grade: k === 'new' ? new Set(['A', 'B']) : new Set() }); drawList(); });
+      b.setAttribute('aria-selected', String(st.scope === k && !st.pick));
+      b.append(el('b', null, `${label} (${intF(all.filter((r) => r.scope === k && (k !== 'new' || r.fit === 'A' || r.fit === 'B')).length)})`), el('span', null, k === 'new' ? hint + ' (strong and possible fits; add C or X from Grade)' : hint));
+      b.addEventListener('click', () => { if (st.scope === k && !st.pick) return; Object.assign(st, { scope: k, crm: null, page: 0, pick: null, grade: k === 'new' ? new Set(['A', 'B']) : new Set() }); drawList(); });
       return b;
     }));
   };
@@ -702,7 +718,7 @@
     sortSel.value = st.sort;
     sortSel.addEventListener('change', () => { st.sort = sortSel.value; st.page = 0; drawList(); });
     const reset = el('button', 'cc-go', 'Reset filters'); reset.type = 'button';
-    reset.addEventListener('click', () => { Object.assign(st, { grade: st.scope === 'new' ? new Set(['A', 'B']) : new Set(), type: null, crm: null, q: '', page: 0, sort: 'chance', researched: false }); drawKinds(); drawList(); });
+    reset.addEventListener('click', () => { Object.assign(st, { grade: st.scope === 'new' ? new Set(['A', 'B']) : new Set(), type: null, crm: null, q: '', page: 0, sort: 'chance', researched: false, pick: null }); drawKinds(); drawList(); });
     const dl = el('button', 'cc-go', 'Download these as CSV'); dl.type = 'button';
     dl.addEventListener('click', () => download(visible(all).sort(sorters[st.sort])));
     t.append(sel, search, res, sortSel, reset, dl);
@@ -735,14 +751,14 @@
     st.page = Math.min(st.page, pages - 1);
     const slice = lst.slice(st.page * PAGE, st.page * PAGE + PAGE);
     const sc = SCOPES.find((x) => x[0] === st.scope);
-    list.t.textContent = `${sc[1]} (${intF(lst.length)})`;
+    list.t.textContent = st.pick ? `${st.pick.label} (${intF(lst.length)})` : `${sc[1]} (${intF(lst.length)})`;
     const parts = [];
     if (st.grade.size && st.grade.size < GRADES.length) parts.push([...st.grade].sort().join(' and ') + ' grade');
     if (st.type) parts.push(TYPE_NAME[st.type]);
     if (st.scope === 'zoho' && st.crm) parts.push(CRM_NAME[st.crm]);
     if (st.researched) parts.push('researched');
     if (st.q.trim()) parts.push(`matching “${st.q.trim()}”`);
-    list.p.textContent = `${sc[2][0].toUpperCase()}${sc[2].slice(1)}. ${parts.length ? 'Showing: ' + parts.join(', ') + '.' : 'Showing every grade.'} Nothing here is written to Zoho.`;
+    list.p.textContent = st.pick ? `The people behind the number you selected. Reset filters or pick a scope tab to go back to the full list. Nothing here is written to Zoho.` : `${sc[2][0].toUpperCase()}${sc[2].slice(1)}. ${parts.length ? 'Showing: ' + parts.join(', ') + '.' : 'Showing every grade.'} Nothing here is written to Zoho.`;
     const tbl = el('table', 'cc-tbl cc-mn-tbl');
     const thead = el('thead'); const hr = el('tr');
     ['Chance', 'Grade', 'Name', 'Title and company', 'Kind of partner', 'Why', 'Relationship', 'Status', 'Connected'].forEach((h) => { const th = el('th', null, h); th.scope = 'col'; hr.append(th); });

@@ -390,6 +390,7 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
 .cc-clickable { cursor: pointer; border-radius: var(--cds-radius); transition: background var(--cds-dur-slow); }
 .cc-clickable:hover { background: var(--cds-chart-grid); }
 .cc-clickable:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+.cc-num-link.cc-clickable, .cc-insight b.cc-clickable, .cc-takeaway b.cc-clickable, .cc-dkpi-s .cc-clickable, .cc-bcol-sub .cc-clickable { text-decoration: underline dotted; text-underline-offset: 3px; }
 .cc-clickable.cc-picked { background: var(--cds-chart-grid); box-shadow: inset 3px 0 0 var(--color-fg); }
 b.cc-clickable, .cc-ic-mgrid > .cc-clickable b, td.cc-clickable { text-decoration: underline dotted; text-decoration-color: var(--color-fg-muted); text-underline-offset: 3px; }
 b.cc-clickable.cc-picked { box-shadow: none; text-decoration-style: solid; }
@@ -4113,7 +4114,9 @@ dash.calc('attention', {
       const wrap = el('div', 'cc-refrow');
       const top = el('div', 'cc-reftop');
       const right = el('span');
-      right.append(markEl('b', 'courier_phases', 'emailed', { phase: r.phase }, r.emailed, 'int'), document.createTextNode(' emailed of '),
+      const emB = markEl('b', 'courier_phases', 'emailed', { phase: r.phase }, r.emailed, 'int');
+      if (r.emailed && card && card.id) listable(emB, card, 'emailed:' + r.phase, 'Show companies emailed in ' + r.phase, () => MARK_SPEC.courier_phases({ phase: r.phase }, 'emailed'));
+      right.append(emB, document.createTextNode(' emailed of '),
         markEl('b', 'courier_phases', 'companies', { phase: r.phase }, r.companies, 'int'));
       top.append(el('span', 'cc-who', r.phase), right);
       wrap.append(top, splitBar(card, r, MC_SEND, mcSendColor, r.phase, (r.companies / max * 100).toFixed(1) + '%'));
@@ -4126,7 +4129,7 @@ dash.calc('attention', {
       b('funnel', 'value', { campaign: 'mc', step: 'followed_up' }, d3.sum(rows, (r) => r.followed_up), 'int'), ' followed up and ',
       b('funnel', 'value', { campaign: 'mc', step: 'replied' }, d3.sum(rows, (r) => r.replied), 'int'), ' replies.'];
     if (unmarked.length) parts.push(' ', unmarked.map((r) => r.phase).join(' and '), unmarked.length === 1 ? ' has' : ' have', ' no Email sent column, so ',
-      b('courier_phases', 'not_marked', { phase: unmarked[0].phase }, d3.sum(unmarked, (r) => r.not_marked), 'int'), ' companies there are not counted either way.');
+      b('courier_phases', 'not_marked', { phases: unmarked.map((r) => r.phase).join('|') }, d3.sum(unmarked, (r) => r.not_marked), 'int'), ' companies there are not counted either way.');
     said(root.querySelector('#ins-mc-phases'), parts);
     const file = rowsOf('courier_file');
     const saved = file && file.find((r) => r.measure === 'saved_on');
@@ -4716,13 +4719,81 @@ dash.calc('attention', {
     priority_mix: (q) => (META[q.campaign] && q.priority ? prioritySpec(q.campaign)(q.priority) : null),
     campaign_monthly: (q) => (DRILLS['spark-hero-' + q.campaign] && q.month ? DRILLS['spark-hero-' + q.campaign].build(q.month) : null),
     backlog: (q) => { const k = q.key || (q.campaign && q.item ? q.campaign + '|' + q.item : null); return k ? blSpec(k) : null; },
+    /* Insight numbers on the other cards (Hemang, Oct 29, 2026: every number opens the records behind it). */
+    stage_mix: (q) => (q.stage ? stageDeals((d) => d.kind === q.kind && (q.kind !== 'Partnership' || CC_RULES.notLost(d)), hueOf(q.kind === 'Partnership' ? 'rp' : 'icp'))(q.stage) : null),
+    referral_summary: (q) => {
+      const all = rowsOf('referrals') || [];
+      const pickR = { linked_deals: (r) => r.recorded, partners: (r) => r.recorded, unsigned: (r) => r.recorded && !r.signed, unrecorded: (r) => !r.recorded }[q.measure];
+      if (!pickR) return null;
+      let rows = all.filter(pickR);
+      if (q.measure === 'linked_deals') { const seen = new Set(); rows = rows.filter((r) => (seen.has(r.deal_id) ? false : seen.add(r.deal_id))); }
+      const title = { linked_deals: 'Referred deals with a referrer recorded', partners: 'Deals referred by each partner', unsigned: 'Referred through a partner whose agreement isn’t signed', unrecorded: 'External Referral deals with no referrer recorded' }[q.measure];
+      return { title, swatch: hueOf('rp'), source: 'referrals', rowKey: 'link_id', cols: REF_COLS, rows: rows.slice().sort((a, b) => String(a.partner).localeCompare(String(b.partner))), note: q.measure === 'partners' ? 'The figure counts partners; the list shows each of their referred deals.' : null };
+    },
+    pipeline_totals: (q) => {
+      const keep = { open: (d) => ['Identify', 'Discovery', 'Proposals'].includes(d.stage), hold: (d) => d.stage === 'Hold', won: (d) => d.stage === 'Closed', won_amount: (d) => d.stage === 'Closed', lost: (d) => LOST.includes(d.stage) }[q.measure];
+      if (!keep) return null;
+      const title = { open: 'Open deals (Identify, Discovery, Proposals)', hold: 'Deals on Hold', won: 'Deals won', won_amount: 'Deals won (amount where set)', lost: 'Deals lost' }[q.measure];
+      return { title, source: 'deals_tagged', rowKey: 'id', cols: [...DEAL_COLS.slice(0, 3), ['campaign', 'Campaign', null, true], ...DEAL_COLS.slice(3)], rows: (rowsOf('deals_tagged') || []).filter(keep).sort(byStageThenRecentD) };
+    },
+    deals_monthly: (q) => (q.month ? { ...DRILLS.monthly.build(q.month), title: 'Deals created in ' + monthF(new Date(q.month + '-01T00:00:00Z')) + (q.kind ? ' · ' + q.kind : ''), rows: DRILLS.monthly.build(q.month).rows.filter((d) => !q.kind || d.kind === q.kind) } : null),
+    campaign_river: (q) => { const r = markRow('campaign_river', q); return r && META[q.campaign] ? stepSpec(q.campaign, r.step) : null; },
+    meeting_totals: (q) => {
+      const camp = ['B2B Campaign', 'ICP Prospecting', 'Founder Network', 'Medical Courier'];
+      const keep = q.group === 'All' ? () => true : q.group === 'Campaign contacts' ? (m) => camp.includes(m.group) : (m) => m.group === q.group;
+      return { title: 'Meetings since Aug 17 · ' + q.group, source: 'meetings_tagged', rowKey: 'id', cols: [['when', 'When (CT)', 'datetime'], ['title', 'Meeting'], ['contact', 'With'], ['group', 'Campaign', null, true]], rows: (rowsOf('meetings_tagged') || []).filter((m) => String(m.when || '') >= '2026-08-17' && keep(m)).sort((a, b) => String(b.when).localeCompare(String(a.when))) };
+    },
+    fn_coverage: (q) => (q.priority ? peopleSpec(`Founder Network · Priority ${q.priority} · ${q.state || 'All'}`, priorityColor('fn', q.priority), (r) => r.priority === q.priority && (q.state === 'No next step' ? r.open_tasks === 0 : q.state === 'Has a next step' ? r.open_tasks > 0 : true)) : null),
+    attention: (q) => {
+      const partner = (stage) => stageDeals((d) => d.kind === 'Partnership', hueOf('rp'))(stage);
+      switch (q.item) {
+        case 'fn_p1_no_step': return peopleSpec('Founder Network · Priority 1 with no next step', priorityColor('fn', '1'), (r) => r.priority === '1' && r.open_tasks === 0);
+        case 'ref_unrecorded': return MARK_SPEC.referral_summary({ measure: 'unrecorded' });
+        case 'partner_proposals': return partner('Proposals');
+        case 'partner_hold': return partner('Hold');
+        case 'icp_connected_unmet': return campSpec('icp', 'ICP · Connected, never met', (r) => r.li_status === 'Connected' && !r.meetings);
+        case 'rp_no_priority': return campSpec('rp', 'B2B Campaign · No Priority set', (r) => r.priority === 'Not set', null, campByName);
+        default: return null;
+      }
+    },
+    courier_phases: (q, f) => {
+      const keep = { companies: () => true, emailed: (x) => x.emailed === true, replied: (x) => x.emailed === true && x.replied === true, followed_up: (x) => x.emailed === true && x.followed_up === true, followed_no_reply: (x) => x.emailed === true && x.followed_up === true && x.replied !== true, emailed_once: (x) => x.emailed === true && x.replied !== true && x.followed_up !== true, not_emailed: (x) => x.emailed === false, not_marked: (x) => x.emailed !== true && x.emailed !== false }[f];
+      if (!keep) return null;
+      const phases = q.phases ? q.phases.split('|') : q.phase ? [q.phase] : null;
+      return { title: `Medical Courier · ${phases ? phases.join(' and ') + ' · ' : ''}${f.replace(/_/g, ' ')}`, swatch: hueOf('mc'), source: 'courier_sends', rowKey: 'row_id', cols: SEND_COLS, rows: sendRows((x) => (!phases || phases.includes(x.phase)) && keep(x)), note: 'From the Medical Courier prospects sheet.' };
+    },
+    boxbyte_batch: (q) => {
+      const msg = (keep, title) => ({ title: 'Box Byte batch · ' + title, swatch: hueOf('bb'), source: 'boxbyte_messages', rowKey: 'message_no', cols: [['message_no', '#', 'int', false, true], ['send_from', 'From'], ['title', 'Prospect’s title'], ['review', 'Review'], ['style', 'Style', null, true], ['rewritten', 'Rewritten', null, true], ['subject', 'Subject', null, true]], rows: (rowsOf('boxbyte_messages') || []).filter(keep).sort((a, c) => Number(a.message_no) - Number(c.message_no)), note: 'The full text of each message is in Drafted messages below.' });
+      switch (q.measure) {
+        case 'drafted': return msg(() => true, 'messages drafted');
+        case 'sourced': return { ...msg(() => true, 'prospects sourced'), note: 'Sourced = messages drafted plus prospects held back; the held-back ones are under Held back.' };
+        case 'ready': return msg((m) => m.review === 'Ready', 'ready to send');
+        case 'check': return msg((m) => m.review === 'Check', 'to check');
+        case 'drop': return msg((m) => m.review === 'Drop', 'to drop');
+        case 'rewritten': return msg((m) => m.rewritten === 'Yes', 'rewritten');
+        case 'question_led': return msg((m) => m.style === 'question-led', 'question-led');
+        case 'held': return { title: 'Box Byte batch · held back', swatch: 'var(--cds-chart-muted)', source: 'boxbyte_held', rowKey: 'held_no', cols: [['name', 'Prospect'], ['company', 'Company'], ['reason', 'Reason']], rows: (rowsOf('boxbyte_held') || []).slice().sort((a, c) => String(a.name).localeCompare(String(c.name))) };
+        default: return null;
+      }
+    },
+    boxbyte_funnel: (q) => {
+      if (q.step === 'no_status') return { title: 'Box Byte · no LinkedIn status set', swatch: hueOf('bb'), source: 'boxbyte_people', rowKey: 'contact_id', cols: BB_PEOPLE_COLS, rows: (rowsOf('boxbyte_people') || []).filter((p) => p.linkedin === 'Not set').sort(bbPeopleOrder) };
+      return q.step ? DRILLS['bb-funnel'].build(q.step) : null;
+    },
+    boxbyte_profiles: (q, f) => {
+      if (!q.profile) return null;
+      const spec = DRILLS['bb-profile'].build(q.profile);
+      if (f === 'met') return { ...spec, title: spec.title + ' · met', rows: spec.rows.filter((p) => p.met) };
+      if (f === 'connected') return { ...spec, title: spec.title + ' · connected', rows: spec.rows.filter((p) => p.connected && !p.met) };
+      return spec;
+    },
   };
   const markHost = (n) => n.closest('.cc-card[id]') || (n.closest('.cc-page') && n.closest('.cc-page').querySelector('.cc-card[id]'));
   var CC_WIRE = () => {
     root.querySelectorAll('[data-source][data-where][data-field]').forEach((n) => {
       if (n.closest('table')) return;
       const res = MARK_SPEC[n.dataset.source];
-      if (!res) return;
+      if (!res || n.dataset.fmt === 'date') return;
       const target = n.querySelector('.cc-donut-n') || n;
       if (target === n && n.querySelector('[role=button], a, button')) return;
       if (target !== n.closest('[role=button]') && n.parentElement && n.parentElement.closest('[role=button]')) return;
@@ -5069,7 +5140,13 @@ dash.calc('attention', {
     if (!box) return;
     box.replaceChildren(...items.map(([color, label]) => { const s = el('span'); const sw = el('i', 'cc-sw'); sw.style.background = color; s.append(sw, document.createTextNode(label)); return s; }));
   };
-  const dlInsight = (id, text) => { const p = root.querySelector('#' + id); if (p) p.textContent = text; };
+  const dlInsight = (id, text) => { const p = root.querySelector('#' + id); if (!p) return; if (Array.isArray(text)) said(p, text); else p.textContent = text; };
+  /* A number on the Deals tab that opens its own deals in the card it sits in. */
+  const dlN = (cardId, text, title, keep, opts = {}) => {
+    const host = root.querySelector('#' + cardId);
+    const n = el('b', 'cc-num-link', text);
+    return host ? listable(n, host, 'dl:' + title, 'Show ' + title.toLowerCase(), () => dlSpec(title, keep, opts)) : n;
+  };
   const dlCard = (x) => {
     const li = el('li', 'cc-bcard');
     const href = zohoUrl(['Potentials', 'id'], x);
@@ -5115,15 +5192,17 @@ dash.calc('attention', {
     const stale = open.filter((d) => d.age != null && d.age >= DL_STALE);
     const decided = won.length + lost.length;
     const tiles = [
-      ['open', intF(open.length), 'Open deals', DL_OPEN.map((s) => s + ' ' + rows.filter((d) => d.stage === s).length).join(' · ')],
+      ['open', intF(open.length), 'Open deals', DL_OPEN.flatMap((s, i) => [i ? ' · ' : '', s + ' ', dlN('dl-kpis', intF(rows.filter((d) => d.stage === s).length), 'At ' + s, (d) => d.stage === s)])],
       ['amount', intF(withAmt.length) + ' of ' + intF(open.length), 'Open deals with an amount', withAmt.length ? moneyF(dlSum(withAmt)) + ' known value' : 'No open deal has an amount'],
-      ['winrate', decided ? pctF(won.length / decided) : '—', 'Win rate', intF(won.length) + ' won · ' + intF(lost.length) + ' lost' + (won.length ? ' · ' + moneyF(dlSum(won)) + ' won' : '')],
+      ['winrate', decided ? pctF(won.length / decided) : '—', 'Win rate', [dlN('dl-kpis', intF(won.length), 'Won', (d) => d.stage === 'Closed'), ' won · ', dlN('dl-kpis', intF(lost.length), 'Lost', (d) => LOST.includes(d.stage), { lost: true }), ' lost' + (won.length ? ' · ' + moneyF(dlSum(won)) + ' won' : '')]],
       ['age', mid == null ? '—' : intF(mid) + (mid === 1 ? ' day' : ' days'), 'Median time since last update', 'Across open deals'],
       ['stale', intF(stale.length), 'Open deals not updated in ' + DL_STALE + '+ days', open.length ? pctF(stale.length / open.length) + ' of open deals' : 'No open deals'],
     ];
     box.replaceChildren(...tiles.map(([key, value, label, sub]) => {
       const tile = el('div', 'cc-dkpi');
-      tile.append(el('span', 'cc-dkpi-v', value), el('span', 'cc-dkpi-l', label), el('span', 'cc-dkpi-s', sub));
+      const subEl = el('span', 'cc-dkpi-s');
+      if (Array.isArray(sub)) said(subEl, sub); else subEl.textContent = sub;
+      tile.append(el('span', 'cc-dkpi-v', value), el('span', 'cc-dkpi-l', label), subEl);
       clickable(tile, 'dl-kpi', key, 'Show ' + label.toLowerCase());
       return tile;
     }));
@@ -5142,8 +5221,17 @@ dash.calc('attention', {
       if (i === 0 || i === DL_OPEN.length) head.append(el('span', 'cc-bgroup', i === 0 ? 'Open pipeline' : 'Closed'));
       else head.append(el('span', 'cc-bgroup', ' '));
       const top = el('div', 'cc-bcol-top');
-      top.append(el('h4', null, label), el('span', 'cc-bcol-n', intF(list.length)));
-      head.append(top, el('p', 'cc-bcol-sub', known.length ? moneyF(dlSum(known)) + ' · ' + known.length + ' of ' + list.length + ' with an amount' : (list.length ? 'No amounts set' : ' ')));
+      const bHost = root.querySelector('#dl-board-card');
+      const colN = el('span', 'cc-bcol-n', intF(list.length));
+      if (list.length && bHost) listable(colN, bHost, 'board:' + stage, 'Show deals at ' + label, () => dlSpec('At ' + label, (d) => d.stage === stage, { lost: LOST.includes(stage) }));
+      top.append(el('h4', null, label), colN);
+      const colSub = el('p', 'cc-bcol-sub');
+      if (known.length && bHost) {
+        const amt = el('b', 'cc-num-link', known.length + ' of ' + list.length);
+        listable(amt, bHost, 'board-amt:' + stage, 'Show deals at ' + label + ' with an amount', () => dlSpec('At ' + label + ' with an amount', (d) => d.stage === stage && d.amount_known, { sort: (a, b) => (b.amount || 0) - (a.amount || 0) }));
+        said(colSub, [moneyF(dlSum(known)) + ' · ', amt, ' with an amount']);
+      } else colSub.textContent = known.length ? moneyF(dlSum(known)) + ' · ' + known.length + ' of ' + list.length + ' with an amount' : (list.length ? 'No amounts set' : ' ');
+      head.append(top, colSub);
       const ul = el('ul', 'cc-bcards');
       if (list.length) ul.append(...list.map(dlCard)); else ul.append(el('li', 'cc-bempty', 'No deals'));
       col.append(head, ul);
@@ -5153,7 +5241,7 @@ dash.calc('attention', {
     const open = rows.filter(CC_RULES.isOpen);
     const biggest = DL_OPEN.map((s) => [s, rows.filter((d) => d.stage === s).length]).sort((a, b) => b[1] - a[1])[0];
     dlInsight('ins-dl-board', open.length
-      ? intF(open.length) + ' open deals, the most in ' + biggest[0] + ' (' + biggest[1] + '). ' + intF(open.filter((d) => d.amount_known).length) + ' of them have an amount, so the open pipeline value is only partly known.'
+      ? [dlN('dl-board-card', intF(open.length), 'Open deals', CC_RULES.isOpen), ' open deals, the most in ' + biggest[0] + ' (', dlN('dl-board-card', intF(biggest[1]), 'At ' + biggest[0], (d) => d.stage === biggest[0]), '). ', dlN('dl-board-card', intF(open.filter((d) => d.amount_known).length), 'Open deals with an amount', (d) => CC_RULES.isOpen(d) && d.amount_known), ' of them have an amount, so the open pipeline value is only partly known.']
       : 'No open deals for this Deal Type.');
   };
   const dlStackRows = (box, rows, drillKey, cardSel) => {
@@ -5172,7 +5260,9 @@ dash.calc('attention', {
         dlTip(seg, cardSel, r.label, [[s.color, s.label, intF(s.value)]].concat(s.extra || []));
         track.append(seg);
       });
-      row.append(l, track, el('b', 'cc-srow-n', intF(r.total)));
+      const tot = el('b', 'cc-srow-n', intF(r.total));
+      if (r.total && r.keep) { const host = root.querySelector(cardSel); if (host) listable(tot, host, 'row:' + r.label, 'Show all ' + r.total + ' ' + r.label, () => dlSpec(r.title || r.label, r.keep, r.opts || {})); }
+      row.append(l, track, tot);
       return row;
     }));
   };
@@ -5185,17 +5275,17 @@ dash.calc('attention', {
     dlLegend('leg-dl-age', DL_AGES.map(([, label, color]) => [color, label]));
     dlStackRows(kindBox, DL_OPEN.map((stage) => {
       const list = rows.filter((d) => d.stage === stage);
-      return { label: stage, total: list.length, segs: kinds.map((k) => ({ key: 'kind|' + stage + '|' + k, label: DL_KIND_NAME[k], color: DL_KIND_COLOR[k], value: list.filter((d) => d.kind === k).length })) };
+      return { label: stage, total: list.length, keep: (d) => d.stage === stage, title: 'At ' + stage, segs: kinds.map((k) => ({ key: 'kind|' + stage + '|' + k, label: DL_KIND_NAME[k], color: DL_KIND_COLOR[k], value: list.filter((d) => d.kind === k).length })) };
     }), 'dl-stage', '#dl-stage');
     dlStackRows(ageBox, DL_OPEN.map((stage) => {
       const list = rows.filter((d) => d.stage === stage);
-      return { label: stage, total: list.length, segs: DL_AGES.map(([b, label, color]) => ({ key: 'age|' + stage + '|' + b, label, color, value: list.filter((d) => dlBucket(d.age) === b).length })) };
+      return { label: stage, total: list.length, keep: (d) => d.stage === stage, title: 'At ' + stage, segs: DL_AGES.map(([b, label, color]) => ({ key: 'age|' + stage + '|' + b, label, color, value: list.filter((d) => dlBucket(d.age) === b).length })) };
     }), 'dl-stage', '#dl-stage');
     const open = rows.filter(CC_RULES.isOpen);
     const old = open.filter((d) => dlBucket(d.age) === 'gt60');
     const hold = rows.filter((d) => d.stage === 'Hold').length;
     dlInsight('ins-dl-stage', open.length
-      ? intF(old.length) + ' of ' + intF(open.length) + ' open deals (' + pctF(old.length / open.length) + ') were last updated over 60 days ago; Hold holds ' + intF(hold) + ' deals (' + pctF(hold / open.length) + ' of open).'
+      ? [dlN('dl-stage', intF(old.length), 'Open deals last updated over 60 days ago', (d) => CC_RULES.isOpen(d) && dlBucket(d.age) === 'gt60'), ' of ', dlN('dl-stage', intF(open.length), 'Open deals', CC_RULES.isOpen), ' open deals (' + pctF(old.length / open.length) + ') were last updated over 60 days ago; Hold holds ', dlN('dl-stage', intF(hold), 'On Hold', (d) => d.stage === 'Hold'), ' deals (' + pctF(hold / open.length) + ' of open).']
       : 'No open deals for this Deal Type.');
   };
   const drawDealLoss = (rows) => {
@@ -5204,7 +5294,7 @@ dash.calc('attention', {
     const lost = rows.filter((d) => LOST.includes(d.stage));
     const comp = lost.filter((d) => d.stage === 'Closed Lost to Competition');
     const sum = root.querySelector('#dl-loss-sum');
-    if (sum) sum.textContent = lost.length ? intF(lost.length) + ' lost deals · ' + intF(comp.length) + ' to competition · ' + moneyF(dlSum(lost)) + ' known value lost' : '';
+    if (sum) { if (lost.length) said(sum, [dlN('dl-loss', intF(lost.length), 'Lost', (d) => LOST.includes(d.stage), { lost: true }), ' lost deals · ', dlN('dl-loss', intF(comp.length), 'Lost to competition', (d) => d.stage === 'Closed Lost to Competition', { lost: true }), ' to competition · ', dlN('dl-loss', moneyF(dlSum(lost)), 'Lost with an amount', (d) => LOST.includes(d.stage) && d.amount_known, { lost: true, sort: (a, b) => (b.amount || 0) - (a.amount || 0) }), ' known value lost']); else sum.textContent = ''; }
     if (!lost.length) { box.replaceChildren(el('p', 'cc-empty', 'No lost deals for this Deal Type.')); dlInsight('ins-dl-loss', 'No lost deals for this Deal Type.'); return; }
     const by = new Map();
     lost.forEach((d) => { if (!by.has(d.reason)) by.set(d.reason, []); by.get(d.reason).push(d); });
@@ -5214,12 +5304,12 @@ dash.calc('attention', {
       const c = list.filter((d) => d.stage === 'Closed Lost to Competition').length;
       const v = dlSum(list);
       return {
-        label: reason, total: list.length, sub: [c ? c + ' to competition' : null, v ? moneyF(v) : null].filter(Boolean).join(' · ') || null,
+        label: reason, total: list.length, keep: (d) => LOST.includes(d.stage) && d.reason === reason, title: 'Lost · ' + reason, opts: { lost: true }, sub: [c ? c + ' to competition' : null, v ? moneyF(v) : null].filter(Boolean).join(' · ') || null,
         segs: [{ key: reason, label: 'Lost deals', color, value: list.length, extra: v ? [[null, 'Known value', moneyF(v)]] : [] }],
       };
     }), 'dl-loss', '#dl-loss');
     const top = groups[0];
-    dlInsight('ins-dl-loss', top[0] + ' is the most common loss reason: ' + intF(top[1].length) + ' of ' + intF(lost.length) + ' lost deals (' + pctF(top[1].length / lost.length) + ').');
+    dlInsight('ins-dl-loss', [top[0] + ' is the most common loss reason: ', dlN('dl-loss', intF(top[1].length), 'Lost · ' + top[0], (d) => LOST.includes(d.stage) && d.reason === top[0], { lost: true }), ' of ', dlN('dl-loss', intF(lost.length), 'Lost', (d) => LOST.includes(d.stage), { lost: true }), ' lost deals (' + pctF(top[1].length / lost.length) + ').']);
   };
   const drawDealTrend = (rows) => {
     const box = root.querySelector('#dl-trend-bars');
@@ -5236,7 +5326,9 @@ dash.calc('attention', {
     box.replaceChildren(...counts.map(({ mo, list, parts }) => {
       const col = el('div', 'cc-vcol');
       const label = dlMonthLongF(parseDay(mo + '-01'));
-      col.append(el('span', 'cc-vcol-n', list.length ? intF(list.length) : ''));
+      const colTot = el('span', 'cc-vcol-n', list.length ? intF(list.length) : '');
+      if (list.length) listable(colTot, root.querySelector('#dl-trend'), 'month:' + mo, 'Show all deals created in ' + label, () => dlSpec('Created in ' + label, (d) => d.month === mo, { sort: (a, b) => String(a.stage_label).localeCompare(String(b.stage_label)) }));
+      col.append(colTot);
       const stack = el('div', 'cc-vstack');
       DL_OUTCOMES.forEach(([o, name, color], i) => {
         if (!parts[i]) return;
@@ -5254,7 +5346,8 @@ dash.calc('attention', {
     const busiest = counts.slice().sort((a, b) => b.list.length - a.list.length)[0];
     const decided = dated.filter((d) => dlOutcome(d) !== 'open');
     const won = dated.filter((d) => dlOutcome(d) === 'won');
-    dlInsight('ins-dl-trend', dlMonthLongF(parseDay(busiest.mo + '-01')) + ' added the most deals (' + intF(busiest.list.length) + '). ' + intF(decided.length) + ' of ' + intF(dated.length) + ' deals created since ' + dlMonthLongF(parseDay(first + '-01')) + ' are decided, and ' + intF(won.length) + ' of those were won.');
+    const bm = dlMonthLongF(parseDay(busiest.mo + '-01'));
+    dlInsight('ins-dl-trend', [bm + ' added the most deals (', dlN('dl-trend', intF(busiest.list.length), 'Created in ' + bm, (d) => d.month === busiest.mo), '). ', dlN('dl-trend', intF(decided.length), 'Decided (won or lost)', (d) => d.month && dlOutcome(d) !== 'open', { lost: true }), ' of ', dlN('dl-trend', intF(dated.length), 'Created since ' + dlMonthLongF(parseDay(first + '-01')), (d) => Boolean(d.month)), ' deals created since ' + dlMonthLongF(parseDay(first + '-01')) + ' are decided, and ', dlN('dl-trend', intF(won.length), 'Won', (d) => d.month && dlOutcome(d) === 'won'), ' of those were won.']);
   };
   const DL_DQ = [
     ['open_no_amount', 'Open deals with no amount', 'Add an estimated value in Zoho so the pipeline can be totaled', (d) => CC_RULES.isOpen(d) && !d.amount_known],
@@ -5276,7 +5369,7 @@ dash.calc('attention', {
     }));
     const open = rows.filter(CC_RULES.isOpen);
     const noAmt = open.filter((d) => !d.amount_known).length;
-    dlInsight('ins-dl-dq', open.length ? intF(noAmt) + ' of ' + intF(open.length) + ' open deals (' + pctF(noAmt / open.length) + ') have no amount, so any pipeline value on this page is a floor, not a total.' : 'No open deals for this Deal Type.');
+    dlInsight('ins-dl-dq', open.length ? [dlN('dl-dq', intF(noAmt), 'Open deals with no amount', (d) => CC_RULES.isOpen(d) && !d.amount_known), ' of ', dlN('dl-dq', intF(open.length), 'Open deals', CC_RULES.isOpen), ' open deals (' + pctF(noAmt / open.length) + ') have no amount, so any pipeline value on this page is a floor, not a total.'] : 'No open deals for this Deal Type.');
   };
   const drawDeals = () => {
     root.querySelectorAll('[data-dl-kind]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.dlKind === dlKind)));
@@ -5466,6 +5559,13 @@ dash.calc('attention', {
   const IC_ACC_COLS = [['account', 'Account', null, false, false, ['Accounts', 'id']], ['industry', 'Industry', null, true], ['fit_label', 'ICP fit', null, true], ['size_label', 'Size', null, true], ['contacts', 'Contacts', 'int', false, true], ['sent', 'Requests sent', 'int', true, true], ['connected', 'Connected', 'int', false, true]];
   const icPeopleSpec = (title, rows, note) => ({ title: 'ICP · ' + title, swatch: hueOf('icp'), source: 'icp_backlog_people', rowKey: 'id', cols: IC_PEOPLE_COLS, rows, note: note || 'Select a name or company to open it in Zoho CRM.', empty: 'Nobody matches.' });
   const icAccSpec = (title, rows, note) => ({ title: 'ICP · ' + title, swatch: hueOf('icp'), source: 'icp_account_list', rowKey: 'id', cols: IC_ACC_COLS, rows, note: note || 'Select an account to open it in Zoho CRM.', empty: 'No accounts match.' });
+  /* An ICP number that opens its people or accounts in the card it sits in. */
+  const icN = (cardId, text, title, build) => {
+    const host = root.querySelector('#' + cardId);
+    const n = el('b', 'cc-num-link', text);
+    return host ? listable(n, host, 'ic:' + title, 'Show ' + title.toLowerCase(), build) : n;
+  };
+  const icSent = (d) => d.ppl.filter((p) => p.li === 'Connected' || p.li === 'Requested').sort((a, b) => (a.li === b.li ? String(a.name).localeCompare(String(b.name)) : a.li === 'Connected' ? -1 : 1));
   const icReady = (box, d) => {
     if (!box) return false;
     if (['icp_backlog_people', 'icp_account_list', 'icp_contacts_li', 'funnel'].some((id) => status(id) === 'loading')) return false;
@@ -5501,22 +5601,19 @@ dash.calc('attention', {
     const steps = [
       ['asks', 'Ask ' + intF(d.asks.length) + ' connected executives for a meeting', 'They already accepted. Start with the top 10 in Who to ask below; each has an opener ready. Log every meeting in Zoho so it counts here.'],
       ...(d.synced.length ? [['sync', 'Update LI Connect on ' + intF(d.synced.length) + ' ' + (d.synced.length === 1 ? 'contact' : 'contacts') + ' Mack is already connected to', 'His LinkedIn export shows the connection, but Zoho still says Requested or nothing. This dashboard already counts them as connected and they’re in Who to ask below; set LI Connect to Connected so Zoho and the public site agree.']] : []),
-      ['queue', 'Send requests to ' + intF(d.queue.length) + ' Priority 1 and 3 executives', intF(p13) + ' have never been requested; this list caps each company at ' + IC_MAX_PER_ACCOUNT + ' people so no account gets flooded. Lead with a note about their industry, not a generic line.'],
+      ['queue', 'Send requests to ' + intF(d.queue.length) + ' Priority 1 and 3 executives', [icN('ic-steps', intF(p13), 'Priority 1 and 3 executives never requested', () => icPeopleSpec('Priority 1 and 3 executives never requested', d.ppl.filter((p) => p.li === 'Not requested' && ['1', '3'].includes(p.priority)).sort((a, b) => String(a.priority).localeCompare(String(b.priority)) || String(a.name).localeCompare(String(b.name))))), ' have never been requested; this list caps each company at ' + IC_MAX_PER_ACCOUNT + ' people so no account gets flooded. Lead with a note about their industry, not a generic line.']],
       ['off', 'Review ' + intF(offAccts.length) + ' accounts outside the ICP industries', 'Consulting, IT, advertising, media, non-profit and similar accounts rarely buy. Keep the ones that do, move consulting and IT firms to the B2B partner list, drop the rest.'],
       ['noind', 'Fill in Industry on ' + intF(noInd.length) + ' accounts', 'Without it, fit can’t be checked and acceptance by industry is blind for these accounts.'],
       ['over', 'Stop adding people at ' + intF(over.length) + ' accounts with more than ' + IC_MAX_PER_ACCOUNT + ' contacts', 'Dozens of requests into one company reads as spam. Keep the most senior ' + IC_MAX_PER_ACCOUNT + ' and spend the volume on new accounts toward the ' + intF(d.f('accounts').target || 0) + '-account target.'],
-      ['reset', 'Reset the connection target to what the list can reach', 'At ' + icPct(m.rate) + ' acceptance the whole list yields about ' + intF(m.wholeList) + ' connections. Reaching ' + intF(m.target) + ' needs ' + (m.needRate == null ? '—' : m.needRate > 1 ? 'more executives than the list holds' : icPct(m.needRate) + ' acceptance') + '.'],
+      ['reset', 'Reset the connection target to what the list can reach', ['At ', icN('ic-steps', icPct(m.rate), 'Requests sent (connected first, then pending)', () => icPeopleSpec('Requests sent: connected first, then pending', icSent(d), 'Acceptance = connected out of every request sent.')), ' acceptance the whole list yields about ' + intF(m.wholeList) + ' connections. Reaching ' + intF(m.target) + ' needs ' + (m.needRate == null ? '—' : m.needRate > 1 ? 'more executives than the list holds' : icPct(m.needRate) + ' acceptance') + '.']],
       [null, 'Add three date fields in Zoho', 'LI Requested On, Connected On and Contacted On. They switch on the Contacted step, follow-up time and weekly pace on this tab.'],
     ];
     box.replaceChildren(...steps.map(([key, title, desc]) => {
       const li = el('li', 'cc-ic-step');
-      li.append(el('span', 'cc-ic-step-t', title), el('span', 'cc-ic-step-d', desc));
-      if (key === 'asks') {
-        li.classList.add('cc-clickable'); li.tabIndex = 0; li.setAttribute('role', 'button'); li.setAttribute('aria-label', 'Go to who to ask for a meeting');
-        const go = () => { const tgt = root.querySelector('#ic-ask'); if (tgt) tgt.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
-        li.addEventListener('click', go);
-        li.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
-      } else if (key && key !== 'reset') clickable(li, 'ic-steps', key, 'Show the list for: ' + title.toLowerCase());
+      const dEl = el('span', 'cc-ic-step-d');
+      if (Array.isArray(desc)) said(dEl, desc); else dEl.textContent = desc;
+      li.append(el('span', 'cc-ic-step-t', title), dEl);
+      if (key && key !== 'reset') clickable(li, 'ic-steps', key, 'Show the list for: ' + title.toLowerCase());
       return li;
     }));
   };
@@ -5577,7 +5674,7 @@ dash.calc('attention', {
         });
       });
     }
-    dlInsight('ins-ic-math', 'The connection target assumes far more acceptances than the list can give: ' + intF(m.target) + ' needs ' + (m.needRate == null ? '—' : m.needRate > 1 ? 'more people than the list holds' : icPct(m.needRate) + ' acceptance') + ' against ' + icPct(m.rate) + ' so far. Meetings, not connections, are the number to chase now.');
+    dlInsight('ins-ic-math', ['The connection target assumes far more acceptances than the list can give: ' + intF(m.target) + ' needs ' + (m.needRate == null ? '—' : m.needRate > 1 ? 'more people than the list holds' : icPct(m.needRate) + ' acceptance') + ' against ', icN('ic-math', icPct(m.rate), 'Requests sent (connected first, then pending)', () => icPeopleSpec('Requests sent: connected first, then pending', icSent(d), 'Acceptance = connected out of every request sent.')), ' so far. Meetings, not connections, are the number to chase now.']);
   };
   const liDayF = (s) => { const t = d3.utcParse('%Y-%m-%d')(String(s).slice(0, 10)); return t ? d3.utcFormat('%b %-d, %Y')(t) : String(s); };
   const drawIcpAsks = (d) => {
@@ -5664,7 +5761,10 @@ dash.calc('attention', {
     const tiers = groups[0][1];
     const cs = tiers.find((r) => r.label === 'C-suite / Founder');
     const best = groups.flatMap(([, rows]) => rows).filter((r) => r.n >= 10).sort((a, b) => b.rate - a.rate)[0];
-    dlInsight('ins-ic-seg', 'Campaign average ' + pctF(overall) + ' (the black line).' + (cs ? ' C-suite accept ' + icPct(cs.rate) + ' of the time,' : '') + (best ? ' while ' + best.label + ' is highest at ' + icPct(best.rate) + ' (' + best.c + ' of ' + best.n + ').' : '') + ' Segments under 10 requests are faded.');
+    const segN = (r, text) => icN('ic-seg', text, r.label + ' · requests sent', () => DRILLS['ic-seg'].build(r.key));
+    dlInsight('ins-ic-seg', ['Campaign average ', icN('ic-seg', pctF(overall), 'Requests sent (connected first, then pending)', () => icPeopleSpec('Requests sent: connected first, then pending', icSent(d), 'The campaign average = connected out of every request sent.')), ' (the black line).',
+      ...(cs ? [' C-suite accept ', segN(cs, icPct(cs.rate)), ' of the time,'] : []),
+      ...(best ? [' while ' + best.label + ' is highest at ', segN(best, icPct(best.rate)), ' (' + best.c + ' of ' + best.n + ').'] : []), ' Segments under 10 requests are faded.']);
   };
   const drawIcpFit = (d) => {
     const bar = root.querySelector('#ic-fit-bar');
@@ -5685,7 +5785,11 @@ dash.calc('attention', {
       const r = el('div', 'cc-ic-fitrow');
       const sw = el('i', 'cc-sw'); sw.style.background = IC_FIT[k][1];
       const lab = el('span', null, IC_FIT[k][0] + ' ');
-      lab.append(el('small', null, '· ' + intF(l.reduce((n, a) => n + a.connected, 0)) + ' connected'));
+      const connN = l.reduce((n, a) => n + a.connected, 0);
+      const ids = new Set(l.map((a) => a.id));
+      const cs2 = el('small', null, '· ');
+      cs2.append(connN ? icN('ic-fit', intF(connN), IC_FIT[k][0] + ' · connected executives', () => icPeopleSpec(IC_FIT[k][0] + ' · connected executives', d.ppl.filter((p) => p.li === 'Connected' && ids.has(p.account_id)).sort((a, b) => String(a.account).localeCompare(String(b.account))))) : document.createTextNode('0'), document.createTextNode(' connected'));
+      lab.append(cs2);
       r.append(sw, lab, el('b', null, intF(l.length) + ' (' + pctF(l.length / total) + ')'));
       if (l.length) clickable(r, 'ic-fit', 'fit|' + k, 'Show ' + IC_FIT[k][0].toLowerCase());
       return r;
@@ -5702,7 +5806,8 @@ dash.calc('attention', {
     });
     listBox.replaceChildren(...rows, ...(topOut.length ? [head, ...outRows] : []));
     const icp = counts[0][1].length;
-    dlInsight('ins-ic-fit', 'Only ' + intF(icp) + ' of ' + intF(d.accounts.length) + ' target accounts (' + pctF(icp / total) + ') are in an ICP industry. ' + intF(counts[1][1].length) + ' are consulting or IT firms and ' + intF(counts[3][1].length) + ' have no industry set.');
+    const fitN = (k, n) => icN('ic-fit', intF(n), IC_FIT[k][0], () => DRILLS['ic-fit'].build('fit|' + k));
+    dlInsight('ins-ic-fit', ['Only ', fitN('icp', icp), ' of ', icN('ic-fit', intF(d.accounts.length), 'Every target account', () => icAccSpec('Every target account', d.accounts.slice().sort((a, b) => String(a.account).localeCompare(String(b.account))))), ' target accounts (' + pctF(icp / total) + ') are in an ICP industry. ', fitN('partner', counts[1][1].length), ' are consulting or IT firms and ', fitN('unknown', counts[3][1].length), ' have no industry set.']);
   };
   const IC_FLAGS = { warm: ['Warm', 'cc-ic-ok', 'Two or more executives connected'], dead: ['No response', 'cc-ic-bad', 'Five or more requests, nobody accepted'], overloaded: ['Overloaded', 'cc-ic-warn', 'More than ' + IC_MAX_PER_ACCOUNT + ' contacts'], thin: ['Thin', 'cc-ic-warn', 'Fewer than 5 contacts'], untouched: ['Untouched', null, 'No request sent yet'] };
   const drawIcpCov = (d) => {
@@ -5781,6 +5886,7 @@ dash.calc('attention', {
   Object.assign(DRILLS, {
     'ic-steps': { card: '#ic-steps', build: (k) => {
       const d = icData(); if (!d) return null;
+      if (k === 'asks') return icPeopleSpec('Connected executives to ask for a meeting', d.asks, 'Ranked as in Who to ask below, where each has an opener ready. Select a name to open it in Zoho CRM.');
       if (k === 'sync') return icPeopleSpec('Connected with Mack on LinkedIn, not marked in Zoho', d.synced, 'From Mack’s LinkedIn export. Open each in Zoho and set LI Connect to Connected.');
       if (k === 'queue') return icPeopleSpec('Priority 1 and 3 executives to request next', d.queue, 'Capped at ' + IC_MAX_PER_ACCOUNT + ' people per company, Priority 1 and the most senior first. Select a name to open it in Zoho CRM.');
       if (k === 'off') return icAccSpec('Accounts outside the ICP industries', d.accounts.filter((a) => a.fit === 'outside' || a.fit === 'partner').sort((a, b) => String(a.industry).localeCompare(String(b.industry))));
@@ -5809,7 +5915,7 @@ dash.calc('attention', {
   const WI_SRCS = [['Founder Network', 'Founder Network'], ['Referral Partner', 'Referral partners'], ['Client', 'Client label'], ['Platform Provider', 'Platform providers'], ['Personal', 'Personal'], ['Campaign contact', 'Connected campaign contacts'], ['Mack’s network', 'Mack’s network']];
   const WI_VIEWS = [['all', 'All target accounts'], ['best', 'Best opportunities'], ['verify', 'Needs verification'], ['none', 'No warm path']];
   const WI_PAGE = 25;
-  const WI_VIEW_NOTE = { best: 'ready to ask', verify: 'need verification', none: 'no warm path', direct: 'someone we know inside', single: 'one usable path only', inonly: 'only a connected contact inside', dupes: 'same-name accounts', clientq: 'Client label to confirm' };
+  const WI_VIEW_NOTE = { path: 'with a warm path', directok: 'someone we know inside, usable now', multi: 'in more than one campaign', 'camp:icp': 'ICP', 'camp:mc': 'Medical Courier', 'camp:rp': 'B2B', best: 'ready to ask', verify: 'need verification', none: 'no warm path', direct: 'someone we know inside', single: 'one usable path only', inonly: 'only a connected contact inside', dupes: 'same-name accounts', clientq: 'Client label to confirm' };
   const wi = {
     camps: new Set(['icp', 'mc', 'rp']), srcs: new Set(['Founder Network', 'Referral Partner', 'Client', 'Platform Provider', 'Campaign contact', 'Referrer', 'Mack’s network']),
     view: 'all', q: '', camp: '', level: '', conf: '', group: '', alt: false, noind: false, sort: 'path', open: new Set(), all: false,
@@ -5854,6 +5960,10 @@ dash.calc('attention', {
   const wiFilter = (rows) => {
     const q = wi.q.trim().toLowerCase();
     return rows.filter((t) => {
+      if (wi.view === 'path' && !t.best) return false;
+      if (wi.view === 'directok' && !(t.direct && t.vpaths.some((p) => p.level === 1 && !p.fuzzy && WI.usable(p)))) return false;
+      if (wi.view === 'multi' && !(t.campaigns.length > 1)) return false;
+      if (wi.view.startsWith('camp:') && !t.campaigns.includes(wi.view.slice(5))) return false;
       if (wi.view === 'best' && t.st.key !== 'ready') return false;
       if (wi.view === 'verify' && t.st.key !== 'verify') return false;
       if (wi.view === 'none' && t.st.key !== 'none') return false;
@@ -5995,6 +6105,8 @@ dash.calc('attention', {
     drawWiDq(m);
     drawWiSchema(m);
   };
+  /* A count inside a Warm Intros tile that filters the table to exactly those accounts. */
+  const wiSubBtn = (text, patch) => { const x = el('b', 'cc-num-link cc-clickable', text); x.tabIndex = 0; x.setAttribute('role', 'button'); const fire = (e) => { e.stopPropagation(); e.preventDefault(); wiSet(patch, true); }; x.addEventListener('click', fire); x.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') fire(e); }); return x; };
   const drawWiKpis = (m) => {
     const box = root.querySelector('#wi-kpi-row');
     if (!wiReady(box) || !m) return;
@@ -6004,9 +6116,9 @@ dash.calc('attention', {
     const direct = m.filter((t) => t.direct);
     const both = m.filter((t) => t.campaigns.length > 1).length;
     const tiles = [
-      ['all', intF(n), 'Target accounts', WI_CAMPS.filter(([c]) => wi.camps.has(c)).map(([c, lab]) => lab + ' ' + intF(m.filter((t) => t.campaigns.includes(c)).length)).join(' · ') + (both ? ' · ' + intF(both) + ' in more than one' : '')],
+      ['all', intF(n), 'Target accounts', [...WI_CAMPS.filter(([c]) => wi.camps.has(c)).flatMap(([c, lab], i) => [i ? ' · ' : '', lab + ' ', wiSubBtn(intF(m.filter((t) => t.campaigns.includes(c)).length), { view: 'camp:' + c })]), ...(both ? [' · ', wiSubBtn(intF(both), { view: 'multi' }), ' in more than one'] : [])]],
       ['any', intF(any), 'With a warm path', 'of ' + intF(n) + ' accounts have at least one way in'],
-      ['direct', intF(direct.length), 'Someone we know inside', intF(direct.filter((t) => t.vpaths.some((p) => p.level === 1 && !p.fuzzy && WI.usable(p))).length) + ' of them usable now; the rest need checking'],
+      ['direct', intF(direct.length), 'Someone we know inside', [wiSubBtn(intF(direct.filter((t) => t.vpaths.some((p) => p.level === 1 && !p.fuzzy && WI.usable(p))).length), { view: 'directok' }), ' of them usable now; the rest need checking']],
       ['best', intF(k('ready')), 'Ready to ask', 'of ' + intF(n) + ': a usable path and nobody met yet'],
       ['verify', intF(k('verify')), 'Need verification', 'of ' + intF(n) + ': the best path rests on an unconfirmed fact'],
       ['none', intF(k('none')), 'No path found', 'of ' + intF(n) + ' accounts: cold outreach for now'],
@@ -6014,10 +6126,12 @@ dash.calc('attention', {
     box.replaceChildren(...tiles.map(([view, v, label, sub]) => {
       const b = el('button', 'cc-dkpi cc-wi-kpi');
       b.type = 'button';
-      const target = view === 'any' ? 'all' : view;
-      b.setAttribute('aria-pressed', String(wi.view === target && view !== 'any' && view !== 'all'));
-      b.append(el('span', 'cc-dkpi-v', v), el('span', 'cc-dkpi-l', label), el('span', 'cc-dkpi-s', sub));
-      b.addEventListener('click', () => wiSet(view === 'any' ? { view: 'all', level: '' } : { view: target }, true));
+      const target = view === 'any' ? 'path' : view;
+      b.setAttribute('aria-pressed', String(wi.view === target && view !== 'all'));
+      const subEl = el('span', 'cc-dkpi-s');
+      if (Array.isArray(sub)) said(subEl, sub); else subEl.textContent = sub;
+      b.append(el('span', 'cc-dkpi-v', v), el('span', 'cc-dkpi-l', label), subEl);
+      b.addEventListener('click', () => wiSet(view === 'any' ? { view: 'path', level: '' } : { view: target }, true));
       return b;
     }));
   };

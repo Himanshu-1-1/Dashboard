@@ -307,7 +307,7 @@
       const contactNames = new Set(people.filter((p) => p.nname.includes(' ')).map((p) => p.nname));
       const today = Date.now();
       const out = [];
-      const check = (id, module, label, severity, why, fix, list, detail) => out.push({ id, module, label, severity, why, fix, rows: list.map((r) => ({ id: r.id, name: r.name, camp: r.camp, company: r.account || r.name, detail: detail ? detail(r) : null })) });
+      const check = (id, module, label, severity, why, fix, list, detail) => out.push({ id, module, label, severity, why, fix, rows: list.map((r) => ({ id: r.id, name: r.name, camp: r.camp, company: r.account || r.name, priority: r.priority || null, assigned: r.assigned || null, detail: detail ? detail(r) : null })) });
       check('c-unreach', 'Contacts', 'No email, phone or LinkedIn', 'high', 'Nobody can reach this person, so the record can’t move forward in any campaign.', 'Find their work email or LinkedIn profile and add it, or delete the record if it’s junk.', C.filter((p) => !p.email && !p.email2 && !p.phone && !p.li_slug));
       check('c-bademail', 'Contacts', 'Email that isn’t a valid address', 'high', 'Mail to it bounces and the email history can’t match it.', 'Correct the address in Zoho.', C.filter((p) => p.raw_email && !p.email), (p) => 'Typed as: ' + String(p.raw_email).replace(/^(.).*?@/, '$1***@'));
       check('c-ownacct', 'Contacts', 'Account is our own company', 'high', 'A prospect filed under Tech Transpire or True Lean hides their real company and breaks deals and reports.', 'Set the Account to the company they work for.', C.filter((p) => p.account && OWN_CO.test(p.account)));
@@ -427,7 +427,60 @@
   const planHead = el('div', 'cc-qa-head'); planHead.append(el('h3', null, 'Make the data top-notch'), el('p', 'cc-qa-sub', 'In this order: the biggest wins first, then the rules that stop the mess coming back.'));
   const planBody = el('div', 'cc-qa-planbody');
   planCard.append(planHead, planBody);
-  root.append(hero, campCard, dupCard, chkCard, planCard);
+  /* Every number on this tab opens its records here (Hemang, Oct 29, 2026). */
+  const recCard = el('section', 'cc-card cc-qa-recs'); recCard.hidden = true;
+  const recHead = el('div', 'cc-qa-clhead'); const recTitle = el('h4');
+  const recClose = el('button', 'cc-go', 'Close'); recClose.type = 'button'; recClose.addEventListener('click', () => { recCard.hidden = true; });
+  recHead.append(recTitle, recClose);
+  const recNote = el('p', 'cc-qa-sub'); const recBody = el('div', 'cc-b2-wrap'); const recMore = el('p', 'cc-qa-sub');
+  recCard.append(recHead, recNote, recBody, recMore);
+  root.append(hero, recCard, campCard, dupCard, chkCard, planCard);
+  const REC_MAX = 500;
+  const showRecs = (title, recs, note, after) => {
+    recTitle.textContent = `${title} (${Number(recs.length).toLocaleString('en-US')})`;
+    recNote.textContent = note || 'Select a record to open it in Zoho CRM.';
+    const tbl = el('table', 'cc-tbl');
+    const th = el('thead'); const hr = el('tr');
+    ['Record', 'Type', 'Company', 'Campaign', 'Priority', 'Assigned', 'Why listed'].forEach((x) => { const t = el('th', null, x); t.scope = 'col'; hr.append(t); });
+    th.append(hr);
+    const tb = el('tbody');
+    recs.slice(0, REC_MAX).forEach((r) => {
+      const tr = el('tr');
+      const a = el('td'); a.append(link(zmod[r.module], r.id, r.name || r.id));
+      tr.append(a, el('td', null, r.module === 'Deals' ? 'Deal' : r.module === 'Accounts' ? 'Account' : 'Contact'), el('td', null, r.company && r.company !== r.name ? r.company : '—'), el('td', null, CAMP_NAME[r.camp] || '—'), el('td', null, r.priority ? 'P' + r.priority : '—'), el('td', null, r.assigned || (r.module === 'Contacts' ? 'Not assigned' : '—')), el('td', null, r.why || '—'));
+      tb.append(tr);
+    });
+    tbl.append(th, tb);
+    recBody.replaceChildren(recs.length ? tbl : el('p', 'cc-qa-clear', 'Nothing here.'));
+    recMore.textContent = recs.length > REC_MAX ? `Showing the first ${REC_MAX} of ${Number(recs.length).toLocaleString('en-US')}. The CSV fix list has them all.` : '';
+    recCard.hidden = false;
+    (after || recCard).scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  /* Records from duplicate groups and checks, one row per record, with every reason it is listed. */
+  const recIndex = () => {
+    const people = new Map(rows('qa_contact_rows').map((p) => [p.id, p]));
+    const accounts = new Map(rows('qa_account_rows').map((a) => [a.id, a]));
+    const deals = new Map(rows('deals_tagged').map((d) => [String(d.id), d]));
+    return (module, id) => {
+      if (module === 'Contacts') { const p = people.get(id) || {}; return { module, id, name: p.name, company: p.account, camp: p.camp, priority: p.priority, assigned: p.assigned }; }
+      if (module === 'Accounts') { const a = accounts.get(id) || {}; return { module, id, name: a.name, company: a.name, camp: a.camp, priority: a.priority }; }
+      const d = deals.get(String(id)) || {}; return { module, id, name: d.deal, company: d.account, camp: null, priority: d.priority };
+    };
+  };
+  const dupRecs = (groups) => {
+    const of = recIndex();
+    const out = [];
+    groups.forEach((g) => (g.plan ? [g.plan.keep, ...g.plan.merge] : g.records).forEach((id) => out.push({ ...of(g.module, id), why: `${g.level === 'sure' ? 'Sure' : g.level === 'likely' ? 'Likely' : 'Shared email'} duplicate (${g.reasons.join(' + ')})${g.plan ? (g.plan.keep === id ? ': keep' : ': merge into the starred record') : ''}` })));
+    return out;
+  };
+  const chkRecs = (checks) => checks.flatMap((c) => c.rows.filter((r) => inCamp([r.camp])).map((r) => ({ module: c.module, id: r.id, name: r.name, company: r.company, camp: r.camp, priority: r.priority, assigned: r.assigned, why: c.label + (r.detail ? ` (${r.detail})` : '') })));
+  const notClean = (dupes, checks) => {
+    const by = new Map();
+    const add = (r) => { const k = r.module + r.id; const cur = by.get(k); if (cur) cur.why += '; ' + r.why; else by.set(k, { ...r }); };
+    dupRecs(dupes.filter((g) => g.level !== 'shared' && inCamp(g.camps))).forEach(add);
+    chkRecs(checks.filter((c) => c.severity !== 'low')).forEach(add);
+    return [...by.values()].sort((a, b) => String(a.module).localeCompare(String(b.module)) || String(a.name).localeCompare(String(b.name)));
+  };
 
   let campFilter = 'all';
   let dupModule = 'Contacts';
@@ -477,7 +530,10 @@
     const lab = el('div', 'cc-qa-scorelab');
     lab.append(el('b', null, pctF(all.score)), el('span', null, 'clean records'));
     heroScore.append(lab);
-    heroScore.title = `${intF(all.clean)} of ${intF(all.total)} records have no high or medium issue and no duplicate.`;
+    heroScore.title = `${intF(all.clean)} of ${intF(all.total)} records have no high or medium issue and no duplicate. Select to list the ${intF(all.total - all.clean)} that aren’t clean.`;
+    heroScore.tabIndex = 0; heroScore.setAttribute('role', 'button'); heroScore.classList.add('cc-qa-clickscore');
+    heroScore.onclick = () => showRecs('Records that aren’t clean', notClean(rows('qa_dupes'), checks), 'Each record with every reason: a sure or likely duplicate group, or a high or medium check. Fix them in Zoho and the score rises at the next refresh.');
+    heroScore.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); heroScore.onclick(); } };
     const sure = dupes.filter((g) => g.level === 'sure');
     const likely = dupes.filter((g) => g.level === 'likely');
     const extra = sure.reduce((n, g) => n + g.records.length - 1, 0);
@@ -490,9 +546,9 @@
       return b;
     };
     heroStats.replaceChildren(
-      stat(sure.length, 'Sure duplicate groups', `${intF(extra)} extra records to merge away`, sure.length ? 'bad' : 'ok', () => { dupLevel = 'sure'; dupPage = 0; dupModule = (sure.find(() => true) || {}).module || 'Contacts'; drawDupes(); dupCard.scrollIntoView({ behavior: 'smooth', block: 'start' }); }),
-      stat(likely.length, 'Likely duplicates', 'Worth a quick look', likely.length ? 'warn' : 'ok', () => { dupLevel = 'likely'; dupPage = 0; dupModule = (likely.find(() => true) || {}).module || 'Contacts'; drawDupes(); dupCard.scrollIntoView({ behavior: 'smooth', block: 'start' }); }),
-      stat(high, 'High-severity gaps', 'Records that can’t work as they are', high ? 'bad' : 'ok', () => chkCard.scrollIntoView({ behavior: 'smooth', block: 'start' })),
+      stat(sure.length, 'Sure duplicate groups', `${intF(extra)} extra records to merge away`, sure.length ? 'bad' : 'ok', () => showRecs('Records in sure duplicate groups', dupRecs(sure), `${intF(sure.length)} groups; ${intF(extra)} records marked “merge” go away once merged into the starred one. Duplicates below show each group with its Merge in Zoho button.`)),
+      stat(likely.length, 'Likely duplicates', 'Worth a quick look', likely.length ? 'warn' : 'ok', () => showRecs('Records in likely duplicate groups', dupRecs(likely), 'Same person or company under a different spelling, most of the time. Duplicates below shows each group.')),
+      stat(high, 'High-severity gaps', 'Records that can’t work as they are', high ? 'bad' : 'ok', () => showRecs('High-severity gaps', chkRecs(checks.filter((c) => c.severity === 'high')), 'Each record with the check it fails. Data health checks below has the fix for each check.')),
       stat(all.total, 'Records checked', `${intF(all.contacts)} contacts, ${intF(all.accounts)} accounts, ${intF(all.deals)} deals`, 'none', () => campCard.scrollIntoView({ behavior: 'smooth', block: 'start' })),
     );
     const dl = el('button', 'cc-go cc-qa-dl', 'Download the fix list (CSV)');
@@ -511,14 +567,28 @@
       top.append(el('span', 'cc-qa-crname', r.label), el('b', null, pctF(sc)), el('small', null, `${intF(r.total)} contacts`));
       const bar = el('div', 'cc-qa-crbar');
       [['clean', r.clean, 'cc-qa-seg-ok'], ['issues', r.issues, 'cc-qa-seg-warn'], ['dupes', r.dupes, 'cc-qa-seg-bad']].forEach(([k, n, cls]) => { if (!n) return; const s = el('i', cls); s.style.flexGrow = String(n); s.title = `${intF(n)} ${k === 'clean' ? 'clean' : k === 'issues' ? 'with a high or medium issue' : 'in a duplicate group'}`; bar.append(s); });
-      const key = el('small', 'cc-qa-crkey', `${intF(r.clean)} clean · ${intF(r.issues)} with issues · ${intF(r.dupes)} duplicated`);
-      b.append(top, bar, key);
+      b.append(top, bar);
       b.addEventListener('click', () => { campFilter = campFilter === r.key && r.key !== 'all' ? 'all' : r.key; dupPage = 0; drawAll(); });
-      return b;
+      const cell = el('div', 'cc-qa-campcell');
+      const key = el('small', 'cc-qa-crkey');
+      const inC = (p) => r.key === 'all' ? p.camp !== 'none' : p.camp === r.key;
+      const ppl = () => rows('qa_contact_rows').filter((p) => !p.staff && inC(p));
+      const flaggedIds = () => new Set(notCleanAll().filter((x) => x.module === 'Contacts').map((x) => x.id));
+      const whyOf = () => new Map(notCleanAll().filter((x) => x.module === 'Contacts').map((x) => [x.id, x.why]));
+      const asRec = (p, why) => ({ module: 'Contacts', id: p.id, name: p.name, company: p.account, camp: p.camp, priority: p.priority, assigned: p.assigned, why });
+      const qb = (n, text, fn) => { const x = el('button', 'cc-qa-numbtn', intF(n)); x.type = 'button'; x.addEventListener('click', fn); key.append(x, document.createTextNode(text)); };
+      qb(r.clean, ' clean · ', () => { const f = flaggedIds(); showRecs(`${r.label}: clean contacts`, ppl().filter((p) => !f.has(p.id)).map((p) => asRec(p, 'Clean')), 'No high or medium issue and no duplicate.'); });
+      qb(r.issues, ' with issues · ', () => { const w = whyOf(); showRecs(`${r.label}: contacts with a high or medium issue`, ppl().filter((p) => w.has(p.id) && !/duplicate/.test(w.get(p.id))).map((p) => asRec(p, w.get(p.id)))); });
+      qb(r.dupes, ' duplicated', () => { const w = whyOf(); showRecs(`${r.label}: contacts in a duplicate group`, ppl().filter((p) => w.has(p.id) && /duplicate/.test(w.get(p.id))).map((p) => asRec(p, w.get(p.id)))); });
+      const all2 = el('button', 'cc-qa-numbtn cc-qa-alllink', `List all ${intF(r.total)}`); all2.type = 'button';
+      all2.addEventListener('click', () => { const w = whyOf(); showRecs(`${r.label}: every contact`, ppl().map((p) => asRec(p, w.get(p.id) || 'Clean'))); });
+      cell.append(b, key, all2);
+      return cell;
     }));
   };
 
   const inCamp = (camps) => campFilter === 'all' || (camps || []).includes(campFilter);
+  const notCleanAll = () => { const keep = campFilter; campFilter = 'all'; try { return notClean(rows('qa_dupes'), rows('qa_checks')); } finally { campFilter = keep; } };
   const drawDupes = () => {
     const people = new Map(rows('qa_contact_rows').map((p) => [p.id, p]));
     const accounts = new Map(rows('qa_account_rows').map((a) => [a.id, a]));
@@ -553,7 +623,7 @@
       g.camps.filter((c) => c !== 'none').forEach((c) => head.append(campBadge(c)));
       const tbl = el('table', 'cc-tbl cc-qa-gtbl');
       const cols = dupModule === 'Contacts'
-        ? [['', (r) => (g.plan && g.plan.keep === r.id ? el('span', 'cc-qa-keep', '★ Keep') : g.plan ? el('span', 'cc-qa-merge', 'Merge') : '')], ['Name', (r) => link('Contacts', r.id, r.name)], ['Account', (r) => (r.account_id ? link('Accounts', r.account_id, r.account) : 'None')], ['Email', (r) => mask(r.email || r.email2)], ['LinkedIn', (r) => (r.li_slug ? '✓' : '—')], ['Priority', (r) => (r.priority ? 'P' + r.priority : '—')], ['Deals · meetings', (r) => `${r.deals} · ${r.meetings}`], ['Created', (r) => dayF(r.created)]]
+        ? [['', (r) => (g.plan && g.plan.keep === r.id ? el('span', 'cc-qa-keep', '★ Keep') : g.plan ? el('span', 'cc-qa-merge', 'Merge') : '')], ['Name', (r) => link('Contacts', r.id, r.name)], ['Account', (r) => (r.account_id ? link('Accounts', r.account_id, r.account) : 'None')], ['Email', (r) => mask(r.email || r.email2)], ['LinkedIn', (r) => (r.li_slug ? '✓' : '—')], ['Priority', (r) => (r.priority ? 'P' + r.priority : '—')], ['Assigned', (r) => r.assigned || 'Not assigned'], ['Deals', (r) => intF(r.deals)], ['Meetings', (r) => intF(r.meetings)], ['Created', (r) => dayF(r.created)]]
         : dupModule === 'Accounts'
           ? [['', (r) => (g.plan.keep === r.id ? el('span', 'cc-qa-keep', '★ Keep') : el('span', 'cc-qa-merge', 'Merge'))], ['Account', (r) => link('Accounts', r.id, r.name)], ['Website', (r) => r.domain || '—'], ['Contacts', (r) => intF(r.contacts)], ['Deals', (r) => intF(r.deals)], ['Industry', (r) => r.industry || '—'], ['Created', (r) => dayF(r.created)]]
           : [['', (r) => (g.plan.keep === r.id ? el('span', 'cc-qa-keep', '★ Keep') : el('span', 'cc-qa-merge', 'Merge'))], ['Deal', (r) => link('Potentials', r.id, r.name)], ['Stage', (r) => r.stage || '—'], ['Account', (r) => (r.account_id ? link('Accounts', r.account_id, r.account) : 'None')], ['Contact', (r) => (r.contact_id ? link('Contacts', r.contact_id, r.contact) : 'None')], ['Created', (r) => dayF(r.created)]];
@@ -628,9 +698,9 @@
     const fix = el('p', 'cc-qa-fix'); fix.append(el('b', null, 'Fix: '), document.createTextNode(c.fix));
     if (!list.length) { chkList.replaceChildren(head, why, el('p', 'cc-qa-clear', 'Every record passes this check.')); return; }
     const tbl = el('table', 'cc-tbl');
-    const th = el('thead'); const hr = el('tr'); ['Record', c.module === 'Contacts' ? 'Account' : c.module === 'Deals' ? 'Account' : 'Campaign', 'Campaign', 'Detail'].forEach((x) => { const t = el('th', null, x); t.scope = 'col'; hr.append(t); }); th.append(hr);
+    const th = el('thead'); const hr = el('tr'); ['Record', c.module === 'Contacts' ? 'Account' : c.module === 'Deals' ? 'Account' : 'Campaign', 'Campaign', 'Priority', 'Assigned', 'Detail'].forEach((x) => { const t = el('th', null, x); t.scope = 'col'; hr.append(t); }); th.append(hr);
     const tb = el('tbody');
-    list.slice(0, 300).forEach((r) => { const tr = el('tr'); const a = el('td'); a.append(link(zmod[c.module], r.id, r.name)); tr.append(a, el('td', null, c.module === 'Accounts' ? (CAMP_NAME[r.camp] || '—') : (r.company && r.company !== r.name ? r.company : '—')), el('td', null, CAMP_NAME[r.camp] || '—'), el('td', null, r.detail || '—')); tb.append(tr); });
+    list.slice(0, 300).forEach((r) => { const tr = el('tr'); const a = el('td'); a.append(link(zmod[c.module], r.id, r.name)); tr.append(a, el('td', null, c.module === 'Accounts' ? (CAMP_NAME[r.camp] || '—') : (r.company && r.company !== r.name ? r.company : '—')), el('td', null, CAMP_NAME[r.camp] || '—'), el('td', null, r.priority ? 'P' + r.priority : '—'), el('td', null, r.assigned || (c.module === 'Contacts' ? 'Not assigned' : '—')), el('td', null, r.detail || '—')); tb.append(tr); });
     tbl.append(th, tb);
     const wrap = el('div', 'cc-b2-wrap'); wrap.append(tbl);
     chkList.replaceChildren(head, why, fix, wrap);
@@ -641,15 +711,17 @@
     const sure = dupes.filter((g) => g.level === 'sure');
     const steps = [];
     const sureBy = (m) => sure.filter((g) => g.module === m);
-    ['Contacts', 'Accounts', 'Deals'].forEach((m) => { const g = sureBy(m); if (g.length) steps.push([`Merge ${intF(g.length)} group${g.length === 1 ? '' : 's'} of duplicate ${m.toLowerCase()}`, `${intF(g.reduce((n, x) => n + x.records.length - 1, 0))} extra records disappear. Start with the biggest groups; keep the starred record and carry over what each group lists.`]); });
-    checks.filter((c) => c.severity === 'high' && c.rows.length).forEach((c) => steps.push([`${c.label}: ${intF(c.rows.length)}`, c.fix]));
+    const toDupes = (m, l) => () => { dupModule = m; dupLevel = l; dupPage = 0; drawDupes(); dupCard.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+    const toCheck = (id) => () => { chkOpen = id; drawChecks(); chkList.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+    ['Contacts', 'Accounts', 'Deals'].forEach((m) => { const g = sureBy(m); if (g.length) steps.push([`Merge ${intF(g.length)} group${g.length === 1 ? '' : 's'} of duplicate ${m.toLowerCase()}`, `${intF(g.reduce((n, x) => n + x.records.length - 1, 0))} extra records disappear. Start with the biggest groups; keep the starred record and carry over what each group lists.`, toDupes(m, 'sure')]); });
+    checks.filter((c) => c.severity === 'high' && c.rows.length).forEach((c) => steps.push([`${c.label}: ${intF(c.rows.length)}`, c.fix, toCheck(c.id)]));
     const likely = dupes.filter((g) => g.level === 'likely');
-    if (likely.length) steps.push([`Review ${intF(likely.length)} likely duplicate groups`, 'Most are the same person or company under a different spelling; merge the ones that are, and fix the spelling on the others so they stop matching.']);
-    checks.filter((c) => c.severity === 'medium' && c.rows.length).sort((a, b) => b.rows.length - a.rows.length).forEach((c) => steps.push([`${c.label}: ${intF(c.rows.length)}`, c.fix]));
+    if (likely.length) steps.push([`Review ${intF(likely.length)} likely duplicate groups`, 'Most are the same person or company under a different spelling; merge the ones that are, and fix the spelling on the others so they stop matching.', () => showRecs('Records in likely duplicate groups', dupRecs(likely))]);
+    checks.filter((c) => c.severity === 'medium' && c.rows.length).sort((a, b) => b.rows.length - a.rows.length).forEach((c) => steps.push([`${c.label}: ${intF(c.rows.length)}`, c.fix, toCheck(c.id)]));
     const lows = checks.filter((c) => c.severity === 'low' && c.rows.length);
-    if (lows.length) steps.push([`Tidy ${intF(lows.reduce((n, c) => n + c.rows.length, 0))} low-severity gaps`, lows.map((c) => c.label.charAt(0).toLowerCase() + c.label.slice(1)).join('; ') + '.']);
+    if (lows.length) steps.push([`Tidy ${intF(lows.reduce((n, c) => n + c.rows.length, 0))} low-severity gaps`, lows.map((c) => c.label.charAt(0).toLowerCase() + c.label.slice(1)).join('; ') + '.', () => showRecs('Low-severity gaps', chkRecs(lows))]);
     const ol = el('ol', 'cc-qa-steps');
-    steps.forEach(([t, d]) => { const li = el('li'); li.append(el('b', null, t), el('span', null, d)); ol.append(li); });
+    steps.forEach(([t, d, go]) => { const li = el('li'); const tb2 = el('button', 'cc-qa-steptitle', t); tb2.type = 'button'; tb2.addEventListener('click', go); li.append(tb2, el('span', null, d)); ol.append(li); });
     const byReason = (r) => dupes.filter((g) => g.reasons.includes(r)).length;
     const cnt = (id) => (checks.find((c) => c.id === id) || { rows: [] }).rows.length;
     const rules = [

@@ -731,3 +731,9 @@ tr.cc-days-row > td { padding: 0 12px 12px; background: color-mix(in oklab, var(
 .cc-p3-cellgo dd { text-decoration: underline; text-underline-offset: 3px; }
 .cc-p3-cellgo:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
 .cc-p3-cellgo:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+/* Numbers inside sentences and tiles that open their records (Oct 29, 2026). */
+.cc-b2-num { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; font-weight: var(--cds-font-weight-medium); border-radius: 3px; }
+.cc-b2-num:hover { text-decoration-style: solid; }
+.cc-b2-num:focus-visible, .cc-b2-bigbtn:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.cc-b2-bigbtn { cursor: pointer; border-radius: 6px; }
+.cc-b2-bigbtn:hover { text-decoration: underline; text-underline-offset: 4px; }

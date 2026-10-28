@@ -168,7 +168,7 @@
   const st = {
     view: 'overview',
     actions: { status: null, urgent: false, category: '', owner: '', kind: '', q: '', done: false, sort: 'urgency', page: 0 },
-    founders: { band: null, stage: '', ver: '', source: '', soon: false, q: '', sort: 'score', page: 0 },
+    founders: { band: null, stage: '', ver: '', source: '', soon: false, q: '', sort: 'score', page: 0, ids: null, idsLabel: '' },
     timeline: { source: '', q: '', page: 0 },
     quality: { type: '', sev: '', page: 0 },
     outreach: { at: 0 },
@@ -176,10 +176,13 @@
   };
   const go = (view, patch) => {
     st.view = view;
-    if (patch) Object.assign(st[view], { page: 0 }, patch);
+    if (patch) Object.assign(st[view], { page: 0 }, view === 'founders' && !('ids' in patch) ? { ids: null, idsLabel: '' } : {}, patch);
     render();
     root.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+  /* Any number that counts founders opens exactly those founders in the Founders view (Hemang, Oct 29, 2026). */
+  const goPeople = (label, list) => go('founders', { band: null, stage: '', ver: '', source: '', soon: false, q: '', ids: new Set(list.map((f) => f.id)), idsLabel: `${label} (${list.length})` });
+  const numBtn = (n, label, list) => btn('cc-fx-numbtn', intF(n), () => goPeople(label, list), `Show ${label.toLowerCase()}`);
 
   /* ---------- the model, recomputed only when a dataset changes ---------- */
   let memo = { key: null, model: null };
@@ -275,7 +278,8 @@
     sec2.setAttribute('aria-labelledby', 'fnx-reach-title');
     const head2 = el('div', 'cc-fx-reachhead');
     const h = el('h3', null, 'Start a conversation'); h.id = 'fnx-reach-title';
-    const count = el('span', 'cc-fx-reachcount', `${intF(list.length)} not met yet`);
+    const count = el('span', 'cc-fx-reachcount');
+    count.append(btn('cc-fx-numbtn', intF(list.length), () => goPeople('Not met yet: start a conversation', list.map((c) => c.f)), 'Show everyone to start a conversation with'), document.createTextNode(' not met yet'));
     head2.append(h, count);
     sec2.append(head2);
     if (!list.length) { sec2.append(el('p', 'cc-fx-empty', 'Everyone in the Founder Network has a meeting, a deal or an open task. Nobody to start with.')); return sec2; }
@@ -463,7 +467,8 @@
   const hasSource = (f, k) => ({ zoho: Boolean(f.zoho), tg: f.identities.some((i) => i.source === 'Telegram'), ff: f.identities.some((i) => i.source === 'Fireflies'), ol: Boolean(f.outlook && f.outlook.identity === 'same person'), li: Boolean(f.linkedinConn) }[k]);
   const drawFounders = (m) => {
     const s = st.founders; const today = m.today;
-    const vis = m.founders.filter((f) => (!s.band || f.priorityInfo.band === s.band) && (!s.stage || f.stage === s.stage) && (!s.ver || f.verification === s.ver)
+    const pool = s.ids ? m.all.filter((f) => s.ids.has(f.id)) : m.founders;
+    const vis = pool.filter((f) => (!s.band || f.priorityInfo.band === s.band) && (!s.stage || f.stage === s.stage) && (!s.ver || f.verification === s.ver)
       && (!s.soon || (f.upcoming && E.daysBetween(today, f.upcoming) <= 7))
       && (!s.source || hasSource(f, s.source)) && has(s.q, f.name, f.company, f.title));
     const sorters = {
@@ -475,9 +480,13 @@
     };
     vis.sort(sorters[s.sort]);
     const wrap = el('section', 'cc-fx-card');
-    wrap.append(cardHead('Founders', `${intF(fnMembers(m).length)} in Zoho, ${intF(m.founders.filter((f) => !f.inFN).length)} more from Telegram`));
+    const fh = cardHead('Founders', '');
+    const meta = fh.querySelector('.cc-fx-meta') || fh.appendChild(el('span', 'cc-fx-meta'));
+    meta.replaceChildren(numBtn(fnMembers(m).length, 'In Zoho', fnMembers(m)), document.createTextNode(' in Zoho, '), numBtn(m.founders.filter((f) => !f.inFN).length, 'From Telegram or the tag, not in Zoho as Founder Network', m.founders.filter((f) => !f.inFN)), document.createTextNode(' more from Telegram'));
+    wrap.append(fh);
     const chips = el('div', 'cc-fx-chips');
-    chips.append(chip(`Everyone (${intF(m.founders.length)})`, !s.band && !s.soon, () => { Object.assign(s, { band: null, soon: false, page: 0 }); render(); }));
+    chips.append(chip(`Everyone (${intF(m.founders.length)})`, !s.band && !s.soon && !s.ids, () => { Object.assign(s, { band: null, soon: false, ids: null, idsLabel: '', page: 0 }); render(); }));
+    if (s.ids) chips.append(chip(s.idsLabel + ' ✕', true, () => { s.ids = null; s.idsLabel = ''; s.page = 0; render(); }, 'Clear this selection'));
     if (s.soon) chips.append(chip('Meeting in the next 7 days', true, () => { s.soon = false; s.page = 0; render(); }));
     for (const b of BANDS) { const n = m.founders.filter((f) => f.priorityInfo.band === b).length; if (n) chips.append(chip(`${b} (${intF(n)})`, s.band === b, () => { s.band = s.band === b ? null : b; s.page = 0; render(); })); }
     const vers = [...new Set(m.founders.map((f) => f.verification))].sort();
@@ -516,7 +525,7 @@
     E.STAGES.forEach((s, i) => {
       const people = m.founders.filter((f) => f.stage === s).sort((a, b) => b.priorityInfo.score - a.priorityInfo.score);
       const col = el('div', 'cc-fx-col cc-fx-seg' + i);
-      const h = el('div', 'cc-fx-colhead'); h.append(el('b', null, intF(people.length)), el('span', null, s));
+      const h = el('div', 'cc-fx-colhead'); h.append(people.length ? btn('cc-fx-numbtn cc-fx-colnum', intF(people.length), () => go('founders', { stage: s, band: null }), `Show all ${people.length} at ${s}`) : el('b', null, '0'), el('span', null, s));
       col.append(h, el('p', 'cc-fx-rule', E.STAGE_RULES[s]));
       const ul = el('ul');
       people.slice(0, 8).forEach((f) => { const li = el('li'); li.append(btn('cc-fx-name', f.name, () => openProfile(f.id)), pill(f.priorityInfo.band)); ul.append(li); });
@@ -767,7 +776,9 @@
     const missingRows = SRC_ROWS.filter((r) => statusOf(r.id) !== 'ok');
     const stale = window.CC_MAIL_PRIVATE && missingRows.length && missingRows.every((r) => r.kind === 'imported') ? ['Telegram, Fireflies, Outlook and LinkedIn (not in this build yet)'] : missingRows.map((r) => r.label);
     const hidden = m.all.length - m.founders.length;
-    lede.textContent = `${intF(members.length)} in Zoho and ${intF(m.founders.filter((f) => !f.inFN).length)} more from Telegram or the Founder_Network tag, as of ${dayF(m.today)} CT.${hidden ? ` ${intF(hidden)} hidden: in the B2B campaign, or at Priority 9, 11 or 99.` : ''}${stale.length ? ' Not loaded: ' + stale.join(', ') + '.' : ''}`;
+    const shownIds = new Set(m.founders.map((f) => f.id));
+    lede.replaceChildren(numBtn(members.length, 'In Zoho', members), document.createTextNode(' in Zoho and '), numBtn(m.founders.filter((f) => !f.inFN).length, 'From Telegram or the Founder_Network tag', m.founders.filter((f) => !f.inFN)), document.createTextNode(` more from Telegram or the Founder_Network tag, as of ${dayF(m.today)} CT.`), ...(hidden ? [document.createTextNode(' '), numBtn(hidden, 'Hidden: in the B2B campaign, or at Priority 9, 11 or 99', m.all.filter((f) => !shownIds.has(f.id))), document.createTextNode(' hidden: in the B2B campaign, or at Priority 9, 11 or 99.')] : []));
+    lede.append(document.createTextNode(`${stale.length ? ' Not loaded: ' + stale.join(', ') + '.' : ''}`));
     const view = { overview: drawOverview, actions: drawActions, founders: drawFounders, pipeline: drawPipeline, timeline: drawTimeline, quality: drawQuality, sources: drawSources, rules: drawRules }[st.view];
     const focusId = document.activeElement && root.contains(document.activeElement) && document.activeElement.matches('input') ? document.activeElement.className : null;
     body.replaceChildren(view(m));

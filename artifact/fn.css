@@ -351,3 +351,8 @@
 :is(.cc-fx-pill, .cc-fx-qtile).cc-fx-bad { --k: var(--fx-bad); }
 :is(.cc-fx-pill, .cc-fx-qtile).cc-fx-info { --k: var(--fx-accent); }
 :is(.cc-fx-pill, .cc-fx-qtile).cc-fx-muted { --k: var(--fx-muted); }
+/* Counts that open the founders behind them (Oct 29, 2026). */
+.cc-fx-numbtn { appearance: none; font: inherit; font-weight: var(--cds-font-weight-medium); color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.cc-fx-numbtn:hover { text-decoration-style: solid; }
+.cc-fx-numbtn:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; border-radius: 3px; }
+.cc-fx-colnum { font-family: var(--font-anthropic-serif); font-size: 1.5em; line-height: 1.1; text-decoration-thickness: 1px; }
