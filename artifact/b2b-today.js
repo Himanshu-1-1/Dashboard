@@ -1254,7 +1254,9 @@
   const liOut = el('div', 'cc-b2-wrap');
   const liOutNote = el('p', 'cc-b2-insight');
   const liFoot = el('p', 'cc-b2-mfoot');
-  liCard.append(liPeriodBar, liStats, liNote, liTools, liBody, liOutHead, liOutNote, liOut, liFoot);
+  /* Connection requests by month is hidden (Hemang, Oct 29, 2026); li_outreach still loads for its insight if it returns. */
+  liOutHead.hidden = true; liOutNote.hidden = true; liOut.hidden = true;
+  liCard.append(liPeriodBar, liStats, liNote, liTools, liBody, liFoot);
   const mtg = el('section', 'cc-card cc-mt');
   mtg.id = 'b2-mtg';
   mtg.setAttribute('aria-labelledby', 'b2-mtg-title');
@@ -2185,7 +2187,6 @@
         : 'LinkedIn conversations aren’t in this build of the page.';
       return;
     }
-    liOutHead.hidden = false;
     const ppl = rows('b2b_li_people');
     const inEx = ppl.filter((p) => p.in_export);
     const by = (k) => ppl.filter((p) => p.status === k);
@@ -2328,7 +2329,7 @@
     }
     if (op.length) parts.push(`The standard first message (the one about the ERP/MSP/consulting space) went to ${intF(sum(op, 'opener_sent'))} new connections from ${monthF(op[0].month)} to ${monthF(op[op.length - 1].month)}, and ${pct(sum(op, 'opener_replied'), sum(op, 'opener_sent'))} replied; it hasn’t been sent since.`);
     liOutNote.textContent = parts.join(' ');
-    liFoot.textContent = `LinkedIn as of ${asOf ? dayF(ctDay(asOf)) + ' (CT)' : 'the last export'}, from Mack’s account only: requests and messages sent from another teammate’s account aren’t in it. Requests by month count everyone Mack invited, not only B2B prospects; accepted means connected by the export date. Refreshed when Mack downloads a new export.`;
+    liFoot.textContent = `LinkedIn as of ${asOf ? dayF(ctDay(asOf)) + ' (CT)' : 'the last export'}, from Mack’s account only: requests and messages sent from another teammate’s account aren’t in it. Refreshed when Mack downloads a new export.`;
   };
 
   const monthF = (mo, style) => new Date(mo + '-01T00:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', month: style || 'long' });
