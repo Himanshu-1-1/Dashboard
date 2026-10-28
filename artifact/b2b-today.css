@@ -709,3 +709,17 @@
 .cc-pm-tip i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 0; background: var(--k); }
 @media (prefers-reduced-motion: reduce) { .cc-pm-arc, .cc-pm-center, .cc-pm-cnum, .cc-pm-tile, .cc-pm-seg { transition: none; } }
 @media (max-width: 520px) { .cc-pm-ring { width: 220px; height: 220px; } .cc-pm-center { width: 170px; height: 170px; } .cc-pm-cnum { font-size: 46px; } }
+/* Meeting count that opens the person's meeting days under their row. */
+.cc-days-btn { display: inline-flex; align-items: center; gap: 6px; }
+.cc-days-chev { width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform .15s ease; opacity: .7; }
+.cc-days-btn[aria-expanded="true"] .cc-days-chev { transform: rotate(45deg) translate(-1px, -1px); }
+tr.cc-days-open > td { background: color-mix(in oklab, var(--color-fg) 4%, var(--color-panel)); border-bottom-color: transparent; }
+tr.cc-days-row > td { padding: 0 12px 12px; background: color-mix(in oklab, var(--color-fg) 4%, var(--color-panel)); }
+.cc-days { border-left: 3px solid var(--color-border-line); padding: 6px 0 2px 12px; display: grid; gap: 6px; }
+.cc-days-title { margin: 0; font-size: var(--cds-font-size-caption); font-weight: var(--cds-font-weight-medium); color: var(--color-fg); }
+.cc-days-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.cc-days-list li { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: var(--cds-font-size-caption); }
+.cc-days-list b { font-weight: var(--cds-font-weight-medium); min-width: 104px; font-variant-numeric: tabular-nums; }
+.cc-days-list span { color: var(--color-fg-muted); }
+.cc-days-note { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+@media (prefers-reduced-motion: reduce) { .cc-days-chev { transition: none; } }

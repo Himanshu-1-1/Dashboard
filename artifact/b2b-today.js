@@ -352,6 +352,7 @@
   dash.loader('b2b_added', { description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text.', fn: coqlRows });
   dash.loader('b2b_meetings', { description: 'Zoho’s COQL answer as rows: the linked contact becomes Who_Id (name) and Who_Id_id.', fn: coqlRows });
   dash.loader('b2b_all', { description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text.', fn: coqlRows });
+  dash.loader('rb_deals', { description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text.', fn: coqlRows });
 
   /* Partner funnel overview: every contact tagged for the campaign, Priority 9 and 11 included, one group each by Priority. */
   const PF_GROUPS = [
@@ -646,12 +647,9 @@
     },
   });
 
-  dash.calc('mtg_depth', {
-    title: 'Meeting frequency stages, Priority 1',
-    description: 'B2B prospects at Priority 1 now. For each stage (Never Met, Met Once, Twice, Thrice, 4+): prospects in it now; unique prospects who newly entered it today, this week (Monday start) and this calendar month (Central time); the count on the same day last month with the change since; and the count at the end of each of the last 12 weeks. Never Met is entered on the day Zoho created the contact; each later stage on the day of the meeting that reached it.',
-    inputs: ['mtg_people'],
-    fn: (everyone) => {
-      const ppl = everyone.filter((p) => p.priority === MTG_PRIORITY);
+  /* Stage totals, newly entered counts, last month's comparison and 12-week trend for any set of prospects (the whole
+     of Priority 1, or one CRM Owner's share of it). */
+  const mtgDepthOf = (ppl) => {
       const today = todayCT();
       const t = new Date(today + 'T00:00:00Z');
       const mon = new Date(t); mon.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7));
@@ -673,7 +671,38 @@
           spark: points.map((day) => ({ day, n: from && from <= day ? ppl.filter((p) => catAt(p, day) === s.k).length : null })),
         };
       });
-    },
+  };
+  dash.calc('mtg_depth', {
+    title: 'Meeting frequency stages, Priority 1',
+    description: 'B2B prospects at Priority 1 now. For each stage (Never Met, Met Once, Twice, Thrice, 4+): prospects in it now; unique prospects who newly entered it today, this week (Monday start) and this calendar month (Central time); the count on the same day last month with the change since; and the count at the end of each of the last 12 weeks. Never Met is entered on the day Zoho created the contact; each later stage on the day of the meeting that reached it.',
+    inputs: ['mtg_people'],
+    fn: (everyone) => mtgDepthOf(everyone.filter((p) => p.priority === MTG_PRIORITY)),
+  });
+
+  /* Business from referral partners (Mack, Oct 28, 2026): client deals whose Referred By Contact or Referred By Account is
+     set, split Founder Network (the referring contact's Relationship Type) against other partners, and Open (any stage but
+     Closed, Closed Lost, Closed Lost to Competition) against Closed Won and Closed Lost. Partner agreement deals (Reseller/
+     Referral Partner, Platform Provider) are left out by the query, since their Referred By is the partner themselves. */
+  const RB_LOST = ['Closed Lost', 'Closed Lost to Competition'];
+  const rbStatus = (stage) => (stage === 'Closed' ? 'won' : RB_LOST.includes(stage) ? 'lost' : 'open');
+  dash.calc('rb_rows', {
+    title: 'Client deals and who referred them',
+    description: 'One row per client deal (every Deal Type except Reseller/ Referral Partner and Platform Provider Agreement): name, type, stage, status (open = any stage but Closed, Closed Lost or Closed Lost to Competition; won = Closed; lost = Closed Lost or Closed Lost to Competition), amount where set, account, contact, the Referred By Contact and Referred By Account from the deal’s Commission Details, whether the referrer is Founder Network (the referring contact’s Relationship Type), and whether a referrer is recorded at all.',
+    inputs: ['rb_deals'],
+    fn: (rb_deals) => rb_deals.map((d) => {
+      const by = d.Referred_By_Contact || null;
+      const byAcct = d.Referred_By_Account || null;
+      const rel = String(d['Referred_By_Contact.Relationship_Type'] || '');
+      return {
+        id: String(d.id), deal: d.Deal_Name || 'Deal', type: d.Deal_Type || 'No Deal Type', stage: d.Stage || null, status: rbStatus(d.Stage),
+        amount: Number(d.Amount) > 0 ? Number(d.Amount) : null, created: d.Created_Time ? ctDate(d.Created_Time) : null,
+        account: d.Account_Name || null, account_id: d.Account_Name_id ? String(d.Account_Name_id) : null,
+        contact: d.Contact_Name || null, contact_id: d.Contact_Name_id ? String(d.Contact_Name_id) : null,
+        by, by_id: d.Referred_By_Contact_id ? String(d.Referred_By_Contact_id) : null,
+        by_account: byAcct, by_account_id: d.Referred_By_Account_id ? String(d.Referred_By_Account_id) : null,
+        referred: Boolean(by || byAcct), fn: /founder network/i.test(rel),
+      };
+    }),
   });
 
   /* B2B partner meetings: every prospect with a completed meeting (mtg_people) and the Referral Partner deals linked to
@@ -1007,8 +1036,10 @@
   const planList = el('div', 'cc-b2-wrap cc-mp-list');
   planList.id = 'b2-mp-list';
   planList.hidden = true;
-  plan.append(planHead, planTiles, planList);
-  mtg.append(mtgHead, mtgPath, mtgGap, mtgGrid, mtgNote);
+  const planOwners = el('div', 'cc-pm-owners');
+  plan.append(planHead, planOwners, planTiles, planList);
+  const mtgOwners = el('div', 'cc-pm-owners');
+  mtg.append(mtgHead, mtgOwners, mtgPath, mtgGap, mtgGrid, mtgNote);
   const br = el('section', 'cc-card cc-br');
   br.id = 'b2-br';
   br.setAttribute('aria-labelledby', 'b2-br-title');
@@ -1075,6 +1106,21 @@
   const rwFlags = el('div', 'cc-rw-flags');
   const rwNote = el('p', 'cc-b2-insight cc-rw-note');
   rw.append(rwHead, rwPanel, rwFlags, rwNote);
+  const rb = el('section', 'cc-card cc-rw cc-rb');
+  rb.id = 'b2-rb';
+  rb.setAttribute('aria-labelledby', 'b2-rb-title');
+  const rbHead = el('div', 'cc-b2-scorehead');
+  const rbTitleBox = el('div');
+  const rbTitle = el('h2', null, 'Business from Referral Partners');
+  rbTitle.id = 'b2-rb-title';
+  rbTitleBox.append(rbTitle, el('p', 'cc-b2-insight', 'Client deals a partner brought us, from Referred By on the deal in Zoho: Founder Network against other partners, open against closed won and closed lost. Select any number to list the deals.'));
+  rbHead.append(rbTitleBox);
+  const rbPanel = el('div', 'cc-rw-panel');
+  rbPanel.setAttribute('role', 'group');
+  rbPanel.setAttribute('aria-label', 'Referred client deals by source');
+  const rbFlags = el('div', 'cc-rw-flags');
+  const rbNote = el('p', 'cc-b2-insight cc-rw-note');
+  rb.append(rbHead, rbPanel, rbFlags, rbNote);
   const monCard = card('b2-monday', 'Priority 3 queue', 'Everyone at Priority 3, grouped by what to do next from LI Connect: untouched first, then connected, then waiting. Within a group, the strongest partner evidence comes first.');
   const monTools = el('div', 'cc-tools cc-b2-chips');
   const monBody = el('div', 'cc-b2-wrap');
@@ -1157,7 +1203,7 @@
     if (drillFrom && drillFrom !== drill && drillFrom.parentElement === root && drillFrom.nextElementSibling !== drill) drillFrom.after(drill);
   };
 
-  root.append(pf, score, p3, na, mtg, pmCard, rw, mailCard, grid1, drill, nextCard, queueCard, monCard, grid2, sopCard, dqCard, plan, br);
+  root.append(pf, score, p3, na, mtg, pmCard, rw, rb, mailCard, grid1, drill, nextCard, queueCard, monCard, grid2, sopCard, dqCard, plan, br);
   /* SOP links: an animated playbook page instead of the word. The link keeps its title and aria-label. */
   const SOP_ICON = '<svg class="cc-sop-ico" viewBox="0 0 32 36" aria-hidden="true" focusable="false">'
     + '<g class="cc-sop-spark"><circle cx="27" cy="5" r="1.4"/><circle cx="4" cy="9" r="1"/><circle cx="29" cy="15" r="1"/><path d="M24 2.5v3M22.5 4h3"/></g>'
@@ -1180,6 +1226,10 @@
     if (d) { d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); const s = d.querySelector('summary'); if (s) s.focus({ preventScroll: true }); }
   });
 
+  /* A list rebuilt because its section's filter changed stays where it is instead of scrolling into view. */
+  let drillQuiet = false;
+  const drillQuietly = (fn) => { drillQuiet = true; try { fn(); } finally { drillQuiet = false; } };
+  const drillTitle = () => drill.querySelector('h3').textContent;
   /* Any list of rows (drill): cols are [header, (row) => text or Node]. */
   const showTable = (title, cols, list, note, empty) => {
     drill.querySelector('h3').textContent = title + ' (' + intF(list.length) + ')';
@@ -1195,7 +1245,7 @@
     if (note) drillBody.prepend(el('p', 'cc-b2-insight', note));
     placeDrill();
     drill.hidden = false;
-    drill.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (!drillQuiet) drill.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
   const rowOpens = (tr, id) => {
     if (!id) return tr;
@@ -1334,6 +1384,7 @@
     drawMtg();
     drawPm();
     drawRw();
+    drawRb();
     drawBriefs();
     const st = state(['b2b_people', 'b2b_actions', 'b2b_monday', 'b2b_funnel', 'b2b_segments']);
     if (st !== 'ok') {
@@ -2133,6 +2184,89 @@
     return names.length === 1 && names[0] !== 'Zoho' ? names[0] + ' only' : names.join(' + ');
   };
 
+  /* CRM Owner tabs (Zoho's Assigned field, since Contact Owner is the shared Transpire login): Everyone first, then each
+     owner by how many they hold, Not assigned last. Returns the owner in force (Everyone when the chosen one has nobody). */
+  const NO_OWNER = 'Not assigned';
+  const ownerOf = (r) => r.assigned || NO_OWNER;
+  const ownerTabs = (box, list, cur, pick) => {
+    const counts = new Map();
+    list.forEach((r) => counts.set(ownerOf(r), (counts.get(ownerOf(r)) || 0) + 1));
+    const owners = [...counts.keys()].sort((a, b) => (a === NO_OWNER) - (b === NO_OWNER) || counts.get(b) - counts.get(a) || a.localeCompare(b));
+    const now = cur !== 'All' && !counts.has(cur) ? 'All' : cur;
+    box.replaceChildren();
+    if (!list.length) return now;
+    const tabs = el('div', 'cc-tools cc-b2-chips');
+    tabs.setAttribute('role', 'group');
+    tabs.setAttribute('aria-label', 'CRM Owner');
+    [['All', list.length], ...owners.map((o) => [o, counts.get(o)])].forEach(([o, n]) => {
+      const b = el('button', 'cc-chip', `${o === 'All' ? 'Everyone' : o} (${intF(n)})`);
+      b.type = 'button'; b.setAttribute('aria-pressed', String(now === o));
+      b.addEventListener('click', () => { if (now !== o) pick(o); });
+      tabs.append(b);
+    });
+    box.append(el('span', 'cc-pm-ownlab', 'CRM Owner'), tabs);
+    return now;
+  };
+  const ownerLabel = (o) => (o === NO_OWNER ? 'with no CRM Owner (Assigned) in Zoho' : `whose CRM Owner (Assigned) is ${o}`);
+
+  /* A meeting count that opens that person's meeting days in a row right under theirs, and closes it again. */
+  const DAYS_ROW = 'cc-days-row';
+  const daysBtn = (n, aria, info) => {
+    const b = el('button', 'cc-rw-link cc-days-btn');
+    b.type = 'button';
+    b.append(document.createTextNode(intF(n)), el('span', 'cc-days-chev'));
+    b.setAttribute('aria-expanded', 'false');
+    b.setAttribute('aria-label', aria);
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const tr = b.closest('tr');
+      if (!tr) return;
+      const nx = tr.nextElementSibling;
+      if (nx && nx.classList.contains(DAYS_ROW)) { nx.remove(); tr.classList.remove('cc-days-open'); b.setAttribute('aria-expanded', 'false'); return; }
+      const x = info();
+      const row = el('tr', DAYS_ROW);
+      const td = el('td');
+      td.colSpan = tr.children.length;
+      const box = el('div', 'cc-days');
+      box.append(el('p', 'cc-days-title', x.title));
+      if (x.days.length) {
+        const ul = el('ul', 'cc-days-list');
+        x.days.forEach((d) => { const li = el('li'); li.append(el('b', null, fullDayF(d.day)), el('span', null, rwSeen(d))); ul.append(li); });
+        box.append(ul);
+      } else box.append(el('p', 'cc-b2-insight', x.empty));
+      if (x.note) box.append(el('p', 'cc-days-note', x.note));
+      td.append(box);
+      row.append(td);
+      tr.after(row);
+      tr.classList.add('cc-days-open');
+      b.setAttribute('aria-expanded', 'true');
+    });
+    return b;
+  };
+  /* Meeting days held (meeting-frequency lists), newest first. */
+  const mtgDaysInfo = (p) => () => {
+    const next = p.next ? ` Next meeting booked: ${whenF(p.next)}.` : '';
+    const open = (p.unmarked || []).length ? ` Not counted: ${p.unmarked.length} past Zoho ${p.unmarked.length === 1 ? 'meeting' : 'meetings'} still ${[...new Set(p.unmarked.map((u) => u.status))].join(' or ')} (${p.unmarked.map((u) => fullDayF(u.day)).join(', ')}) that no calendar or recording confirms.` : '';
+    return {
+      title: `${p.name}: ${intF(p.n)} ${p.n === 1 ? 'day' : 'days'} with a meeting held`,
+      days: (p.sources || []).slice().sort((a, b) => b.day.localeCompare(a.day)),
+      note: (next + open).trim() || null,
+      empty: 'No meetings held were found in Zoho, the team calendars or Fireflies.',
+    };
+  };
+
+  /* Meeting frequency and Who to talk to next share one CRM Owner choice. A list open in the shared drill from the meeting
+     frequency section is rebuilt for the new owner (or closed when it no longer exists). */
+  let mtgOwner = 'All';
+  let mtgOpenKey = null;
+  let mtgOpenTitle = null;
+  let mtgReopen = null;
+  const mtgPick = (o) => {
+    mtgReopen = mtgOpenKey && !drill.hidden && drillTitle() === mtgOpenTitle ? mtgOpenKey : null;
+    mtgOwner = o;
+    drawMtg();
+  };
+
   /* Who to talk to next (Priority 1). */
   let planTab = null;
   const PLAN = [
@@ -2144,8 +2278,10 @@
   ];
   const drawPlan = () => {
     const st = state(['p1_meet_plan']);
-    if (st !== 'ok') { planTiles.replaceChildren(); planList.hidden = true; return; }
-    const rowsP = rows('p1_meet_plan');
+    if (st !== 'ok') { planOwners.replaceChildren(); planTiles.replaceChildren(); planList.hidden = true; return; }
+    const rowsAll = rows('p1_meet_plan');
+    mtgOwner = ownerTabs(planOwners, rowsAll, mtgOwner, mtgPick);
+    const rowsP = mtgOwner === 'All' ? rowsAll : rowsAll.filter((r) => ownerOf(r) === mtgOwner);
     const mail = mailOk() ? new Map(rows('b2b_mail_people').map((r) => [r.id, r])) : null;
     const lists = {
       ask: rowsP.filter((r) => r.group === 'ask').sort((a, b) => (b.connected ? 1 : 0) - (a.connected ? 1 : 0)
@@ -2189,7 +2325,7 @@
       const tb = el('tbody');
       list.forEach((r) => { const tr = rowOpens(el('tr'), r.id); COLS[k].forEach(([, f]) => { const v = f(r); const td = el('td'); if (v instanceof Node) td.append(v); else td.textContent = v == null || v === '' ? '—' : v; tr.append(td); }); tb.append(tr); });
       tbl.append(tb);
-      planList.replaceChildren(el('p', 'cc-na-cap', `${label} (${intF(list.length)})`), el('p', 'cc-b2-insight', NOTE[k]), tbl);
+      planList.replaceChildren(el('p', 'cc-na-cap', `${mtgOwner === 'All' ? '' : mtgOwner + ': '}${label} (${intF(list.length)})`), el('p', 'cc-b2-insight', NOTE[k] + (mtgOwner === 'All' ? '' : ` Showing Priority 1 prospects ${ownerLabel(mtgOwner)}.`)), tbl);
       if (k === 'ask') planList.insertBefore(sopBtn(4, 'SOP 4 Ask for a first meeting'), planList.children[2]);
       if (k === 'log') planList.insertBefore(sopBtn(7, 'SOP 7 Log a meeting'), planList.children[2]);
     };
@@ -2224,7 +2360,7 @@
       const a = el('td'); if (p.account_id) a.append(link('Accounts', p.account_id, p.account)); else a.textContent = 'No company'; tr.append(a);
       tr.append(el('td', null, p.assigned || 'Not assigned'));
       const cnt = el('td');
-      if (p.n) cnt.append(rwBtn(intF(p.n), `${p.name}: ${intF(p.n)} ${p.n === 1 ? 'meeting' : 'meetings'} held. List the dates.`, () => mtgDays(p, { title, fn: () => showMtg(title, list, note, mode) })));
+      if (p.n) cnt.append(daysBtn(p.n, `${p.name}: ${intF(p.n)} ${p.n === 1 ? 'meeting' : 'meetings'} held. Show the dates under this row.`, mtgDaysInfo(p)));
       else cnt.textContent = intF(p.n);
       if (mode === 'unmarked') tr.append(el('td', null, whenF(r.u.at)), el('td', 'cc-b2-late', r.u.status), cnt);
       else tr.append(el('td', null, p.last ? fullDayF(p.last) : 'None'), cnt, el('td', null, srcF(p)), el('td', null, p.next ? whenF(p.next) : 'None booked'));
@@ -2232,12 +2368,12 @@
     });
     tbl.append(tb);
     drillBody.replaceChildren(tbl);
-    const hint = list.some((r) => (r.p || r).n) ? ' Select a meeting count to see the dates.' : '';
+    const hint = list.some((r) => (r.p || r).n) ? ' Select a meeting count to see that person’s meeting dates under their row; select it again to close.' : '';
     if (note || hint) drillBody.prepend(el('p', 'cc-b2-insight', (note || '').trim() + hint));
     if (mode === 'unmarked') drillBody.prepend(sopBtn(7, 'SOP 7 Log a meeting'));
     placeDrill();
     drill.hidden = false;
-    drill.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (!drillQuiet) drill.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const drawMtg = () => {
@@ -2245,6 +2381,7 @@
     mtgNote.classList.toggle('cc-b2-bad', st === 'error');
     if (st !== 'ok') {
       mtgGap.hidden = true;
+      mtgOwners.replaceChildren();
       mtgBar.replaceChildren(...MTG_STAGES.map((s) => { const li = el('li', 'cc-mt-step cc-mt-s' + s.k); li.append(el('span', null, s.label), el('b', null, st === 'loading' ? '…' : '—')); return li; }));
       mtgGrid.replaceChildren(...MTG_STAGES.map((s) => {
         const c = el('article', 'cc-mt-kpi cc-mt-s' + s.k + ' cc-mt-wait');
@@ -2255,8 +2392,13 @@
       mtgNote.textContent = st === 'loading' ? 'Loading meetings and B2B contacts from Zoho…' : 'Zoho meetings or B2B contacts didn’t load, so the stages can’t be worked out. Reload, or check the source in the dashboard menu.';
       return;
     }
-    const ppl = rows('mtg_people').filter((p) => p.priority === MTG_PRIORITY);
-    const stages = rows('mtg_depth');
+    const allP1 = rows('mtg_people').filter((p) => p.priority === MTG_PRIORITY);
+    mtgOwner = ownerTabs(mtgOwners, allP1, mtgOwner, mtgPick);
+    const ppl = mtgOwner === 'All' ? allP1 : allP1.filter((p) => ownerOf(p) === mtgOwner);
+    const stages = mtgOwner === 'All' ? rows('mtg_depth') : mtgDepthOf(ppl);
+    const tag = mtgOwner === 'All' ? '' : mtgOwner + ': ';
+    const op = {};
+    const opener = (key, fn) => { op[key] = () => { mtgOpenKey = key; fn(); mtgOpenTitle = drillTitle(); }; return op[key]; };
     if (!ppl.length) {
       mtgGap.hidden = true;
       mtgBar.replaceChildren();
@@ -2271,7 +2413,7 @@
     mtgBar.replaceChildren(...MTG_STAGES.map((s) => {
       const li = el('li', 'cc-mt-step cc-mt-s' + s.k);
       li.append(el('span', null, s.label), el('b', null, intF(byStage(s.k).total)));
-      press(li, () => showMtg(s.label, stageList(s.k), s.def + '.' + ownerNote));
+      press(li, opener('stage:' + s.k, () => showMtg(tag + s.label, stageList(s.k), s.def + '.' + ownerNote)));
       li.setAttribute('aria-label', `${s.label}: ${intF(byStage(s.k).total)} Priority 1 prospects. Open the list.`);
       return li;
     }));
@@ -2285,7 +2427,7 @@
       const txt = el('p');
       txt.append(el('b', null, `${intF(unmarked.length)} past meeting${unmarked.length === 1 ? '' : 's'} with ${intF(who)} Priority 1 prospect${who === 1 ? '' : 's'} ${unmarked.length === 1 ? 'isn’t' : 'aren’t'} marked Completed in Zoho and aren’t on a team Outlook calendar either`), document.createTextNode(' (Meeting Status is Scheduled or blank), so they don’t count in the stages below. Set Meeting Status to Completed for meetings that happened. Zoho has no Cancelled or No-show value, so a meeting that didn’t happen can only stay uncounted.'));
       const b = el('button', 'cc-go', 'List them'); b.type = 'button';
-      b.addEventListener('click', () => showMtg('Past meetings not marked Completed', unmarked, 'Newest first. Each one stays out of the counts until Meeting Status says Completed.', 'unmarked'));
+      b.addEventListener('click', opener('unmarked', () => showMtg(tag + 'Past meetings not marked Completed', unmarked, 'Newest first. Each one stays out of the counts until Meeting Status says Completed.', 'unmarked')));
       mtgGap.replaceChildren(txt, b);
       mtgGap.hidden = false;
     } else mtgGap.hidden = true;
@@ -2316,11 +2458,11 @@
       [['Today', r.today], ['This week', r.week], ['This month', r.month]].forEach(([k, v]) => {
         const d = el('div', 'cc-mt-pcell'); d.append(el('dt', null, k), el('dd', null, intF(v)));
         const from = periodStart[k];
-        const go = (e) => {
-          e.stopPropagation(); e.preventDefault();
+        const show = opener(`cell:${s.k}:${k}`, () => {
           const list = ppl.filter((p) => p.entered[s.k] && p.entered[s.k] >= from && p.entered[s.k] <= tday).sort((a, b) => String(b.entered[s.k]).localeCompare(String(a.entered[s.k])) || String(a.name).localeCompare(String(b.name)));
-          showMtg(`${s.label}: newly reached ${k.toLowerCase()}`, list, (s.k === 0 ? 'Added to Zoho in the period and not met yet.' : `Reached ${s.label.toLowerCase()} with a meeting held in the period.`) + ownerNote);
-        };
+          showMtg(`${tag}${s.label}: newly reached ${k.toLowerCase()}`, list, (s.k === 0 ? 'Added to Zoho in the period and not met yet.' : `Reached ${s.label.toLowerCase()} with a meeting held in the period.`) + ownerNote);
+        });
+        const go = (e) => { e.stopPropagation(); e.preventDefault(); show(); };
         d.tabIndex = 0; d.setAttribute('role', 'button'); d.setAttribute('aria-label', `${s.label}, ${k.toLowerCase()}: ${intF(v)} newly reached. Open the list.`);
         d.addEventListener('click', go); d.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') go(e); });
         dl.append(d);
@@ -2341,7 +2483,7 @@
         3: 'Three meetings held: a developing relationship.',
         4: 'Four or more meetings held: our deepest relationships.',
       };
-      press(c, () => showMtg(s.label, members, notes[s.k] + ' Owner shows Zoho’s Assigned field, since Contact Owner is the shared Transpire login.'));
+      press(c, opener('stage:' + s.k, () => showMtg(tag + s.label, members, notes[s.k] + ' Owner shows Zoho’s Assigned field, since Contact Owner is the shared Transpire login.')));
       c.setAttribute('aria-label', `${s.label}: ${intF(r.total)} prospects, ${spoken}. Today ${intF(r.today)}, this week ${intF(r.week)}, this month ${intF(r.month)} newly entered. Open the list.`);
       return c;
     }));
@@ -2349,7 +2491,8 @@
     drawPlan();
     const calAsOf = ppl.reduce((m, p) => (p.cal_as_of && (!m || p.cal_as_of < m) ? p.cal_as_of : m), null);
     const calLine = ppl.some((p) => p.cal_checked) ? ` Outlook calendars (info@, mack@, hemang@, shruti@) checked ${calAsOf ? whenF(calAsOf) : ''}: an event counts when the prospect is a guest or the booking customer, or the subject names them, and it wasn’t cancelled.` : ' The Outlook calendar sync isn’t in this build, so only Zoho meetings count.';
-    mtgNote.textContent = `Counts B2B prospects at Priority 1 today (${intF(ppl.length)}) by days with a meeting held, from Zoho (Meeting Status Completed, start time passed) or a team Outlook calendar; a day with a meeting in both counts once, and each prospect sits in one stage.${calLine} Today, This week (from Monday) and This month count prospects who newly reached a stage, in Central time; Never Met is reached when Zoho creates the contact. The change compares today’s total with ${prevDay ? fullDayF(prevDay) : 'the same day last month'}. Trends are rebuilt from meeting dates and contact creation dates${from ? ' since ' + fullDayF(from) : ''}; Zoho doesn’t keep Priority history, so past weeks show today’s Priority 1 prospects only, and anyone who has since moved to another Priority (signed partners at P99 included) isn’t in them.`;
+    if (mtgReopen) { const k = mtgReopen; mtgReopen = null; if (op[k]) drillQuietly(op[k]); else drill.hidden = true; }
+    mtgNote.textContent = (mtgOwner === 'All' ? '' : `Showing Priority 1 prospects ${ownerLabel(mtgOwner)}; the stages, counts, trends and Who to talk to next below follow the same choice. `) + `Counts B2B prospects at Priority 1 today (${intF(ppl.length)}) by days with a meeting held, from Zoho (Meeting Status Completed, start time passed) or a team Outlook calendar; a day with a meeting in both counts once, and each prospect sits in one stage.${calLine} Today, This week (from Monday) and This month count prospects who newly reached a stage, in Central time; Never Met is reached when Zoho creates the contact. The change compares today’s total with ${prevDay ? fullDayF(prevDay) : 'the same day last month'}. Trends are rebuilt from meeting dates and contact creation dates${from ? ' since ' + fullDayF(from) : ''}; Zoho doesn’t keep Priority history, so past weeks show today’s Priority 1 prospects only, and anyone who has since moved to another Priority (signed partners at P99 included) isn’t in them.`;
   };
 
   /* B2B Partner Meetings: met partners and their Referral Partner deals. */
@@ -2396,9 +2539,13 @@
     if (!r.created && r.other && !otherDeals.length) return null;
     return { ...r, deals, other_deals: otherDeals, company_deals: companyDeals };
   };
-  const PM_NO_OWNER = 'Not assigned';
-  const pmOwnerOf = (r) => r.assigned || PM_NO_OWNER;
   let pmOwner = 'All';
+  /* The list open in the shared drill from this section, so a new owner or period rebuilds it instead of leaving the old
+     one showing (Mack, Oct 28, 2026). */
+  let pmOpenKey = null;
+  let pmOpenTitle = null;
+  let pmReopen = null;
+  const pmOpenNow = () => (pmOpenKey && !drill.hidden && drillTitle() === pmOpenTitle ? pmOpenKey : null);
   let pmPeriod = 'all';
   let pmSel = null;
   let pmSelTitle = null;
@@ -2445,57 +2592,33 @@
   const rwSrc = (p) => (p.fn === true ? 'Founder Network' : p.fn === false ? 'Other' : 'Not known (no contact on the deal)');
   const rwDayF = (d) => (d ? fullDayF(d) : '—');
   const rwSeen = (x) => [x.zoho && 'Zoho (Completed)', x.outlook && ('Outlook' + (x.cals ? ' (' + String(x.cals).split(',').filter(Boolean).map((c) => CAL_NAMES[c] || c).join(', ') + ')' : '')), x.fireflies && 'Fireflies recording'].filter(Boolean).join(', ');
-  const rwBtn = (text, label, fn) => { const b = el('button', 'cc-rw-link', text); b.type = 'button'; b.setAttribute('aria-label', label); b.addEventListener('click', fn); return b; };
-  let rwBack = null;
-  const rwMeetings = (p) => {
-    const back = rwBack;
-    showTable(`${p.name}: meetings before signing`, [
-      ['Date (CT)', (x) => fullDayF(x.day)],
-      ['Seen in', (x) => rwSeen(x)],
-    ], p.meeting_days.slice().sort((a, b) => b.day.localeCompare(a.day)), `One row per day with a meeting held, up to the day the agreement was signed (${rwDayF(p.signed_on)}).${p.gaps.length ? ' Incomplete: ' + p.gaps.join('; ') + '.' : ''}`, 'No meetings held before signing were found in Zoho, the team calendars or Fireflies.');
-    const head = drillBody.firstElementChild;
-    const tools = el('div', 'cc-tools');
-    if (p.contact_id) { const z = el('a', 'cc-go', 'Open the contact in Zoho'); z.href = ZOHO + 'Contacts/' + p.contact_id; z.target = '_blank'; z.rel = 'noopener'; tools.append(z); }
-    if (back) { const b = el('button', 'cc-go', '← Back to ' + back.title); b.type = 'button'; b.addEventListener('click', back.fn); tools.prepend(b); }
-    drillBody.insertBefore(tools, head);
-  };
-  /* Every day a prospect met us (meeting-frequency lists): one row per Central-time day, with where it was seen. */
-  const mtgDays = (p, back) => {
-    const days = (p.sources || []).slice().sort((a, b) => b.day.localeCompare(a.day));
-    const next = p.next ? ` Next meeting booked: ${whenF(p.next)}.` : '';
-    const open = (p.unmarked || []).length ? ` Not counted: ${p.unmarked.length} past Zoho ${p.unmarked.length === 1 ? 'meeting' : 'meetings'} still ${[...new Set(p.unmarked.map((u) => u.status))].join(' or ')} (${p.unmarked.map((u) => fullDayF(u.day)).join(', ')}) that no calendar or recording confirms.` : '';
-    showTable(`${p.name}: meetings held`, [
-      ['Date (CT)', (x) => fullDayF(x.day)],
-      ['Seen in', (x) => rwSeen(x)],
-    ], days, `One row per Central-time day with a meeting held: Zoho Meeting Status Completed, a past meeting on a team Outlook calendar, or a Fireflies recording; a day seen in several places counts once.${next}${open}`, 'No meetings held were found in Zoho, the team calendars or Fireflies.');
-    const head = drillBody.firstElementChild;
-    const tools = el('div', 'cc-tools');
-    if (back) { const b = el('button', 'cc-go', '← Back to ' + back.title); b.type = 'button'; b.addEventListener('click', back.fn); tools.append(b); }
-    if (p.id) { const z = el('a', 'cc-go', 'Open the contact in Zoho'); z.href = ZOHO + 'Contacts/' + p.id; z.target = '_blank'; z.rel = 'noopener'; tools.append(z); }
-    drillBody.insertBefore(tools, head);
-  };
+  /* Meeting days before signing (Closed Won lists), newest first. */
+  const rwDaysInfo = (p) => () => ({
+    title: `${p.name}: ${intF(p.meetings)} ${p.meetings === 1 ? 'day' : 'days'} with a meeting held before signing on ${rwDayF(p.signed_on)}`,
+    days: p.meeting_days.slice().sort((a, b) => b.day.localeCompare(a.day)),
+    note: p.gaps.length ? 'Incomplete: ' + p.gaps.join('; ') + '.' : null,
+    empty: 'No meetings held before signing were found in Zoho, the team calendars or Fireflies.',
+  });
   const rwList = (title, list) => {
     const open = () => {
-      rwBack = { title, fn: open };
       showTable(title, [
         ['Partner', (p) => { const w = el('span'); if (p.contact_id) w.append(link('Contacts', p.contact_id, p.name)); else w.textContent = p.name; if (p.gaps.length) { const f = el('span', 'cc-rw-flagmark', ' ⚑'); f.title = p.gaps.join('; '); w.append(f); } return w; }],
         ['Company', (p) => (p.account_id ? link('Accounts', p.account_id, p.account || 'Account') : p.account || 'No Account')],
         ['Source', (p) => { const w = el('span', 'cc-rw-src ' + (p.fn ? 'cc-rw-fn' : 'cc-rw-other')); w.append(el('i'), document.createTextNode(rwSrc(p))); return w; }],
-        ['Meetings before signing', (p) => rwBtn(intF(p.meetings), `${p.name}: ${p.meetings} meetings before signing. List them.`, () => rwMeetings(p))],
+        ['Meetings before signing', (p) => (p.meetings ? daysBtn(p.meetings, `${p.name}: ${p.meetings} meetings before signing. Show the dates under this row.`, rwDaysInfo(p)) : '0')],
         ['Agreement signed', (p) => (p.doc_id ? link('CustomModule1', p.doc_id, rwDayF(p.signed_on)) : rwDayF(p.signed_on))],
         ['Deal', (p) => link('Potentials', p.deal_id, p.deal)],
-      ], list.slice().sort((a, b) => b.meetings - a.meetings || String(a.name).localeCompare(String(b.name))), 'Meetings are days with a meeting held (Zoho Completed, team Outlook calendar or Fireflies), up to and including the signing day. Select a meeting count to see the dates. ⚑ marks incomplete meeting history.');
+      ], list.slice().sort((a, b) => b.meetings - a.meetings || String(a.name).localeCompare(String(b.name))), 'Meetings are days with a meeting held (Zoho Completed, team Outlook calendar or Fireflies), up to and including the signing day. Select a meeting count to see the dates under that partner’s row; select it again to close. ⚑ marks incomplete meeting history.');
       drill.querySelectorAll('a.cc-zlink[href*="CustomModule1"]').forEach((a) => { a.title = 'Open the agreement in Zoho CRM'; });
     };
     return open;
   };
   const rwFix = (title, list, kind) => () => {
-    rwBack = null;
     showTable(title, [
       ['Partner', (p) => (p.contact_id ? link('Contacts', p.contact_id, p.name) : p.name)],
       ['Company', (p) => (p.account_id ? link('Accounts', p.account_id, p.account || 'Account') : p.account || 'No Account')],
       ['Source', (p) => rwSrc(p)],
-      [kind === 'unsigned' ? 'Agreement in Zoho Sign' : 'Meetings before signing', (p) => (kind === 'unsigned' ? (p.doc_id ? link('CustomModule1', p.doc_id, p.agreement + (p.sent ? ', sent ' + fullDayF(p.sent) : '')) : p.agreement) : rwBtn(intF(p.meetings), `${p.name}: list meetings`, () => { rwBack = { title, fn: rwFix(title, list, kind) }; rwMeetings(p); }))],
+      [kind === 'unsigned' ? 'Agreement in Zoho Sign' : 'Meetings before signing', (p) => (kind === 'unsigned' ? (p.doc_id ? link('CustomModule1', p.doc_id, p.agreement + (p.sent ? ', sent ' + fullDayF(p.sent) : '')) : p.agreement) : (p.meetings ? daysBtn(p.meetings, `${p.name}: ${p.meetings} meetings before signing. Show the dates under this row.`, rwDaysInfo(p)) : '0'))],
       ['What to fix', (p) => (kind === 'unsigned' ? (p.agreement === 'None in Zoho Sign' ? 'Deal is Closed but Zoho Sign has no Referral Partner Agreement for them: send it, or attach the signed copy' : 'Deal is Closed but the agreement isn’t signed: chase the signature, or move the deal back from Closed') + (p.contact_id ? '' : '; the deal also has no Contact Name') : p.gaps.join('; '))],
       ['Deal', (p) => link('Potentials', p.deal_id, p.deal)],
     ], list, kind === 'unsigned' ? 'Not counted above until the agreement is signed in Zoho Sign.' : 'Counted above with the meetings found; the count may be low until these are fixed.');
@@ -2542,6 +2665,81 @@
     rwNote.textContent = 'A meeting counts when Zoho marks it Completed, it is an uncancelled event on a team Outlook calendar, or Fireflies recorded 5+ minutes with the partner; one per day (Central time), up to and including the day the agreement was signed. Founder Network is the partner’s Relationship Type in Zoho. Each partner counts once.';
   };
 
+  /* Business from Referral Partners: the same three boxes as Closed Won (Combined, Other Partners, Founder Network), each
+     with its referred client deals split Open / Closed Won / Closed Lost. Every number opens its deals. */
+  const RB_CELLS = [['open', 'Open'], ['won', 'Closed Won'], ['lost', 'Closed Lost']];
+  const usdF = (n) => '$' + Math.round(n).toLocaleString('en-US');
+  const rbBy = (d) => {
+    const w = el('span');
+    if (d.by) w.append(d.by_id ? link('Contacts', d.by_id, d.by) : document.createTextNode(d.by));
+    if (d.by_account) { if (d.by) w.append(document.createTextNode(', ')); w.append(d.by_account_id ? link('Accounts', d.by_account_id, d.by_account) : document.createTextNode(d.by_account)); }
+    return w;
+  };
+  const rbBase = [
+    ['Deal', (d) => link('Potentials', d.id, d.deal)],
+    ['Stage', (d) => d.stage || 'No stage'],
+    ['Deal Type', (d) => d.type],
+    ['Amount', (d) => (d.amount ? usdF(d.amount) : 'Not set')],
+    ['Client', (d) => (d.account_id ? link('Accounts', d.account_id, d.account) : d.account || 'No Account')],
+  ];
+  const rbCols = [...rbBase,
+    ['Referred by', rbBy],
+    ['Source', (d) => { const w = el('span', 'cc-rw-src ' + (d.fn ? 'cc-rw-fn' : 'cc-rw-other')); w.append(el('i'), document.createTextNode(d.fn ? 'Founder Network' : 'Other partner')); return w; }],
+    ['Created', (d) => (d.created ? fullDayF(d.created) : '—')],
+  ];
+  const rbFixCols = [...rbBase,
+    ['Created', (d) => (d.created ? fullDayF(d.created) : '—')],
+    ['What to do', () => 'If a partner brought this deal, set Referred By Contact (and Referred By Account) in the deal’s Commission Details; leave both empty if it came to us directly.'],
+  ];
+  const RB_ORDER = { open: 0, won: 1, lost: 2 };
+  const rbSort = (list) => list.slice().sort((a, b) => RB_ORDER[a.status] - RB_ORDER[b.status] || String(b.created || '').localeCompare(String(a.created || '')) || String(a.deal).localeCompare(String(b.deal)));
+  const rbAmount = (list) => {
+    const set = list.filter((d) => d.amount);
+    return set.length ? `${usdF(set.reduce((t, d) => t + d.amount, 0))} where Amount is set (${intF(set.length)} of ${intF(list.length)})` : 'No Amount set';
+  };
+  const RB_NOTE = 'Open is any stage but Closed, Closed Lost or Closed Lost to Competition (Warm Up and Hold included). Amounts show only where set on the deal, so totals are floors.';
+  const drawRb = () => {
+    const st = state(['rb_rows']);
+    if (st !== 'ok') {
+      rbPanel.replaceChildren(el('p', st === 'error' ? 'cc-b2-bad' : 'cc-b2-insight', st === 'error' ? 'Deals didn’t load from Zoho, so referred business can’t be counted. Reload, or check the source in the dashboard menu.' : 'Loading deals from Zoho…'));
+      rbFlags.replaceChildren(); rbFlags.hidden = true; rbNote.textContent = '';
+      return;
+    }
+    const all = rows('rb_rows');
+    const referred = all.filter((d) => d.referred);
+    const blank = all.filter((d) => !d.referred);
+    rbPanel.replaceChildren(...RW_GROUPS.map(([g, label, keep]) => {
+      const mine = referred.filter(keep);
+      const box = el('div', 'cc-rw-box cc-rw-' + g);
+      const top = el('button', 'cc-rw-top'); top.type = 'button';
+      top.setAttribute('aria-label', `${label}: ${mine.length} referred client deals. List them.`);
+      const name = el('span', 'cc-rw-name'); name.append(el('i'), document.createTextNode(label));
+      top.append(name, el('b', null, intF(mine.length)), el('small', null, `referred client deal${mine.length === 1 ? '' : 's'}${mine.length ? '; ' + rbAmount(mine) : ''}`));
+      if (mine.length) top.addEventListener('click', () => showTable(`${label}: referred client deals`, rbCols, rbSort(mine), RB_NOTE)); else top.disabled = true;
+      const cells = el('div', 'cc-rw-cells'); cells.style.setProperty('--n', RB_CELLS.length);
+      RB_CELLS.forEach(([k, cl]) => {
+        const r = mine.filter((d) => d.status === k);
+        const c = el('button', 'cc-rw-cell cc-rb-' + k); c.type = 'button';
+        const bar = el('em'); const fill = el('s'); fill.style.width = (mine.length ? (r.length / mine.length) * 100 : 0) + '%'; bar.append(fill);
+        c.append(el('b', null, intF(r.length)), bar, el('span', null, cl));
+        c.setAttribute('aria-label', `${label}, ${cl}: ${r.length} referred client deals${r.length ? '. List them.' : ''}`);
+        if (r.length) c.addEventListener('click', () => showTable(`${label}: ${cl.toLowerCase()} referred client deals`, rbCols, rbSort(r), `${RB_NOTE} ${rbAmount(r)}.`)); else c.disabled = true;
+        cells.append(c);
+      });
+      box.append(top, el('p', 'cc-rw-by', 'Deals by status'), cells);
+      return box;
+    }));
+    rbFlags.replaceChildren();
+    if (blank.length) {
+      const b = el('button', 'cc-rw-flag'); b.type = 'button';
+      b.append(el('b', null, intF(blank.length)), document.createTextNode(` client deal${blank.length === 1 ? ' has' : 's have'} no referrer recorded: check whether a partner brought ${blank.length === 1 ? 'it' : 'them'}`));
+      b.addEventListener('click', () => showTable('Client deals with no referrer recorded', rbFixCols, rbSort(blank), `Referred By Contact and Referred By Account are both empty on these deals, so they can’t be credited to a partner. Open deals first. ${RB_NOTE}`));
+      rbFlags.append(b);
+    }
+    rbFlags.hidden = !blank.length;
+    rbNote.textContent = `Client deals are every Deal Type except Reseller/ Referral Partner and Platform Provider Agreement (those are the partner agreements themselves). A deal counts as referred when Referred By Contact or Referred By Account is set in its Commission Details in Zoho: ${intF(referred.length)} of ${intF(all.length)} client deals so far. Founder Network means the referring contact’s Relationship Type includes Founder Network; a deal referred by an Account alone counts under Other Partners. ${RB_NOTE}`;
+  };
+
   /* One floating tip for B2B Deals Created: follows the pointer, or sits by the element on keyboard focus. */
   const pmTipEl = el('div', 'cc-pm-tip');
   pmTipEl.hidden = true;
@@ -2580,26 +2778,11 @@
     const raw = rows('b2b_partner_deals');
     const active = raw.map(pmActive).filter(Boolean);
     const leftOut = raw.length - active.length;
-    const counts = new Map();
-    active.forEach((r) => counts.set(pmOwnerOf(r), (counts.get(pmOwnerOf(r)) || 0) + 1));
-    const owners = [...counts.keys()].sort((a, b) => (a === PM_NO_OWNER) - (b === PM_NO_OWNER) || counts.get(b) - counts.get(a) || a.localeCompare(b));
-    if (pmOwner !== 'All' && !counts.has(pmOwner)) pmOwner = 'All';
+    pmOwner = ownerTabs(pmOwners, active, pmOwner, (o) => { pmReopen = pmOpenNow(); pmOwner = o; pmSel = null; drawPm(); });
     const ownerTag = pmOwner === 'All' ? '' : pmOwner + ': ';
-    pmOwners.replaceChildren();
-    if (active.length) {
-      pmOwners.append(el('span', 'cc-pm-ownlab', 'CRM Owner'));
-      const tabs = el('div', 'cc-tools cc-b2-chips');
-      tabs.setAttribute('role', 'group');
-      tabs.setAttribute('aria-label', 'CRM Owner');
-      [['All', active.length], ...owners.map((o) => [o, counts.get(o)])].forEach(([o, n]) => {
-        const b = el('button', 'cc-chip', `${o === 'All' ? 'Everyone' : o} (${intF(n)})`);
-        b.type = 'button'; b.setAttribute('aria-pressed', String(pmOwner === o));
-        b.addEventListener('click', () => { if (pmOwner === o) return; pmOwner = o; pmSel = null; drawPm(); });
-        tabs.append(b);
-      });
-      pmOwners.append(tabs);
-    }
-    const everyone = pmOwner === 'All' ? active : active.filter((r) => pmOwnerOf(r) === pmOwner);
+    const everyone = pmOwner === 'All' ? active : active.filter((r) => ownerOf(r) === pmOwner);
+    const op = {};
+    const opener = (key, fn) => { op[key] = () => { pmOpenKey = key; fn(); pmOpenTitle = drillTitle(); }; return op[key]; };
     const from = pmStart(pmPeriod);
     const periodName = (PM_PERIODS.find(([k]) => k === pmPeriod) || [])[1];
     const inPeriod = (r) => !from || (r.first && r.first >= from && r.first <= todayCT());
@@ -2607,7 +2790,7 @@
       const n = everyone.filter((r) => { const f = pmStart(k); return !f || (r.first && r.first >= f && r.first <= todayCT()); }).length;
       const b = el('button', 'cc-chip', `${label} (${intF(n)})`);
       b.type = 'button'; b.setAttribute('aria-pressed', String(pmPeriod === k));
-      b.addEventListener('click', () => { pmPeriod = k; drawPm(); });
+      b.addEventListener('click', () => { if (pmPeriod === k) return; pmReopen = pmOpenNow(); pmPeriod = k; drawPm(); });
       return b;
     }));
     const all = everyone.filter(inPeriod);
@@ -2617,6 +2800,7 @@
     const missing = all.filter((r) => !r.created && !r.other);
     if (!everyone.length) {
       pmTools.replaceChildren();
+      if (pmReopen) { pmReopen = null; drill.hidden = true; }
       pmBody.replaceChildren(el('p', 'cc-b2-insight', leftOut ? `All ${intF(leftOut)} met ${leftOut === 1 ? 'partner has' : 'partners have'} only closed or lost deals, so nothing is open here. Signed partners are in Referral Partner Deals — Closed Won below.` : 'No campaign contacts have been recorded as met yet. A contact counts once a meeting with them is marked Completed in Zoho.'));
       pmNote.textContent = '';
       return;
@@ -2697,12 +2881,13 @@
       cSplit.replaceChildren(document.createTextNode(pmSel === g.k ? 'Selected: its list is open below' : 'Select to list them'));
     };
     pmRefreshRing = readout;
-    const pick = (g) => {
+    ringGroups.forEach((g) => opener('ring:' + g.k, () => {
       pmSel = g.k;
       readout();
       showTable(ownerTag + g.title, pmCols, pmSort(g.list), g.note);
-      pmSelTitle = drill.querySelector('h3').textContent;
-    };
+      pmSelTitle = drillTitle();
+    }));
+    const pick = (g) => op['ring:' + g.k]();
     Object.values(arcs).forEach((a) => {
       const g = ringGroups.find((x) => x.k === a.dataset.k);
       const on = () => { hoverK = g.k; readout(); };
@@ -2712,20 +2897,20 @@
       a.addEventListener('click', () => pick(g));
       a.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(g); } });
     });
-    center.addEventListener('click', () => {
+    center.addEventListener('click', opener('center', () => {
       pmSel = null; readout();
       showTable(ownerTag + 'Partners met', pmCols, pmSort(everyone), 'Every May 2026 - 100 B2B contact with at least one meeting held (Zoho Completed, or on a team Outlook calendar for Priority 1 and 99), most recent meeting first. ' + PM_OWNER_NOTE);
-    });
+    }));
     met.append(svg, center);
     const metWrap = el('div', 'cc-pm-left');
     metWrap.append(met);
     const ok = tile('cc-pm-ok', 'Referral Partner Deal Created', made.length, 'Met, with a Referral Partner deal linked to the contact',
-      () => showTable(ownerTag + 'Referral Partner deal created' + (from ? ', ' + periodName.toLowerCase() : ''), pmCols, pmSort(made), `${from ? 'Partners' : 'Met partners'}${scope} whose Referral Partner deal names them as the contact. ` + PM_OWNER_NOTE),
+      opener('made', () => showTable(ownerTag + 'Referral Partner deal created' + (from ? ', ' + periodName.toLowerCase() : ''), pmCols, pmSort(made), `${from ? 'Partners' : 'Met partners'}${scope} whose Referral Partner deal names them as the contact. ` + PM_OWNER_NOTE)),
       `Referral Partner deal created: ${intF(made.length)}. Open the list.`);
     const gap = tile(missing.length ? 'cc-pm-bad' : all.length ? 'cc-pm-ok' : 'cc-pm-none', 'Referral Partner Deal Not Created', missing.length, null,
-      () => (missing.length
+      opener('miss', () => (missing.length
         ? showTable(ownerTag + 'Referral Partner deal not created' + (from ? ', ' + periodName.toLowerCase() : ''), pmCols, pmSort(missing), `${from ? 'Partners' : 'Met partners'}${scope} with no Referral Partner deal linked to them.` + ' Create the deal in Zoho as SOP 002 sets out (Deal Type Reseller/ Referral Partner, Stage Identify, Amount $0.00, their company as Account Name and this person as Contact Name); they drop off this list at the next refresh. ' + PM_OWNER_NOTE)
-        : showTable(ownerTag + 'Referral Partner deal not created' + (from ? ', ' + periodName.toLowerCase() : ''), pmCols, [], null, from ? `All partners first met ${periodName.toLowerCase()} have Referral Partner Deals created.` : 'All met partners have Referral Partner Deals created.')),
+        : showTable(ownerTag + 'Referral Partner deal not created' + (from ? ', ' + periodName.toLowerCase() : ''), pmCols, [], null, from ? `All partners first met ${periodName.toLowerCase()} have Referral Partner Deals created.` : 'All met partners have Referral Partner Deals created.'))),
       `Referral Partner deal not created: ${intF(missing.length)}, target 0. Open the list.`);
     const tgt = el('p', 'cc-pm-target', 'Target: 0');
     gap.insertBefore(tgt, gap.children[2] || null);
@@ -2736,7 +2921,7 @@
     if (others.length) {
       const ob = el('button', 'cc-pm-prev', `${intF(others.length)} met ${others.length === 1 ? 'partner has' : 'partners have'} another kind of deal`);
       ob.type = 'button';
-      ob.addEventListener('click', () => showTable(ownerTag + 'Met partners with another kind of deal' + (from ? ', ' + periodName.toLowerCase() : ''), pmCols, pmSort(others), `${from ? 'Partners' : 'Met partners'}${scope} with no Referral Partner deal but a deal of another type linked to them or on their company (Platform Provider, client work and so on). They aren’t counted as missing a Referral Partner deal. ` + PM_OWNER_NOTE));
+      ob.addEventListener('click', opener('other', () => showTable(ownerTag + 'Met partners with another kind of deal' + (from ? ', ' + periodName.toLowerCase() : ''), pmCols, pmSort(others), `${from ? 'Partners' : 'Met partners'}${scope} with no Referral Partner deal but a deal of another type linked to them or on their company (Platform Provider, client work and so on). They aren’t counted as missing a Referral Partner deal. ` + PM_OWNER_NOTE)));
       otherLine.append(ob, document.createTextNode(' (Platform Provider, client work and so on), so ' + (others.length === 1 ? 'isn’t' : 'aren’t') + ' counted as missing a Referral Partner deal.'));
     }
     otherLine.hidden = !others.length;
@@ -2755,7 +2940,7 @@
     if (from) {
       const b = el('button', 'cc-pm-prev', `${intF(all.length)} ${all.length === 1 ? 'partner' : 'partners'} first met ${periodName.toLowerCase()}`);
       b.type = 'button';
-      b.addEventListener('click', () => showTable(ownerTag + 'Partners met, ' + periodName.toLowerCase(), pmCols, pmSort(all), `Partners${scope}, most recent meeting first. ` + PM_OWNER_NOTE));
+      b.addEventListener('click', opener('period', () => showTable(ownerTag + 'Partners met, ' + periodName.toLowerCase(), pmCols, pmSort(all), `Partners${scope}, most recent meeting first. ` + PM_OWNER_NOTE)));
       periodLine.append(b, document.createTextNode(` (since ${fullDayF(from)}). Their deals as they stand today:`));
     } else periodLine.textContent = 'Every partner met so far. Their deals as they stand today:';
     right.append(pmTools, periodLine, pair, otherLine);
@@ -2774,14 +2959,14 @@
       key.append(el('span', 'cc-pm-k cc-pm-k-ok', 'Deal created'), el('span', 'cc-pm-k cc-pm-k-bad', 'Deal not created'), ...(series.some((x) => x.other.length) ? [el('span', 'cc-pm-k cc-pm-k-other', 'Other deal type')] : []));
       head.append(el('h3', null, `${periodName} against the four before it`), key);
       const cols = el('div', 'cc-pm-cols');
-      series.forEach((x) => {
+      series.forEach((x, xi) => {
         const range = `${fullDayF(x.a)} – ${fullDayF(x.b)}`;
         const col = el('div', 'cc-pm-col' + (x.now ? ' cc-pm-now' : ''));
         const total = el('button', 'cc-pm-total', intF(x.list.length));
         total.type = 'button';
         total.setAttribute('aria-label', `${x.label}: ${intF(x.list.length)} partners first met (${range}). Open the list.`);
         pmTip(total, 'var(--b2-c1)', `${x.label}: ${intF(x.list.length)} first met`, [range, `${intF(x.made.length)} created, ${intF(x.miss.length)} not created` + (x.other.length ? `, ${intF(x.other.length)} another kind of deal` : ''), 'Select to list them']);
-        total.addEventListener('click', () => showTable(ownerTag + `Partners met, ${x.label.toLowerCase()}`, pmCols, pmSort(x.list), `Partners first met ${range}, most recent meeting first. ` + PM_OWNER_NOTE));
+        total.addEventListener('click', opener(`col:${xi}:total`, () => showTable(ownerTag + `Partners met, ${x.label.toLowerCase()}`, pmCols, pmSort(x.list), `Partners first met ${range}, most recent meeting first. ` + PM_OWNER_NOTE)));
         const bar = el('div', 'cc-pm-bar');
         bar.style.height = (x.list.length / peak) * 100 + '%';
         [['miss', 'cc-pm-seg-bad', 'without a Referral Partner deal', 'not created'], ['other', 'cc-pm-seg-other', 'with another kind of deal', 'other deal type'], ['made', 'cc-pm-seg-ok', 'with a Referral Partner deal', 'created']].forEach(([k, cls, words, short]) => {
@@ -2794,7 +2979,7 @@
           pmTip(seg, k === 'made' ? 'var(--color-ok)' : k === 'miss' ? 'var(--color-bad)' : 'var(--color-fg-muted)', k === 'made' ? 'Referral Partner deal created' : k === 'miss' ? 'Referral Partner deal not created' : 'Another kind of deal',
             [`${x.label} (${range})`, `${intF(n)} of ${intF(x.list.length)} partners first met (${Math.round((n / x.list.length) * 100)}%)`, 'Select to list them']);
           if (n && x.list.length / peak > 0.25) seg.textContent = intF(n);
-          seg.addEventListener('click', () => showTable(ownerTag + (k === 'other' ? `Other deal type, ${x.label.toLowerCase()}` : `Referral Partner deal ${short}, ${x.label.toLowerCase()}`), pmCols, pmSort(x[k]), `Partners first met ${range} ${words}. ` + PM_OWNER_NOTE));
+          seg.addEventListener('click', opener(`col:${xi}:${k}`, () => showTable(ownerTag + (k === 'other' ? `Other deal type, ${x.label.toLowerCase()}` : `Referral Partner deal ${short}, ${x.label.toLowerCase()}`), pmCols, pmSort(x[k]), `Partners first met ${range} ${words}. ` + PM_OWNER_NOTE)));
           bar.append(seg);
         });
         const track = el('div', 'cc-pm-track');
@@ -2813,9 +2998,18 @@
       right.append(chart);
     }
     const loose = missing.filter((r) => r.company_deals.length).length;
-    const ownerLine = pmOwner === 'All' ? '' : `Showing ${pmOwner === PM_NO_OWNER ? 'partners with no CRM Owner (Assigned) in Zoho' : 'partners whose CRM Owner (Assigned) is ' + pmOwner}. `;
+    const ownerLine = pmOwner === 'All' ? '' : `Showing partners ${ownerLabel(pmOwner)}. `;
     const closedLine = leftOut ? ` Deals at Closed, Closed Lost or Closed Lost to Competition aren’t shown, and ${intF(leftOut)} met ${leftOut === 1 ? 'partner whose deals are' : 'partners whose deals are'} all closed or lost ${leftOut === 1 ? 'is' : 'are'} left out (all owners); signed partners are in Referral Partner Deals — Closed Won below.` : ' Deals at Closed, Closed Lost or Closed Lost to Competition aren’t shown here.';
     pmNote.textContent = ownerLine + `Met means at least one meeting held: marked Completed in Zoho, or (for Priority 1 and 99) a past uncancelled meeting on a team Outlook calendar${from ? `; ${periodName.toLowerCase()} counts partners whose first meeting falls in it (Central time${pmPeriod === 'week' ? ', weeks start Monday' : ''}), and their deals as they stand today` : ''}; ${intF(all.length)} = ${intF(made.length)} created + ${intF(missing.length)} not created${others.length ? ` + ${intF(others.length)} with another kind of deal` : ''}. A deal counts only when its Deal Type is Referral Partner and its Contact Name is the person we met; a deal on the same company linked to someone else, or to no contact, doesn’t count; a met partner whose only deal is of another type (Platform Provider, client work) isn’t counted as missing one${loose ? ` (${intF(loose)} met ${loose === 1 ? 'partner has' : 'partners have'} one; the list shows it so the link can be fixed)` : ''}.` + closedLine;
+    if (pmReopen) {
+      const k = pmReopen;
+      pmReopen = null;
+      if (!op[k]) drill.hidden = true;
+      else {
+        drillQuietly(op[k]);
+        if (!from && ['made', 'miss', 'other'].includes(k)) { pmSel = k; readout(); pmSelTitle = drillTitle(); }
+      }
+    }
   };
 
   /* Account gaps: Priority 1 and met partners without an Account, and Referral Partner deals on the wrong Account. */
