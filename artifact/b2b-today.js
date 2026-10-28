@@ -2347,7 +2347,11 @@
         if (b.foot) blk.append(el('p', 'cc-p3-foot', b.foot));
         c.append(blk);
       });
-      if (opt.flag) c.append(el('p', 'cc-p3-flag', opt.flag));
+      if (opt.flag) {
+        const f = el('p', 'cc-p3-flag', opt.flag);
+        if (opt.flagGo) { const b = el('button', 'cc-p3-flaggo', opt.flagLabel || 'Open the list'); b.type = 'button'; b.addEventListener('click', (e) => { e.stopPropagation(); opt.flagGo(); }); b.addEventListener('keydown', (e) => e.stopPropagation()); f.append(document.createTextNode(' '), b); }
+        c.append(f);
+      }
       press(c, opt.go);
       c.setAttribute('aria-label', opt.label + ': ' + opt.big + '. Open the list.');
       p3Grid.append(c);
@@ -2399,15 +2403,17 @@
     ];
     const twNote = `A two-way conversation means they replied: a meeting held (Zoho, Outlook or Fireflies), an email from them, or a LinkedIn conversation (Mack’s export).${srcGap.length ? ` Not in this build: ${srcGap.join(', ')}, so some replies may be missing.` : ''} Calls, texts or WhatsApp the team didn’t log can’t be seen.`;
     const since = (pr('all') || {}).tracked;
-    kpi({ key: 'twoway', theme: 'good', icon: 'twoway', label: 'Two-way conversations', big: intF(twoWay.length),
-      sub: `of ${intF(p1all.length)} at Priority 1 have a reply on record (meeting, email or LinkedIn)`,
+    kpi({ key: 'twoway', theme: 'good', icon: 'twoway', label: 'Two-way conversations', big: intF(twoWay.length + p3Talking.length),
+      sub: 'Priority 1 and 3 prospects who replied (meeting, email or LinkedIn)',
       blocks: [
-        { title: 'Checked', rows: [['No reply found', intF(unproven.length)], ['Talking, still P3', intF(p3Talking.length)]] },
+        { title: 'Who replied', rows: [['Priority 1', intF(twoWay.length)], ['Priority 3', intF(p3Talking.length)], ['P1, no reply', intF(unproven.length)]] },
         { title: since ? `New since ${dayF(since)} (Priority 3 to 1 while Connected)` : 'New (Priority 3 to 1 while Connected)', rows: evt('promoted') },
       ],
-      flag: unproven.length || p3Talking.length ? `${unproven.length ? `${intF(unproven.length)} at Priority 1 show no reply: confirm or move back to 3. ` : ''}${p3Talking.length ? `${intF(p3Talking.length)} at Priority 3 already replied: move to 1.` : ''}` : null,
-      go: () => showTable('Two-way conversations, checked against replies', TW_COLS,
-        [...unproven, ...p3Talking, ...twoWay].map((p) => p), twNote + ` Listed: Priority 1 with no reply found (${intF(unproven.length)}), Priority 3 who already replied (${intF(p3Talking.length)}), then Priority 1 with a reply (${intF(twoWay.length)}).`) });
+      flag: unproven.length || p3Talking.length ? `${p3Talking.length ? `Move the ${intF(p3Talking.length)} at Priority 3 to 1. ` : ''}${unproven.length ? `${intF(unproven.length)} at Priority 1 show no reply: confirm or move back to 3.` : ''}` : null,
+      flagGo: unproven.length ? () => showTable('Priority 1 with no reply found', TW_COLS, unproven, twNote + ' Confirm the conversation and log it in Zoho, or move them back to Priority 3.') : null,
+      flagLabel: unproven.length ? `List the ${intF(unproven.length)}` : null,
+      go: () => showTable('Two-way conversations: Priority 1 and 3 who replied', TW_COLS, [...twoWay, ...p3Talking],
+        twNote + ` Listed: Priority 1 (${intF(twoWay.length)}), then Priority 3 (${intF(p3Talking.length)}), who should move to 1. The ${intF(unproven.length)} at Priority 1 with no reply found open from the card’s flag line.`) });
 
     const m = pr('month');
     p3Note.textContent = !per

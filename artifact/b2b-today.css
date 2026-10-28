@@ -725,3 +725,5 @@ tr.cc-days-row > td { padding: 0 12px 12px; background: color-mix(in oklab, var(
 .cc-days-list span { color: var(--color-fg-muted); }
 .cc-days-note { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
 @media (prefers-reduced-motion: reduce) { .cc-days-chev { transition: none; } }
+.cc-p3-flaggo { font: inherit; font-weight: 600; color: inherit; background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; }
+.cc-p3-flaggo:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
