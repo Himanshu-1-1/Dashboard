@@ -83,6 +83,7 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
 <script src="cal.js"></script>
 <script src="ff.js"></script>
 <script src="linksync.js"></script>
+<script src="p3.js"></script>
 <script>
 /* Data layer: reads data.json (written daily by scripts/fetch_zoho.py) and serves it to the page
    through the same interface the dashboard code was written against. */
@@ -179,7 +180,7 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
     return JSON.parse(new TextDecoder().decode(plain));
   };
   const unlocked = (bundle) => {
-    Object.entries(bundle).forEach(([name, value]) => { if (/^__[A-Z_]+__$/.test(name)) window[name] = value; });
+    Object.entries(bundle).forEach(([name, value]) => { if (/^__[A-Z0-9_]+__$/.test(name)) window[name] = value; });
     document.body.classList.remove('cc-locked');
     const gate = document.getElementById('cc-gate');
     if (gate) gate.hidden = true;
@@ -242,9 +243,9 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
   };
   const load = () => {
     const json = window.__DASH_DATA__;
-    const extras = [window.__BOXBYTE__, window.__COURIER__, window.__RESEARCH__, window.__MAIL__, window.__CAL__, window.__FF__, window.__LINKSYNC__, window.__SEALED__].filter((x) => x && x.datasets);
+    const extras = [window.__BOXBYTE__, window.__COURIER__, window.__RESEARCH__, window.__MAIL__, window.__CAL__, window.__FF__, window.__LINKSYNC__, window.__P3__, window.__SEALED__].filter((x) => x && x.datasets);
     if (json && json.datasets) {
-      raw = { ...json, datasets: Object.assign({ wi_research: [], wi_mack: [], li_sync: [], b2b_cal: [], b2b_ff: [] }, json.datasets, ...extras.map((x) => x.datasets)) };
+      raw = { ...json, datasets: Object.assign({ wi_research: [], wi_mack: [], li_sync: [], b2b_cal: [], b2b_ff: [], p3_base: [], li_events: [] }, json.datasets, ...extras.map((x) => x.datasets)) };
       cache = {};
       runAll();
       stamp('Data from Zoho CRM as of ' + when(json.generated_at) + '.');

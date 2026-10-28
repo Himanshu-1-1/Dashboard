@@ -3,8 +3,8 @@
 //
 //   DASH_PASSCODE=... node scripts/lock_site.mjs site
 //
-// Reads site/data.js and, when present, site/boxbyte.js, site/courier.js, site/research.js, site/mail.js, site/cal.js, site/ff.js and
-// site/linksync.js (each sets one window.__NAME__ = {...}), plus any site/*.sealed.json written by scripts/seal.mjs (opened with the MAIL_KEY
+// Reads site/data.js and, when present, site/boxbyte.js, site/courier.js, site/research.js, site/mail.js, site/cal.js, site/ff.js,
+// site/linksync.js and site/p3.js (each sets one window.__NAME__ = {...}), plus any site/*.sealed.json written by scripts/seal.mjs (opened with the MAIL_KEY
 // secret, the RSA private key, and served to the page as window.__SEALED__.datasets), encrypts them together with
 // AES-256-GCM under a key derived from the passcode (PBKDF2-SHA256), writes site/data.lock.json, deletes the readable files and removes their <script> tags from
 // site/index.html. The page decrypts in the browser after the passcode is entered. Node standard library only.
@@ -13,7 +13,7 @@ import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'no
 import { join } from 'node:path';
 
 export const KDF = { name: 'PBKDF2-SHA256', iterations: 600000, salt: 'campaign-command-center|Himanshu-1-1/Dashboard|v1' };
-const FILES = ['data.js', 'boxbyte.js', 'courier.js', 'research.js', 'mail.js', 'cal.js', 'ff.js', 'linksync.js'];
+const FILES = ['data.js', 'boxbyte.js', 'courier.js', 'research.js', 'mail.js', 'cal.js', 'ff.js', 'linksync.js', 'p3.js'];
 const MIN_LENGTH = 16;
 
 const fail = (msg) => {
@@ -35,7 +35,7 @@ for (const name of FILES) {
     continue;
   }
   const text = readFileSync(path, 'utf8');
-  const m = /^\s*window\.(__[A-Z_]+__)\s*=\s*([\s\S]*?);?\s*$/.exec(text);
+  const m = /^\s*window\.(__[A-Z0-9_]+__)\s*=\s*([\s\S]*?);?\s*$/.exec(text);
   if (!m) fail(`${name} is not in the form window.__NAME__ = {...};`);
   try {
     bundle[m[1]] = JSON.parse(m[2]);
@@ -91,7 +91,7 @@ writeFileSync(join(dir, 'data.lock.json'), JSON.stringify({
 for (const name of [...FILES, ...sealedFiles]) rmSync(join(dir, name), { force: true });
 const indexPath = join(dir, 'index.html');
 const html = readFileSync(indexPath, 'utf8');
-const stripped = html.replace(/^[ \t]*<script src="(?:data|boxbyte|courier|research|mail|cal|ff|linksync)\.js"><\/script>\r?\n/gm, '');
+const stripped = html.replace(/^[ \t]*<script src="(?:data|boxbyte|courier|research|mail|cal|ff|linksync|p3)\.js"><\/script>\r?\n/gm, '');
 writeFileSync(indexPath, stripped);
 const left = FILES.filter((f) => stripped.includes(`src="${f}"`));
 if (left.length) fail('index.html still loads ' + left.join(', '));

@@ -478,6 +478,43 @@
     fn: (b2b_people) => b2b_people.map((p) => ({ id: p.id, name: p.name, account: p.account, account_id: p.account_id, priority: prOf(p.priority), li: liOf(p.li), met: p.met })),
   });
 
+  /* Field-change history for the panel (Oct 28, 2026). Zoho tracks one picklist per module, so Priority comes from Zoho's
+     Priority History (p3_hist, live; each row is the value a contact moved to and when) and LI Connect from the daily
+     snapshot task (li_events, scripts/p3_track.py). p3_base holds each contact's Priority and LI Connect when tracking
+     began (or when they were first seen), the value before their first recorded Priority change. A history row before a
+     contact's baseline has no known earlier value and is used only as the starting point for the next one. */
+  dash.loader('p3_hist', { description: 'Zoho’s COQL answer as rows: Full_Name is the contact (Full_Name_id), Priority the value it moved to, Modified_Time when.', fn: coqlRows });
+  dash.loader('other_links', { description: 'Zoho’s COQL answer as rows: Other_Contacts is the contact, Other_Accounts the extra Account linked to them.', fn: coqlRows });
+  dash.calc('p3_events', {
+    title: 'Priority and LI Connect changes',
+    description: 'One row per change, {contact_id, field: Priority or LI_Connect, from, to, at}. Priority from Zoho’s Priority History (the value before is the contact’s previous history row, or their baseline when the change came after it); LI Connect from the daily snapshot (at = the contact’s last edit when it falls since the previous snapshot, otherwise the snapshot time).',
+    inputs: ['p3_hist', 'p3_base', 'li_events'],
+    fn: (hist, base, li) => {
+      const baseBy = new Map(base.map((r) => [String(r.contact_id), r]));
+      const byContact = new Map();
+      hist.forEach((h) => {
+        const id = h.Full_Name_id ? String(h.Full_Name_id) : null;
+        const t = Date.parse(h.Modified_Time);
+        if (!id || !Number.isFinite(t)) return;
+        if (!byContact.has(id)) byContact.set(id, []);
+        byContact.get(id).push({ t, v: prOf(h.Priority) });
+      });
+      const out = [];
+      byContact.forEach((list, id) => {
+        list.sort((a, b) => a.t - b.t);
+        const b0 = baseBy.get(id);
+        let known = Boolean(b0 && Number.isFinite(Date.parse(b0.at)) && Date.parse(b0.at) <= list[0].t);
+        let prev = known ? prOf(b0.priority) : null;
+        list.forEach((r) => {
+          if (known && prev !== r.v) out.push({ contact_id: id, field: 'Priority', from: prev, to: r.v, at: new Date(r.t).toISOString() });
+          prev = r.v; known = true;
+        });
+      });
+      li.forEach((e) => { if (e && e.contact_id && e.at) out.push({ contact_id: String(e.contact_id), field: 'LI_Connect', from: liOf(e.from), to: liOf(e.to), at: e.at }); });
+      return out.sort((a, b) => String(a.at).localeCompare(String(b.at)));
+    },
+  });
+
   const P3_KPIS = {
     backlog: (x) => x.pr === '3',
     untouched: (x) => x.pr === '3' && x.li == null,
@@ -488,9 +525,9 @@
 
   dash.calc('p3_periods', {
     title: 'Priority 3 changes today, this week and this month',
-    description: 'From Zoho field history for Priority and LI Connect (Central time; weeks start Monday). Balances: the count now minus the count at the start of the period, rebuilt from the recorded changes. Events: unique contacts that made the change in the period while at Priority 3: pursued (LI Connect empty to Requested), connected (Requested to Connected), Email Required (newly set), and two-way conversations (Priority 3 to 1 while Connected). Periods that began before tracking started are marked partial.',
-    inputs: ['p3_state', 'p3_events'],
-    fn: (p3_state, p3_events) => {
+    description: 'From p3_events: Zoho’s Priority History and the daily LI Connect snapshot, counted from the baseline taken when tracking began (Central time; weeks start Monday). Balances: the count now minus the count at the start of the period, rebuilt from the recorded changes. Events: unique contacts that made the change in the period while at Priority 3: pursued (LI Connect empty to Requested), connected (Requested to Connected), Email Required (newly set), and two-way conversations (Priority 3 to 1 while Connected). Periods that began before tracking started are marked partial.',
+    inputs: ['p3_state', 'p3_events', 'p3_base'],
+    fn: (p3_state, p3_events, p3_base) => {
       const today = todayCT();
       const t = new Date(today + 'T00:00:00Z');
       const mon = new Date(t); mon.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7));
@@ -500,7 +537,8 @@
         .filter((e) => e && e.contact_id && e.at && (e.field === 'Priority' || e.field === 'LI_Connect'))
         .map((e) => ({ id: String(e.contact_id), field: e.field, from: e.field === 'Priority' ? prOf(e.from) : liOf(e.from), to: e.field === 'Priority' ? prOf(e.to) : liOf(e.to), ct: ctOf(e.at), at: e.at }))
         .sort((a, b) => a.ct.localeCompare(b.ct));
-      const tracked = ev.length ? ev[0].ct.slice(0, 10) : null;
+      const baseFrom = p3_base.reduce((m, r) => (r && r.at && (!m || r.at < m) ? r.at : m), null);
+      const tracked = baseFrom ? ctOf(baseFrom).slice(0, 10) : ev.length ? ev[0].ct.slice(0, 10) : null;
       const now = new Map(p3_state.map((p) => [p.id, { pr: p.priority, li: p.li }]));
       const byId = new Map();
       ev.forEach((e) => { if (!byId.has(e.id)) byId.set(e.id, []); byId.get(e.id).push(e); });
@@ -809,10 +847,14 @@
   const OWN_CO = /tech\s*-?\s*transpire|true\s*lean/i;
   dash.calc('b2b_account_gaps', {
     title: 'B2B prospects and deals with a missing or wrong Account',
-    description: 'Rows of kind "no_account": B2B prospects (not Do Not Contact) at Priority 1 or with at least one meeting in Zoho (completed, scheduled, or past and not marked Completed, or counted in Total Meetings) whose contact has no Account, or has our own company as its Account; with why they are in the list, meetings, next scheduled meeting, Assigned and any Referral Partner deal. Rows of kind "wrong_deal": Referral Partner deals linked to a B2B prospect whose deal Account is missing, is our own company, or differs from the contact\'s Account (including a contact with no Account).',
-    inputs: ['b2b_people', 'mtg_people', 'deals_tagged'],
-    fn: (b2b_people, mtg_people, deals_tagged) => {
+    description: 'Rows of kind "no_account": B2B prospects (not Do Not Contact) at Priority 1 or with at least one meeting in Zoho (completed, scheduled, or past and not marked Completed, or counted in Total Meetings) whose contact has no Account, or has our own company as its Account; with why they are in the list, meetings, next scheduled meeting, Assigned and any Referral Partner deal. Rows of kind "wrong_deal": Referral Partner deals linked to a B2B prospect whose deal Account is missing, is our own company, or is neither the contact\'s Account nor one of their Other Accounts (including a contact with no Account).',
+    inputs: ['b2b_people', 'mtg_people', 'deals_tagged', 'other_links'],
+    fn: (b2b_people, mtg_people, deals_tagged, other_links) => {
       const mtg = new Map(mtg_people.map((m) => [m.id, m]));
+      /* Other Accounts (multi-select lookup on Contacts, Oct 28, 2026): a deal on any of the contact's other companies is
+         on the right Account. */
+      const others = new Map();
+      other_links.forEach((l) => { const c = l.Other_Contacts_id ? String(l.Other_Contacts_id) : null; const a = l.Other_Accounts_id ? String(l.Other_Accounts_id) : null; if (!c || !a) return; if (!others.has(c)) others.set(c, new Set()); others.get(c).add(a); });
       const rp = deals_tagged.filter((d) => d.kind === 'Partnership');
       const byContact = new Map();
       rp.forEach((d) => { if (!d.contact_id) return; const k = String(d.contact_id); if (!byContact.has(k)) byContact.set(k, []); byContact.get(k).push(d); });
@@ -847,7 +889,7 @@
           if (!d.account_id) problem = 'Deal has no Account';
           else if (own(d.account)) problem = 'Deal is on our own company';
           else if (!accOk) problem = p.account_id ? 'Contact’s Account is our own company' : 'Contact has no Account';
-          else if (String(d.account_id) !== String(p.account_id)) problem = 'Deal and contact are on different Accounts';
+          else if (String(d.account_id) !== String(p.account_id) && !(others.get(p.id) || new Set()).has(String(d.account_id))) problem = 'Deal and contact are on different Accounts';
           if (!problem) return;
           out.push({
             kind: 'wrong_deal', key: 'd' + d.id + '|' + p.id, id: p.id, name: p.name, priority: p.priority, problem,
@@ -2062,8 +2104,8 @@
     const net = (k) => [['Today', cell(signed((pr('today') || {})[k + '_net']))], ['Week', cell(signed((pr('week') || {})[k + '_net']))], ['Month', cell(signed((pr('month') || {})[k + '_net']))]];
     const evt = (k) => [['Today', cell(intF(((pr('today') || {})[k] || []).length))], ['Week', cell(intF(((pr('week') || {})[k] || []).length))], ['Month', cell(intF(((pr('month') || {})[k] || []).length))]];
     const evtList = (k, title) => () => {
-      if (!per) { showP3(title + ': this month', [], 'Changes aren’t recorded yet: Zoho history tracking for LI Connect and Priority isn’t on.', true); return; }
-      showP3(title + ' this month', (pr('month') || {})[k] || [], 'Each contact once, with the change Zoho recorded.', true);
+      if (!per) { showP3(title + ': this month', [], 'The change history didn’t load, so changes can’t be listed. Reload, or check the sources in the dashboard menu.', true); return; }
+      showP3(title + ' this month', (pr('month') || {})[k] || [], 'Each contact once, with the change recorded (Priority from Zoho’s Priority History, LI Connect from the daily check).', true);
     };
 
     const backlog = list(P3_KPIS.backlog);
@@ -2079,12 +2121,12 @@
     kpi({ key: 'pursued', theme: 'progress', icon: 'pursued', label: 'Pursued / pending', big: intF(pending.length), sub: 'Requests pending now', blocks: [{ title: 'New requests sent', rows: evt('pursued') }, { title: 'Pending total ', total: intF(pending.length), rows: net('pending'), foot: 'Net change in pending requests' }], go: per ? evtList('pursued', 'Newly pursued') : () => showP3('Pending: Priority 3, LI Connect Requested', pending) });
     kpi({ key: 'connected', theme: 'teal', icon: 'connected', label: 'Contacts connected', big: intF(connected.length), sub: 'Priority 3 at Connected now', rows: evt('newly_connected'), go: () => showP3('Connected: Priority 3, LI Connect Connected', connected, 'An accepted connection isn’t a conversation yet. When they write back or talk with us, move them to Priority 1.') });
     kpi({ key: 'email', theme: 'gray', icon: 'email', label: 'Email Required', big: intF(email.length), sub: 'Blocked — No action available', rows: evt('newly_email'), go: () => showP3('Email Required: Priority 3', email, 'Tracking only. LinkedIn needs their email to send a request, so there is nothing to do here for now.') });
-    kpi({ key: 'twoway', theme: 'good', icon: 'twoway', label: 'Two-way conversations', big: promotedAll ? intF(promotedAll.length) : intF(p1c.length), sub: promotedAll ? `Connected, then moved from Priority 3 to 1${(pr('all') || {}).tracked ? ' since ' + dayF((pr('all') || {}).tracked) : ''}` : 'Priority 1 and Connected now (promotions count once tracking is on)', rows: evt('promoted'), go: () => (promotedAll ? showP3('Two-way conversations started', promotedAll, 'Moved from Priority 3 to 1 while Connected on LinkedIn.', true) : showP3('Priority 1 and Connected now', p1c, 'Promotions from Priority 3 to 1 can’t be counted until Zoho records Priority changes.')) });
+    kpi({ key: 'twoway', theme: 'good', icon: 'twoway', label: 'Two-way conversations', big: promotedAll ? intF(promotedAll.length) : intF(p1c.length), sub: promotedAll ? `Connected, then moved from Priority 3 to 1${(pr('all') || {}).tracked ? ' since ' + dayF((pr('all') || {}).tracked) : ''}` : 'Priority 1 and Connected now (the change history didn’t load)', rows: evt('promoted'), go: () => (promotedAll ? showP3('Two-way conversations started', promotedAll, 'Moved from Priority 3 to 1 while Connected on LinkedIn.', true) : showP3('Priority 1 and Connected now', p1c, 'Promotions from Priority 3 to 1 can’t be counted until the change history loads.')) });
 
     const m = pr('month');
     p3Note.textContent = !per
-      ? 'Today, Week and Month show — because Zoho doesn’t record when Priority or LI Connect change yet. They fill in from the day history tracking is switched on for both fields; nothing is estimated before then.'
-      : m && m.partial ? `Changes are counted from ${dayF(m.tracked)}, when Zoho started recording them, so this week’s and this month’s figures may be partial.` : 'Changes come from Zoho’s field history. Times are Central; weeks start Monday.';
+      ? 'Today, Week and Month show — because the change history (Zoho’s Priority History and the daily LI Connect check) didn’t load. Reload, or check the sources in the dashboard menu; nothing is estimated.'
+      : (m && m.partial ? `Changes are counted from ${dayF(m.tracked)}, when tracking began, so this week’s and this month’s figures are partial. ` : '') + 'Priority changes come from Zoho’s Priority History as they happen; LI Connect changes from a daily check, so they show up the next morning, dated at the contact’s last edit. Times are Central; weeks start Monday.';
   };
 
   const drawMonday = () => {
@@ -3019,7 +3061,7 @@
     'Deal has no Account': (r) => 'Set the deal’s Account Name to ' + (r.account_id ? r.account : 'the partner’s company') + '.',
     'Contact has no Account': (r) => `Set the contact’s Account to ${r.deal.account} if that is their company; otherwise move the deal to the right Account.`,
     'Contact’s Account is our own company': (r) => `Set the contact’s Account to ${r.deal.account} if that is their company.`,
-    'Deal and contact are on different Accounts': () => 'Point the contact and the deal at the same Account: the partner’s company.',
+    'Deal and contact are on different Accounts': () => 'Point the contact and the deal at the same Account: the partner’s company. If they really belong to both companies, add the deal’s Account to the contact’s Other Accounts instead.',
   };
   const NA_ORDER = Object.keys(NA_FIX);
   const naPriority = (r) => (r.priority ? 'P' + r.priority : 'Not set');

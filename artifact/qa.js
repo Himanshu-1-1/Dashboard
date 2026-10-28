@@ -297,9 +297,10 @@
   dash.calc('qa_checks', {
     title: 'Data health checks',
     description: 'Each check lists the Zoho records that fail it, with why it matters and how to fix it. Our own team’s contacts (techtranspire.com, trueleansolutions.com) are left out of the contact checks.',
-    inputs: ['qa_contact_rows', 'qa_account_rows', 'deals_tagged'],
-    fn: (people, accounts, deals_tagged) => {
+    inputs: ['qa_contact_rows', 'qa_account_rows', 'deals_tagged', 'other_links'],
+    fn: (people, accounts, deals_tagged, other_links) => {
       const C = people.filter((p) => !p.staff);
+      const otherAcc = new Set(other_links.filter((l) => l.Other_Contacts_id && l.Other_Accounts_id).map((l) => String(l.Other_Contacts_id) + '|' + String(l.Other_Accounts_id)));
       const camp = (p) => p.camp !== 'none';
       const accById = new Map(accounts.map((a) => [a.id, a]));
       const personById = new Map(people.map((p) => [p.id, p]));
@@ -330,7 +331,7 @@
       const D = deals_tagged.map((d) => ({ id: String(d.id), name: d.deal || '—', account: d.account, account_id: d.account_id ? String(d.account_id) : null, contact_id: d.contact_id ? String(d.contact_id) : null, contact: d.contact, stage: d.stage, kind: d.kind, amount: d.amount, updated: d.updated, camp: { 'B2B Campaign': 'rp', 'ICP Prospecting': 'icp', 'Founder Network': 'fn', 'Medical Courier': 'mc' }[d.campaign] || 'none' }));
       check('d-nocontact', 'Deals', 'Deal with no Contact', 'high', 'Nobody is attached, so follow-ups, partner credit and the B2B Deals Created count all miss it.', 'Set Contact Name on the deal.', D.filter((d) => !d.contact_id), (d) => d.stage);
       check('d-noacct', 'Deals', 'Deal with no Account, or on our own company', 'high', 'The deal has no customer company, so it can’t roll up by account.', 'Set Account Name to the customer’s or partner’s company.', D.filter((d) => !d.account_id || OWN_CO.test(String(d.account || ''))), (d) => d.account || 'No Account');
-      check('d-mismatch', 'Deals', 'Deal’s Account differs from its Contact’s', 'medium', 'Reports put the deal under one company and the person under another.', 'Make the deal and its contact point at the same Account.', D.filter((d) => d.contact_id && d.account_id && personById.get(d.contact_id) && personById.get(d.contact_id).account_id && personById.get(d.contact_id).account_id !== d.account_id), (d) => `Deal: ${d.account}; contact: ${personById.get(d.contact_id).account}`);
+      check('d-mismatch', 'Deals', 'Deal’s Account differs from its Contact’s', 'medium', 'Reports put the deal under one company and the person under another.', 'Make the deal and its contact point at the same Account, or add the deal’s Account to the contact’s Other Accounts when they really belong to both.', D.filter((d) => d.contact_id && d.account_id && personById.get(d.contact_id) && personById.get(d.contact_id).account_id && personById.get(d.contact_id).account_id !== d.account_id && !otherAcc.has(d.contact_id + '|' + d.account_id)), (d) => `Deal: ${d.account}; contact: ${personById.get(d.contact_id).account}`);
       check('d-notype', 'Deals', 'Deal with no Deal Type', 'medium', 'The dashboard can’t tell a referral partnership from client work.', 'Set Deal Type.', D.filter((d) => d.kind === 'No Deal Type'));
       check('d-stale', 'Deals', `Open deal not updated in ${STALE_DAYS}+ days`, 'medium', 'Stale stages make the pipeline look healthier than it is.', 'Update the stage and next step, or close it.', D.filter((d) => R.openStages.includes(d.stage) && d.updated && today - Date.parse(d.updated) >= STALE_DAYS * 864e5), (d) => `${d.stage}, updated ${Math.floor((today - Date.parse(d.updated)) / 864e5)} days ago`);
       check('d-noamount', 'Deals', 'Open client deal with no Amount', 'low', 'Pipeline value is understated.', 'Add the expected Amount.', D.filter((d) => d.kind === 'Client' && R.openStages.includes(d.stage) && !Number(d.amount)));
