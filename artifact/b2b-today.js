@@ -2365,14 +2365,17 @@
     const connected = list(P3_KPIS.connected);
     const email = list(P3_KPIS.email);
     const p1c = ppl.filter((p) => p.priority === '1' && p.li === 'Connected');
-    const promotedAll = (pr('all') || {}).promoted || null;
 
     kpi({ key: 'backlog', theme: 'neutral', icon: 'backlog', label: 'Priority 3 backlog', big: intF(backlog.length), sub: 'Current total', rows: net('backlog'), go: () => showP3('Priority 3 backlog', backlog) });
     kpi({ key: 'untouched', theme: untouched.length ? 'bad' : 'good', icon: 'untouched', label: 'Untouched records', big: intF(untouched.length), sub: untouched.length ? 'LI Connect is empty: no request sent' : 'All contacts pursued', rows: net('untouched'), flag: untouched.length ? 'Action required until this reaches 0' : null, go: () => showP3('Untouched: Priority 3, LI Connect empty', untouched, 'Send each one a connection request (SOP 2) and set LI Connect to Requested.') });
     kpi({ key: 'pursued', theme: 'progress', icon: 'pursued', label: 'Pursued / pending', big: intF(pending.length), sub: 'Requests pending now', blocks: [{ title: 'New requests sent', rows: evt('pursued') }, { title: 'Pending total ', total: intF(pending.length), rows: net('pending'), foot: 'Net change in pending requests' }], go: per ? evtList('pursued', 'Newly pursued') : () => showP3('Pending: Priority 3, LI Connect Requested', pending) });
     kpi({ key: 'connected', theme: 'teal', icon: 'connected', label: 'Contacts connected', big: intF(connected.length), sub: 'Priority 3 at Connected now', rows: evt('newly_connected'), go: () => showP3('Connected: Priority 3, LI Connect Connected', connected, 'An accepted connection isn’t a conversation yet. When they write back or talk with us, move them to Priority 1.') });
     kpi({ key: 'email', theme: 'gray', icon: 'email', label: 'Email Required', big: intF(email.length), sub: 'Blocked — No action available', rows: evt('newly_email'), go: () => showP3('Email Required: Priority 3', email, 'Tracking only. LinkedIn needs their email to send a request, so there is nothing to do here for now.') });
-    kpi({ key: 'twoway', theme: 'good', icon: 'twoway', label: 'Two-way conversations', big: promotedAll ? intF(promotedAll.length) : intF(p1c.length), sub: promotedAll ? `Connected, then moved from Priority 3 to 1${(pr('all') || {}).tracked ? ' since ' + dayF((pr('all') || {}).tracked) : ''}` : 'Priority 1 and Connected now (the change history didn’t load)', rows: evt('promoted'), go: () => (promotedAll ? showP3('Two-way conversations started', promotedAll, 'Moved from Priority 3 to 1 while Connected on LinkedIn.', true) : showP3('Priority 1 and Connected now', p1c, 'Promotions from Priority 3 to 1 can’t be counted until the change history loads.')) });
+    const liTalkP3 = state(['b2b_li_people']) === 'ok' ? rows('b2b_li_people').filter((p) => p.status === 'talking' && p.priority === '3') : [];
+    const since = (pr('all') || {}).tracked;
+    kpi({ key: 'twoway', theme: 'good', icon: 'twoway', label: 'Two-way conversations', big: intF(p1c.length), sub: `Priority 1 and Connected now${liTalkP3.length ? `; LinkedIn shows ${intF(liTalkP3.length)} more still at Priority 3 (move them to 1)` : ''}`,
+      blocks: [{ title: since ? `New since ${dayF(since)} (Priority 3 to 1 while Connected)` : 'New (Priority 3 to 1 while Connected)', rows: evt('promoted') }],
+      go: () => showP3('Two-way conversations: Priority 1 and Connected now', p1c, `Priority 1 means a two-way conversation after a LinkedIn connection.${liTalkP3.length ? ` ${intF(liTalkP3.length)} more are in a two-way conversation on Mack’s LinkedIn but still at Priority 3; the queue’s Update Zoho items list them.` : ''} New conversations started since tracking began are under Today, Week and Month.`) });
 
     const m = pr('month');
     p3Note.textContent = !per
