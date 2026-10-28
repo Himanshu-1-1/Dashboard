@@ -296,9 +296,9 @@
   /* ---------- data health checks ---------- */
   dash.calc('qa_checks', {
     title: 'Data health checks',
-    description: 'Each check lists the Zoho records that fail it, with why it matters and how to fix it. Our own team’s contacts (techtranspire.com, trueleansolutions.com) are left out of the contact checks.',
-    inputs: ['qa_contact_rows', 'qa_account_rows', 'deals_tagged', 'other_links'],
-    fn: (people, accounts, deals_tagged, other_links) => {
+    description: 'Each check lists the Zoho records that fail it, with why it matters and how to fix it. Our own team’s contacts (techtranspire.com, trueleansolutions.com) are left out of the contact checks. The LI Connect checks compare Zoho with Mack’s LinkedIn data export (li_dm, matched by LinkedIn profile).',
+    inputs: ['qa_contact_rows', 'qa_account_rows', 'deals_tagged', 'other_links', 'li_dm'],
+    fn: (people, accounts, deals_tagged, other_links, li_dm) => {
       const C = people.filter((p) => !p.staff);
       const otherAcc = new Set(other_links.filter((l) => l.Other_Contacts_id && l.Other_Accounts_id).map((l) => String(l.Other_Contacts_id) + '|' + String(l.Other_Accounts_id)));
       const camp = (p) => p.camp !== 'none';
@@ -318,6 +318,17 @@
       check('c-case', 'Contacts', 'Name in all capitals or all lower case', 'low', 'Looks careless in emails and mail merges.', 'Write the name as the person does, e.g. “Kiran Patil”.', C.filter((p) => isCaseOff(p.first) || isCaseOff(p.last)));
       check('c-noprio', 'Contacts', 'Campaign contact with no Priority', 'medium', 'Without a Priority nobody knows which stage they are in, and the funnels miss them.', 'Set Priority per the B2B Priority Definition (5 backlog, 3 outreach, 1 two-way, 99 signed).', C.filter((p) => camp(p) && !p.priority), (p) => CAMP_NAME[p.camp]);
       check('c-noowner', 'Contacts', 'B2B prospect with no CRM Owner (Assigned)', 'medium', 'Nobody owns the follow-up, and the CRM Owner tabs on B2B Today put them under Not assigned (Mack, Oct 28, 2026).', 'Set Assigned to the teammate who works this relationship (Mack keeps the sensitive ones; Shruti takes people both of them know).', C.filter((p) => p.camps.includes('rp') && !p.assigned && !p.dnc && !['9', '11'].includes(p.priority)), (p) => (p.priority ? 'Priority ' + p.priority : 'No Priority'));
+      /* LI Connect against Mack's LinkedIn export (connections, and the requests he sent that are still pending). Requests
+         sent from another teammate's account aren't in his export, so the none-on-LinkedIn checks are low severity. */
+      const liBy = new Map((li_dm || []).map((r) => [String(r.contact_id), r]));
+      const liAsOf = (li_dm || []).reduce((m, r) => (r.as_of && (!m || r.as_of > m) ? r.as_of : m), null);
+      const asOfTxt = liAsOf ? ' (Mack’s export of ' + new Date(liAsOf).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric' }) + ')' : '';
+      const liOf = (p) => liBy.get(p.id) || null;
+      const liLive = (p) => camp(p) && !['9', '11'].includes(p.priority) && liOf(p);
+      const zLi = (p) => p.li || 'empty';
+      check('c-li-conn', 'Contacts', 'Connected on LinkedIn, but LI Connect says otherwise', 'medium', 'The funnels and the Priority 3 panel count them as not yet connected, so the next step (a conversation) never gets queued.', 'Set LI Connect to Connected.', C.filter((p) => liLive(p) && liOf(p).actual === 'connected' && p.li !== 'Connected'), (p) => `Zoho: ${zLi(p)}; LinkedIn: connected${liOf(p).connected_on ? ' on ' + liOf(p).connected_on : ''}${asOfTxt}`);
+      check('c-li-pend', 'Contacts', 'Mack’s request is pending, but LI Connect says Connected or nothing', 'medium', 'Zoho overstates the connection, or hides that a request is out, so pending requests and acceptances are miscounted.', 'Set LI Connect to Requested, unless they connected from another teammate’s account.', C.filter((p) => liLive(p) && liOf(p).actual === 'pending' && p.li !== 'Requested' && p.li !== 'Email Required'), (p) => `Zoho: ${zLi(p)}; LinkedIn: request sent${liOf(p).invited_at ? ' ' + String(liOf(p).invited_at).slice(0, 10) : ''}, not accepted${asOfTxt}`);
+      check('c-li-none', 'Contacts', 'LI Connect says Requested or Connected, but Mack’s LinkedIn shows neither', 'low', 'Either the request came from another teammate’s account, or it was withdrawn or never sent.', 'Check whose account sent it; if nobody did, clear LI Connect so they show as untouched.', C.filter((p) => liLive(p) && liOf(p).actual === 'none' && (p.li === 'Requested' || p.li === 'Connected')), (p) => `Zoho: ${zLi(p)}; nothing on Mack’s LinkedIn${asOfTxt}`);
       check('c-noli', 'Contacts', 'Campaign contact with no LinkedIn profile', 'medium', 'Outreach starts on LinkedIn; without the profile the team can’t connect or check fit, and duplicates can’t be caught by profile.', 'Add their LinkedIn profile URL.', C.filter((p) => camp(p) && !p.li_slug && !['9', '11'].includes(p.priority)), (p) => (p.linkedin ? 'Not a profile link: ' + String(p.linkedin).slice(0, 60) : 'Empty'));
       check('c-notitle', 'Contacts', 'Campaign contact with no Title', 'low', 'Seniority drives who to ask for a meeting; without a title they rank last.', 'Add their job title from LinkedIn.', C.filter((p) => camp(p) && !p.title && !['9', '11'].includes(p.priority)));
       check('c-twocamps', 'Contacts', 'Tagged for both B2B and ICP', 'low', 'One person counts in two campaigns and may get two outreach sequences.', 'Keep the tag for the campaign they belong to and remove the other.', C.filter((p) => p.camps.includes('rp') && p.camps.includes('icp') && !p.camps.includes('fn')));

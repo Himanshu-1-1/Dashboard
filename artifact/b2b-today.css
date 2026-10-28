@@ -133,6 +133,8 @@
 .cc-b2-mk-recv::before { background: var(--b2-c2); }
 .cc-b2-mk { color: var(--color-fg); }
 .cc-b2-mfoot { color: var(--color-fg-muted); font-size: 12px; }
+.cc-b2-lihead { margin: var(--cds-gap-lg, 20px) 0 4px; font-size: 15px; }
+.cc-b2-litbl td:not(:first-child), .cc-b2-litbl th:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 640px) { .cc-b2-mnums { display: none; } .cc-b2-mcol small { font-size: 9px; } }
 .cc-b2-mstats:empty, .cc-b2-mweeks:empty, .cc-b2-mkey:empty, .cc-b2-chips:empty, .cc-b2-mfoot:empty { display: none; }
 

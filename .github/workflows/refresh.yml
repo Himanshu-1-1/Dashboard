@@ -93,9 +93,9 @@ jobs:
       - name: Add the sealed private datasets
         run: |
           # Email history, Mack's LinkedIn matches and the Founder Network imports (Telegram, Fireflies, Outlook, Mack's
-          # LinkedIn export) and the B2B partner meeting briefs (Fireflies summaries) sit on their own branches sealed with scripts/seal.mjs (RSA public key in scripts/seal_key.pub.pem);
+          # LinkedIn export), Mack's reviewed LinkedIn conversations (lidm) and the B2B partner meeting briefs (Fireflies summaries) sit on their own branches sealed with scripts/seal.mjs (RSA public key in scripts/seal_key.pub.pem);
           # only the MAIL_KEY secret opens them, in the lock step below.
-          for b in mail linkedin founder b2b; do
+          for b in mail linkedin founder b2b lidm; do
             if git fetch --depth=1 origin "$b-snapshot" 2>/dev/null && git cat-file -e "FETCH_HEAD:$b.sealed.json" 2>/dev/null; then
               git show "FETCH_HEAD:$b.sealed.json" > "site/$b.sealed.json"
             fi
@@ -114,7 +114,7 @@ jobs:
           # Encrypts data.js, boxbyte.js, courier.js and research.js into data.lock.json and deletes the readable
           # files. Fails (and nothing is published) when the DASH_PASSCODE secret is missing or shorter than 16 characters.
           node scripts/lock_site.mjs site
-          for f in data.js boxbyte.js courier.js research.js mail.js cal.js ff.js linksync.js p3.js mail.sealed.json linkedin.sealed.json founder.sealed.json b2b.sealed.json; do
+          for f in data.js boxbyte.js courier.js research.js mail.js cal.js ff.js linksync.js p3.js mail.sealed.json linkedin.sealed.json founder.sealed.json b2b.sealed.json lidm.sealed.json; do
             if [ -e "site/$f" ]; then echo "::error::site/$f is still present"; exit 1; fi
           done
 

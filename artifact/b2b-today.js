@@ -313,6 +313,78 @@
     },
   });
 
+  /* LinkedIn conversations on Mack's account (dataset li_dm, from his LinkedIn data export via scripts/li_export.py; the
+     export is a snapshot, so as_of says how current it is). Every prospect with messages carries one reviewed status and a
+     short note; requests and connections come from the same export. Message text never leaves the scratch folder. */
+  const LI_STATUS = {
+    talking: 'Talking', they_wrote: 'They wrote last', said_yes: 'Said yes, not booked', declined: 'Declined', no_reply: 'No reply yet',
+    pitching: 'Pitching us', pleasantries: 'Pleasantries only', none: 'Never messaged',
+  };
+  const LI_REPLY_DAYS = 120;
+  const truthy = (v) => v === true || v === 'true';
+  dash.calc('b2b_li_people', {
+    title: 'B2B prospects by LinkedIn conversation',
+    description: 'Each B2B prospect with their LinkedIn history on Mack’s account (matched to Zoho by LinkedIn profile only): messages each way, last message from them and from us, the reviewed status (talking, they wrote last, said yes but not booked, declined, no reply yet, pitching us, pleasantries only, or never messaged), whether a reply is owed, a meeting the messages show, a short note, and what LinkedIn shows about the connection (connected, request pending, or none) against Zoho’s LI Connect.',
+    inputs: ['b2b_people', 'li_dm'],
+    fn: (b2b_people, li_dm) => {
+      const by = new Map(li_dm.map((r) => [String(r.contact_id), r]));
+      return b2b_people.map((p) => {
+        const r = by.get(p.id) || null;
+        const status = r && r.status ? String(r.status) : 'none';
+        return {
+          id: p.id, name: p.name, account: p.account, account_id: p.account_id, priority: p.priority, dnc: p.dnc, li: p.li,
+          msgs: r ? Number(r.msgs || 0) : 0, ours: r ? Number(r.ours || 0) : 0, theirs: r ? Number(r.theirs || 0) : 0,
+          last: r ? r.last || null : null, last_in: r ? r.last_in || null : null, last_out: r ? r.last_out || null : null,
+          status, label: LI_STATUS[status] || status, reply_needed: Boolean(r && truthy(r.reply_needed)), met_on: r ? r.met_on || null : null,
+          note: r ? r.note || null : null, actual: r ? r.actual || 'none' : 'none', invited_at: r ? r.invited_at || null : null,
+          connected_on: r ? r.connected_on || null : null, as_of: r ? r.as_of || null : null, in_export: Boolean(r),
+        };
+      });
+    },
+  });
+  /* What the conversations ask of the team: answer a message, book a meeting they agreed to, and Zoho updates the messages
+     show (Priority 1 for a real conversation, 9 for a decline, a check on people selling to us, and meetings to log). A reply
+     or meeting ask is dropped once a meeting was held or booked after their last message. */
+  dash.calc('b2b_li_queue', {
+    title: 'B2B work from LinkedIn conversations',
+    description: 'Queue items from Mack’s LinkedIn messages: Reply (their message asks or offers something, unanswered, within 120 days), Meeting ask (they agreed to talk, nothing booked or held since), and Update Zoho (move a real conversation at Priority 3 to Priority 1; a decline at Priority 1, 3 or 5 to 9; review people pitching their own service; log a meeting the messages show that Zoho and the calendars don’t). Do Not Contact and Priority 9 or 11 are left out.',
+    inputs: ['b2b_li_people', 'mtg_people'],
+    fn: (b2b_li_people, mtg_people) => {
+      const mtg = new Map(mtg_people.map((m) => [m.id, m]));
+      const out = [];
+      const ago = (iso) => Math.max(0, Math.floor((Date.now() - Date.parse(iso)) / 864e5));
+      b2b_li_people.forEach((p) => {
+        if (p.dnc || ['9', '11'].includes(p.priority) || p.status === 'none') return;
+        const m = mtg.get(p.id) || { days: [], next: null };
+        const inDay = p.last_in ? ctD(p.last_in) : null;
+        const metSince = inDay && ((m.days || []).some((d) => d >= inDay) || Boolean(m.next));
+        const base = { id: p.id, name: p.name, account: p.account, li: true, note: p.note };
+        const dayLong = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' });
+        const why = (lead) => `${lead}${p.note ? ': ' + p.note : ''}`;
+        if (p.reply_needed && p.last_in && ago(p.last_in) <= LI_REPLY_DAYS && !metSince && p.status !== 'said_yes') {
+          out.push({ ...base, in_at: p.last_in, key: 'LI|' + p.id, order: 1, type: 'Reply', sop: 3, action: 'Answer their LinkedIn message, or close the loop',
+            why: p.priority ? `P${p.priority}` : 'Campaign contact', why_now: why(`They wrote on LinkedIn ${ago(p.last_in)} days ago`), late: ago(p.last_in),
+            done: 'Your reply is sent on LinkedIn', record: 'Note the reply in Zoho; set the next task with a due date' });
+        }
+        if (p.status === 'said_yes' && !metSince) {
+          out.push({ ...base, key: 'LIyes|' + p.id, order: 4, type: 'Meeting ask', sop: 4, action: 'Book the meeting they agreed to',
+            why: p.priority ? `P${p.priority}` : 'Campaign contact', why_now: why(`Said yes on LinkedIn${inDay ? ' on ' + inDay : ''}; nothing booked since`), late: p.last_in ? ago(p.last_in) : 0,
+            done: 'A meeting is booked', record: 'Log the meeting in Zoho linked to the contact' });
+        }
+        const fix = (action, whyNow) => out.push({ ...base, key: 'LIfix|' + p.id + '|' + action, order: CLOSE_ORDER, type: 'Update Zoho', sop: 3, action,
+          why: p.priority ? `P${p.priority}` : 'No Priority', why_now: whyNow, late: 0, done: 'Zoho matches the conversation', record: action });
+        if (p.status === 'talking' && p.priority === '3') fix('Move to Priority 1', why('Two-way conversation on LinkedIn'));
+        if (p.status === 'declined' && ['1', '3', '5'].includes(p.priority)) fix('Move to Priority 9', why('Declined on LinkedIn'));
+        if (p.status === 'pitching' && ['1', '3'].includes(p.priority)) fix('Check the fit: Priority 9 unless a partner', why('They pitch their own service to Mack'));
+        if (p.met_on && p.met_on >= '2026-01-01' && !(m.days || []).includes(p.met_on)) fix(`Log the meeting on ${dayLong(p.met_on)} in Zoho`, why('LinkedIn messages show the meeting; Zoho and the calendars don’t'));
+      });
+      return out.sort((a, b) => a.order - b.order || b.late - a.late || String(a.name).localeCompare(String(b.name)));
+    },
+  });
+  /* Mack's connection requests by month (dataset li_outreach): sent, accepted, with and without a note, and replies to the
+     standard first message. */
+  const LI_OPENER = 'ERP/MSP/consulting space';
+
   /* Monthly acquisition scorecard: new partner prospects added to Zoho (dataset b2b_added). */
   const ADD_TARGET = 50;
   const ADD_SOP_URL = 'https://docs.google.com/document/d/1aM7zseZMzA-5N3OUFKW8tzAdXjXRnYSlyRwVfETHa3A/edit?tab=t.0#heading=h.xxylwzgeyofk';
@@ -501,9 +573,9 @@
   });
   dash.calc('p3_events', {
     title: 'Priority and LI Connect changes',
-    description: 'One row per change, {contact_id, field: Priority or LI_Connect, from, to, at}. Priority from Zoho’s Priority History (the value before is the contact’s previous history row, or their baseline when the change came after it); LI Connect from the daily snapshot (at = the contact’s last edit when it falls since the previous snapshot, otherwise the snapshot time).',
-    inputs: ['p3_hist', 'p3_base', 'li_events'],
-    fn: (hist, base, li) => {
+    description: 'One row per change, {contact_id, field: Priority or LI_Connect, from, to, at, src}. Priority from Zoho’s Priority History (the value before is the contact’s previous history row, or their baseline when the change came after it); LI Connect from the daily snapshot (at = the contact’s last edit when it falls since the previous snapshot, otherwise the snapshot time) and, before the baseline, from Mack’s LinkedIn export (src linkedin): a request he sent (empty to Requested) and its acceptance (Requested to Connected), since Dec 1, 2025, only where the baseline LI Connect agrees.',
+    inputs: ['p3_hist', 'p3_base', 'li_events', 'li_dm'],
+    fn: (hist, base, li, li_dm) => {
       const baseBy = new Map(base.map((r) => [String(r.contact_id), r]));
       const byContact = new Map();
       hist.forEach((h) => {
@@ -524,11 +596,23 @@
           prev = r.v; known = true;
         });
       });
-      li.forEach((e) => { if (e && e.contact_id && e.at) out.push({ contact_id: String(e.contact_id), field: 'LI_Connect', from: liOf(e.from), to: liOf(e.to), at: e.at }); });
+      li.forEach((e) => { if (e && e.contact_id && e.at) out.push({ contact_id: String(e.contact_id), field: 'LI_Connect', from: liOf(e.from), to: liOf(e.to), at: e.at, src: 'daily' }); });
+      (li_dm || []).forEach((r) => {
+        const id = String(r.contact_id);
+        const b0 = baseBy.get(id);
+        if (!b0 || !b0.at) return;
+        const bLi = liOf(b0.li);
+        const inv = r.invited_at && r.invited_at >= LI_BACKFILL && r.invited_at < b0.at ? r.invited_at : null;
+        const con = r.actual === 'connected' && r.connected_on && r.connected_on >= LI_BACKFILL.slice(0, 10) ? r.connected_on + 'T12:00:00Z' : null;
+        if (inv && (bLi === 'Requested' || (bLi === 'Connected' && (!con || con > inv)))) out.push({ contact_id: id, field: 'LI_Connect', from: null, to: 'Requested', at: inv, src: 'linkedin' });
+        if (con && con < b0.at && bLi === 'Connected') out.push({ contact_id: id, field: 'LI_Connect', from: inv && con > inv ? 'Requested' : null, to: 'Connected', at: con, src: 'linkedin' });
+      });
       return out.sort((a, b) => String(a.at).localeCompare(String(b.at)));
     },
   });
 
+  /* LinkedIn backfill starts with the Dec 2025 requests: older connections predate the campaign. */
+  const LI_BACKFILL = '2025-12-01T00:00:00Z';
   const P3_KPIS = {
     backlog: (x) => x.pr === '3',
     untouched: (x) => x.pr === '3' && x.li == null,
@@ -549,10 +633,12 @@
       const ctOf = (iso) => new Date(iso).toLocaleString('sv-SE', { timeZone: 'America/Chicago' }).replace(' ', 'T');
       const ev = p3_events
         .filter((e) => e && e.contact_id && e.at && (e.field === 'Priority' || e.field === 'LI_Connect'))
-        .map((e) => ({ id: String(e.contact_id), field: e.field, from: e.field === 'Priority' ? prOf(e.from) : liOf(e.from), to: e.field === 'Priority' ? prOf(e.to) : liOf(e.to), ct: ctOf(e.at), at: e.at }))
+        .map((e) => ({ id: String(e.contact_id), field: e.field, from: e.field === 'Priority' ? prOf(e.from) : liOf(e.from), to: e.field === 'Priority' ? prOf(e.to) : liOf(e.to), ct: ctOf(e.at), at: e.at, src: e.src || null }))
         .sort((a, b) => a.ct.localeCompare(b.ct));
       const baseFrom = p3_base.reduce((m, r) => (r && r.at && (!m || r.at < m) ? r.at : m), null);
       const tracked = baseFrom ? ctOf(baseFrom).slice(0, 10) : ev.length ? ev[0].ct.slice(0, 10) : null;
+      const liFirst = ev.find((e) => e.src === 'linkedin');
+      const liFrom = liFirst ? liFirst.ct.slice(0, 10) : null;
       const now = new Map(p3_state.map((p) => [p.id, { pr: p.priority, li: p.li }]));
       const byId = new Map();
       ev.forEach((e) => { if (!byId.has(e.id)) byId.set(e.id, []); byId.get(e.id).push(e); });
@@ -569,7 +655,7 @@
       Object.entries(starts).forEach(([period, day]) => {
         const ct0 = day + 'T00:00:00';
         const partial = !tracked || tracked > day;
-        const row = { key: period, period, start: day, partial, tracked };
+        const row = { key: period, period, start: day, partial, tracked, li_from: liFrom };
         Object.entries(P3_KPIS).forEach(([k, f]) => {
           let nowN = 0; let thenN = 0;
           ids.forEach((id) => { const c = now.get(id) || { pr: null, li: null }; if (f(c)) nowN += 1; if (f(stateAt(id, ct0))) thenN += 1; });
@@ -1045,7 +1131,7 @@
   const nextCard = card('b2-next', 'Do this next', 'The first item in today’s queue, with everything needed to do it right.', 'cc-b2-nextcard');
   const nextBody = el('div', 'cc-b2-nextbody');
   nextCard.append(nextBody);
-  const queueCard = card('b2-queue', 'Today’s queue', 'In order: replies (tasks, and emails waiting on us), follow-ups, agreements, meeting asks, first introductions, stalled deals. Select a row to make it the next action; tick it when the work is done.');
+  const queueCard = card('b2-queue', 'Today’s queue', 'In order: replies (tasks, and emails and LinkedIn messages waiting on us), follow-ups, agreements, meeting asks, first introductions, stalled deals. Select a row to make it the next action; tick it when the work is done.');
   const queueTools = el('div', 'cc-tools cc-b2-chips');
   const queueBody = el('div', 'cc-b2-wrap');
   queueCard.append(queueTools, queueBody);
@@ -1058,6 +1144,16 @@
   const mailNote = el('p', 'cc-b2-insight');
   const mailFoot = el('p', 'cc-b2-mfoot');
   mailCard.append(mailStats, mailWeeks, mailKey, mailNote, mailTools, mailBody, mailFoot);
+  const liCard = card('b2-li', 'LinkedIn with B2B prospects', 'From Mack’s LinkedIn data export, matched to Zoho by LinkedIn profile. Each conversation was read once and given a status and a short note; message text isn’t kept.');
+  const liStats = el('div', 'cc-b2-mstats');
+  const liNote = el('p', 'cc-b2-insight');
+  const liTools = el('div', 'cc-tools cc-b2-chips');
+  const liBody = el('div', 'cc-b2-wrap');
+  const liOutHead = el('h3', 'cc-b2-lihead', 'Connection requests by month');
+  const liOut = el('div', 'cc-b2-wrap');
+  const liOutNote = el('p', 'cc-b2-insight');
+  const liFoot = el('p', 'cc-b2-mfoot');
+  liCard.append(liStats, liNote, liTools, liBody, liOutHead, liOutNote, liOut, liFoot);
   const mtg = el('section', 'cc-card cc-mt');
   mtg.id = 'b2-mtg';
   mtg.setAttribute('aria-labelledby', 'b2-mtg-title');
@@ -1259,7 +1355,7 @@
     if (drillFrom && drillFrom !== drill && drillFrom.parentElement === root && drillFrom.nextElementSibling !== drill) drillFrom.after(drill);
   };
 
-  root.append(pf, score, p3, na, mtg, plan, pmCard, rw, rb, mailCard, grid1, drill, nextCard, queueCard, monCard, grid2, sopCard, dqCard, br);
+  root.append(pf, score, p3, na, mtg, plan, pmCard, rw, rb, mailCard, liCard, grid1, drill, nextCard, queueCard, monCard, grid2, sopCard, dqCard, br);
   /* SOP links: an animated playbook page instead of the word. The link keeps its title and aria-label. */
   const SOP_ICON = '<svg class="cc-sop-ico" viewBox="0 0 32 36" aria-hidden="true" focusable="false">'
     + '<g class="cc-sop-spark"><circle cx="27" cy="5" r="1.4"/><circle cx="4" cy="9" r="1"/><circle cx="29" cy="15" r="1"/><path d="M24 2.5v3M22.5 4h3"/></g>'
@@ -1352,7 +1448,7 @@
     const lead = new Map();
     const out = [];
     list.forEach((a) => {
-      const k = a.id + (a.type === 'Close in Zoho' ? '|close' : '');
+      const k = a.id + (isCleanup(a) ? '|close' : '');
       const l = lead.get(k);
       if (l) { l.more.push(a); return; }
       const row = { ...a, more: [] };
@@ -1361,7 +1457,17 @@
     });
     return out;
   };
-  const queueRaw = () => (!mailMissing() && state(['b2b_queue']) === 'ok' ? rows('b2b_queue') : rows('b2b_actions'));
+  /* LinkedIn items join the queue (b2b_li_queue). A LinkedIn reply is dropped once the mail data shows we emailed them after
+     their message; the merged list keeps the queue's order. */
+  const liQueue = () => {
+    if (state(['b2b_li_queue']) !== 'ok') return [];
+    const mp = mailOk() ? new Map(rows('b2b_mail_people').map((m) => [m.id, m])) : new Map();
+    return rows('b2b_li_queue').filter((a) => !(a.type === 'Reply' && a.in_at && (mp.get(a.id) || {}).last_out > a.in_at));
+  };
+  const queueRaw = () => [...(!mailMissing() && state(['b2b_queue']) === 'ok' ? rows('b2b_queue') : rows('b2b_actions')), ...liQueue()]
+    .map((a, i) => [a, i]).sort((x, y) => x[0].order - y[0].order || x[1] - y[1]).map((x) => x[0]);
+  const typeLabel = (a) => (a.mail ? 'Reply by email' : a.li && a.type === 'Reply' ? 'Reply on LinkedIn' : a.type);
+  const isCleanup = (a) => a.type === 'Close in Zoho' || a.type === 'Update Zoho';
   const queueRows = () => groupQueue(queueRaw());
   /* Queue ticks live in this browser only (localStorage), never in Zoho. A tick lasts for the Central-time day it was made.
      On a later day an item still in the queue comes back unticked and flagged; an item gone from the queue drops its tick. */
@@ -1389,7 +1495,7 @@
   };
   const queueSplit = () => {
     const raw = queueRaw();
-    tickSync(raw, mailMissing() || state(['b2b_queue']) === 'ok');
+    tickSync(raw, (mailMissing() || state(['b2b_queue']) === 'ok') && state(['b2b_li_queue']) !== 'loading');
     const isDone = (a) => Boolean(ticks.done[itemKey(a)]);
     return {
       open: groupQueue(raw.filter((a) => !isDone(a)).map((a) => ({ ...a, ticked_before: ticks.flag[itemKey(a)] || null }))),
@@ -1413,7 +1519,7 @@
     nextBody.replaceChildren();
     if (!a) { nextBody.append(el('p', 'cc-b2-insight', 'Nothing is due today. Work the Priority 3 queue, then ask Priority 1 prospects for a first meeting.')); return; }
     const left = el('div');
-    const act = el('p', 'cc-b2-action'); act.append(document.createTextNode((a.mail ? 'Reply by email' : a.type) + ': '), link('Contacts', a.id, a.name));
+    const act = el('p', 'cc-b2-action'); act.append(document.createTextNode(typeLabel(a) + ': '), link('Contacts', a.id, a.name));
     left.append(act, el('p', 'cc-b2-who', [a.account || 'No company on record', a.why].join('. ')));
     const dl = el('dl', 'cc-b2-dl');
     const pair = (k, v) => { dl.append(el('dt', null, k)); const dd = el('dd'); if (v instanceof Node) dd.append(v); else dd.textContent = v; dl.append(dd); };
@@ -1456,10 +1562,13 @@
     const fun = rows('b2b_funnel');
     const seg = rows('b2b_segments');
     const fv = (k) => (fun.find((r) => r.key === k) || {}).value || 0;
-    const count = (type) => acts.filter((a) => a.type === type).length;
+    const count = (type) => acts.filter((a) => a.type === type && !a.li).length;
+    const liYesN = acts.filter((a) => a.li && a.type === 'Meeting ask').length;
     const mailN = acts.filter((a) => a.mail).length;
     const waitN = mailOk() ? rows('b2b_mail_people').filter((m) => m.status === 'They wrote last' && m.in_days != null && m.in_days <= MAIL_RECENT && !m.dnc).length : 0;
-    const lateN = acts.filter((a) => (a.type === 'Reply' || a.type === 'Follow-up') && !a.mail).length;
+    const lateN = acts.filter((a) => (a.type === 'Reply' || a.type === 'Follow-up') && !a.mail && !a.li).length;
+    const liReplyN = acts.filter((a) => a.li && a.type === 'Reply').length;
+    const liFix = acts.flatMap((a) => [a, ...a.more]).filter((a) => a.type === 'Update Zoho');
     const closeItems = acts.filter((a) => a.type === 'Close in Zoho').flatMap((a) => [a, ...a.more]);
     const closeN = closeItems.length;
     const closeDone = closeItems.filter((a) => a.probably_done).length;
@@ -1468,7 +1577,7 @@
     const strong = mon.filter((m) => m.strength >= 3).length;
     const fnN = ppl.filter((p) => p.source === 'Founder network').length;
 
-    verdict.textContent = `${intF(fv('met'))} of ${intF(fv('all'))} B2B prospects have met us and ${intF(fv('signed'))} have signed, but only ${intF(fv('introduced'))} ${fv('introduced') === 1 ? 'partner has' : 'partners have'} introduced a client. The work is conversations and activation, not more names: ${waitN ? `${intF(waitN)} ${waitN === 1 ? 'prospect wrote' : 'prospects wrote'} last by email in the last 30 days, ` : ''}${intF(lateN)} follow-ups are overdue, ${intF(count('Meeting ask'))} Priority 1 prospects in a conversation have never met us, and ${intF(count('First introduction'))} signed partners have not been asked for an introduction.`;
+    verdict.textContent = `${intF(fv('met'))} of ${intF(fv('all'))} B2B prospects have met us and ${intF(fv('signed'))} have signed, but only ${intF(fv('introduced'))} ${fv('introduced') === 1 ? 'partner has' : 'partners have'} introduced a client. The work is conversations and activation, not more names: ${waitN ? `${intF(waitN)} ${waitN === 1 ? 'prospect wrote' : 'prospects wrote'} last by email in the last 30 days, ` : ''}${liReplyN ? `${intF(liReplyN)} LinkedIn ${liReplyN === 1 ? 'message waits' : 'messages wait'} on our reply, ` : ''}${intF(lateN)} follow-ups are overdue, ${intF(count('Meeting ask'))} Priority 1 prospects in a conversation have never met us, and ${intF(count('First introduction'))} signed partners have not been asked for an introduction.`;
 
     /* Tiles: Add, Select, Build relationships. */
     tiles.replaceChildren();
@@ -1531,13 +1640,16 @@
     stepsBody.replaceChildren();
     const steps = [
       [waitN, `Answer ${intF(waitN)} ${waitN === 1 ? 'email' : 'emails'} waiting on us`, `Their email is the latest in the thread, sent in the last ${MAIL_RECENT} days${waitN > mailN ? `; ${intF(waitN - mailN)} already have a reply or follow-up task in the queue` : ''}. Some need no answer: read, then reply or log it.`, () => { mailFilter = 'They wrote last'; drawMail(); mailCard.scrollIntoView({ behavior: 'smooth' }); }, '3'],
-      [lateN, `Clear ${intF(lateN)} overdue replies and follow-ups`, `The oldest is ${intF(Math.max(0, ...acts.filter((a) => (a.type === 'Reply' || a.type === 'Follow-up') && !a.mail).map((a) => a.late)))} days late. Replies first: a conversation goes cold faster than a task.`, () => { queueFilter = 'Reply'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '3'],
+      [liReplyN, `Answer ${intF(liReplyN)} LinkedIn ${liReplyN === 1 ? 'message' : 'messages'} waiting on us`, `Their message asks or offers something and Mack hasn’t answered, in the last ${LI_REPLY_DAYS} days. Answer on LinkedIn, or close the loop.`, () => { queueFilter = 'Reply'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '3'],
+      [lateN, `Clear ${intF(lateN)} overdue replies and follow-ups`, `The oldest is ${intF(Math.max(0, ...acts.filter((a) => (a.type === 'Reply' || a.type === 'Follow-up') && !a.mail && !a.li).map((a) => a.late)))} days late. Replies first: a conversation goes cold faster than a task.`, () => { queueFilter = 'Reply'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '3'],
       [count('Agreement'), `Move ${intF(count('Agreement'))} agreement steps`, 'Signatures waiting and agreement tasks overdue. Each signed partner is a channel; an unsigned one is a conversation.', () => { queueFilter = 'Agreement'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '5'],
       [count('Meeting ask'), `Ask ${intF(count('Meeting ask'))} Priority 1 prospects for a first meeting`, 'In a two-way conversation, connected, never met and nothing scheduled. Priority 3 contacts get a conversation first (Priority 3 queue), not a meeting ask.', () => { queueFilter = 'Meeting ask'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '4'],
+      [liYesN, `Book ${intF(liYesN)} ${liYesN === 1 ? 'meeting' : 'meetings'} prospects agreed to on LinkedIn`, 'They said yes to a call or meeting on LinkedIn, and nothing has been held or booked since. Send times or a booking link, then log it in Zoho.', () => { queueFilter = 'Meeting ask'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '4'],
       [count('First introduction'), `Ask ${intF(count('First introduction'))} signed partners for their first introduction`, 'A signed agreement earns nothing until it produces an introduction. Name one client problem we solve and ask who comes to mind.', () => { queueFilter = 'First introduction'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '6'],
       [mon.length, `Move ${intF(Math.min(MONDAY, mon.length))} from the Priority 5 backlog to Priority 3`, `${intF(mon.length)} ${mon.length === 1 ? 'prospect is' : 'prospects are'} at Priority 5 and not yet met; ${intF(strong)} show three or more partner signs. Select with evidence or skip with a reason.`, () => showP5(rows('b2b_p5_backlog')), '1'],
       [count('Revive deal'), `Revive ${intF(count('Revive deal'))} stalled partnership deals`, `Open deals untouched for ${STALE_DAYS} days or more, with no task set.`, () => { queueFilter = 'Revive deal'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '5'],
       [closeN, `Close or re-date ${intF(closeN)} ${closeN === 1 ? 'task' : 'tasks'} in Zoho`, `${intF(closeDone)} look done (we emailed them after the task was created), ${intF(closeStale)} are more than ${TASK_STALE} days overdue, ${intF(closeDnc)} belong to Do Not Contact records. Open tasks that are already done push real work down the queue.`, () => { queueFilter = 'Close in Zoho'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '3'],
+      [liFix.length, `Make ${intF(liFix.length)} Zoho ${liFix.length === 1 ? 'update' : 'updates'} the LinkedIn conversations show`, `${intF(liFix.filter((a) => /Priority 1$/.test(a.action)).length)} real conversations still at Priority 3, ${intF(liFix.filter((a) => /Priority 9$/.test(a.action)).length)} declines still in outreach, ${intF(liFix.filter((a) => /^Log the meeting/.test(a.action)).length)} meetings to log, ${intF(liFix.filter((a) => /^Check the fit/.test(a.action)).length)} people pitching us to check.`, () => { queueFilter = 'Update Zoho'; drawQueue(); queueCard.scrollIntoView({ behavior: 'smooth' }); }, '3'],
       [fixN, `Fix ${intF(fixN)} records`, `${intF(clients)} client prospects tagged B2B and ${intF(incomplete)} prospects with no company or title.`, () => showPeople('Records to fix', ppl.filter((p) => p.client_only || !p.complete), 'Client prospects: remove the B2B tag. No company or title: fill them, or the person can’t be judged as a partner.'), null],
     ].filter(([n]) => n > 0);
     steps.forEach(([, title, desc, go, sop]) => {
@@ -1552,6 +1664,7 @@
 
     drawQueue();
     drawMail();
+    drawLi();
     drawMonday();
 
     /* Segments. */
@@ -1652,7 +1765,7 @@
   const drawQueue = () => {
     const split = queueSplit();
     const acts = split.open;
-    const types = ['All', ...['Reply', 'Follow-up', 'Agreement', 'Meeting ask', 'First introduction', 'Revive deal', 'Close in Zoho'].filter((t) => acts.some((a) => a.type === t) || split.done.some((a) => a.type === t))];
+    const types = ['All', ...['Reply', 'Follow-up', 'Agreement', 'Meeting ask', 'First introduction', 'Revive deal', 'Close in Zoho', 'Update Zoho'].filter((t) => acts.some((a) => a.type === t) || split.done.some((a) => a.type === t))];
     if (!types.includes(queueFilter)) queueFilter = 'All';
     queueTools.replaceChildren(...types.map((t) => {
       const b = el('button', 'cc-chip', t === 'All' ? `All (${acts.length})` : `${t} (${acts.filter((a) => a.type === t).length})`);
@@ -1669,7 +1782,7 @@
       const cb = el('input', 'cc-b2-tick');
       cb.type = 'checkbox';
       cb.checked = on;
-      cb.setAttribute('aria-label', `${on ? 'Mark not done' : 'Mark done'}: ${a.mail ? 'Reply by email' : a.type} for ${a.name}`);
+      cb.setAttribute('aria-label', `${on ? 'Mark not done' : 'Mark done'}: ${typeLabel(a)} for ${a.name}`);
       cb.addEventListener('change', () => setTick(a, cb.checked));
       return cb;
     };
@@ -1687,7 +1800,7 @@
         const who = el('td'); who.append(link('Contacts', a.id, a.name)); if (a.account) who.append(el('small', null, a.account));
         const what = el('td', null, a.action);
         if (a.more && a.more.length) what.append(el('small', null, `+${intF(a.more.length)} more open for them`));
-        tr.append(tick, el('td', null, String(i + 1)), el('td', a.type === 'Close in Zoho' ? 'cc-b2-closecell' : null, a.mail ? 'Reply by email' : a.type), who, what);
+        tr.append(tick, el('td', null, String(i + 1)), el('td', isCleanup(a) ? 'cc-b2-closecell' : null, typeLabel(a)), who, what);
         const why = el('td', a.late ? 'cc-b2-late' : null, a.why_now);
         if (a.ticked_before) why.append(el('small', 'cc-b2-reflag', `Ticked on ${dayF(a.ticked_before)}, but Zoho still shows it open. Close or update it in Zoho.`));
         tr.append(why);
@@ -1714,7 +1827,7 @@
         const li = el('li');
         const lab = el('label');
         const txt = el('span');
-        txt.append(document.createTextNode(`${a.mail ? 'Reply by email' : a.type}: `), link('Contacts', a.id, a.name), document.createTextNode(`. ${a.action}`));
+        txt.append(document.createTextNode(`${typeLabel(a)}: `), link('Contacts', a.id, a.name), document.createTextNode(`. ${a.action}`));
         lab.append(box(a, true), txt);
         li.append(lab);
         ul.append(li);
@@ -1725,12 +1838,13 @@
   };
 
   const mailWeekLine = () => {
-    if (mailMissing()) return 'Email activity by week isn’t in this build of the page; LinkedIn messages and calls are not recorded anywhere yet.';
+    const liTxt = liHas() && state(['b2b_li_people']) === 'ok' ? ` LinkedIn: ${intF(rows('b2b_li_people').filter((p) => p.status === 'talking').length)} prospects in a two-way conversation, ${intF(rows('b2b_li_people').filter(liWaiting).length)} messages waiting on us (card below).` : ' LinkedIn messages are in the private dashboard only.';
+    if (mailMissing()) return 'Email activity by week isn’t in this build of the page.' + liTxt;
     const wk = rows('b2b_mail_weeks');
-    if (state(['b2b_mail_weeks']) !== 'ok' || wk.length < 2) return 'Email activity by week shows once the mailbox data loads; LinkedIn messages and calls are not recorded anywhere yet.';
+    if (state(['b2b_mail_weeks']) !== 'ok' || wk.length < 2) return 'Email activity by week shows once the mailbox data loads.' + liTxt;
     const a = wk[wk.length - 1];
     const b = wk[wk.length - 2];
-    return `Email: ${intF(a.people_sent)} prospects emailed this week (${intF(b.people_sent)} last week); ${intF(a.received)} emails from prospects this week (${intF(b.received)} last week). LinkedIn messages and calls are not recorded yet.`;
+    return `Email: ${intF(a.people_sent)} prospects emailed this week (${intF(b.people_sent)} last week); ${intF(a.received)} emails from prospects this week (${intF(b.received)} last week).${liTxt}`;
   };
 
   const MAIL_COLS = [
@@ -1874,6 +1988,129 @@
     const first = rows('b2b_mail')[0] || {};
     const boxes = first.mailboxes || 'info@, hemang@';
     mailFoot.textContent = `Mail as of ${first.as_of ? dayF(ctDay(first.as_of)) + ' (CT)' : 'the last refresh'}. Covers ${boxes}; mail sent only from another mailbox, a personal address or LinkedIn won’t show, so “they wrote last” can mean someone already answered elsewhere. Check before replying.`;
+  };
+
+  /* LinkedIn conversations and connection requests (datasets li_dm and li_outreach; calcs b2b_li_people, b2b_li_queue). */
+  let liFilter = 'they_wrote';
+  let liAll = false;
+  const LI_ORDER = ['they_wrote', 'said_yes', 'talking', 'no_reply', 'pitching', 'declined', 'pleasantries', 'none'];
+  const liHas = () => state(['li_dm']) === 'ok' && rows('li_dm').length > 0;
+  const liWaiting = (p) => p.reply_needed && p.last_in && !p.dnc && !['9', '11'].includes(p.priority)
+    && (Date.now() - Date.parse(p.last_in)) / 864e5 <= LI_REPLY_DAYS;
+  const LI_COLS = [
+    ['Name', (p) => link('Contacts', p.id, p.name)],
+    ['Company', (p) => (p.account_id ? link('Accounts', p.account_id, p.account) : p.account || 'No company')],
+    ['Status', (p) => p.label + (p.reply_needed ? ' (reply owed)' : '')],
+    ['Their last message', (p) => (p.last_in ? dayF(ctDay(p.last_in)) : 'Never')],
+    ['Our last message', (p) => (p.last_out ? dayF(ctDay(p.last_out)) : 'Never')],
+    ['Messages out / in', (p) => intF(p.ours) + ' / ' + intF(p.theirs)],
+    ['Priority', (p) => (p.priority ? 'P' + p.priority : 'Not set')],
+    ['Note', (p) => p.note || '—'],
+  ];
+  const showLiPeople = (title, list, note) => showTable(title, LI_COLS, list.slice().sort((a, b) => String(b.last || '').localeCompare(String(a.last || ''))), note);
+  const drawLi = () => {
+    const clear = () => { [liStats, liTools, liBody, liOut].forEach((n) => n.replaceChildren()); liOutNote.textContent = ''; liFoot.textContent = ''; };
+    const st = state(['li_dm', 'li_outreach', 'b2b_li_people']);
+    if (st === 'loading') { clear(); liNote.textContent = 'Loading Mack’s LinkedIn data…'; return; }
+    if (!liHas() || st !== 'ok') {
+      clear();
+      liOutHead.hidden = true;
+      liNote.textContent = liHas() || state(['li_dm']) === 'error' && !window.CC_MAIL_PRIVATE
+        ? 'Mack’s LinkedIn data didn’t load, so LinkedIn conversations aren’t shown. The rest of this page doesn’t depend on it.'
+        : 'LinkedIn conversations aren’t in this build of the page.';
+      return;
+    }
+    liOutHead.hidden = false;
+    const ppl = rows('b2b_li_people');
+    const inEx = ppl.filter((p) => p.in_export);
+    const by = (k) => ppl.filter((p) => p.status === k);
+    const messaged = ppl.filter((p) => p.ours > 0);
+    const wroteBack = messaged.filter((p) => p.theirs > 0);
+    const waiting = ppl.filter(liWaiting);
+    const yes = state(['b2b_li_queue']) === 'ok' ? rows('b2b_li_queue').filter((a) => a.type === 'Meeting ask') : [];
+    const yesIds = new Set(yes.map((a) => a.id));
+    const asOf = (inEx.find((p) => p.as_of) || {}).as_of || null;
+
+    liStats.replaceChildren();
+    const stat = (big, label, sub, go, cls) => {
+      const c = el('div', 'cc-b2-mstat' + (cls ? ' ' + cls : ''));
+      c.append(el('b', null, big), el('span', null, label));
+      if (sub) c.append(el('small', null, sub));
+      if (go) press(c, go);
+      liStats.append(c);
+    };
+    stat(intF(waiting.length), 'LinkedIn messages waiting on us', `Their message asks or offers something, unanswered, in the last ${LI_REPLY_DAYS} days.`, () => showLiPeople('LinkedIn messages waiting on us', waiting, 'Their latest message asks a question, offers a time, shares a contact or proposes something, and Mack hasn’t answered. The queue drops one once we email them or meet them after it.'), waiting.length ? 'cc-b2-mwarn' : null);
+    stat(intF(yes.length), 'said yes, nothing booked', 'They agreed to talk on LinkedIn; no meeting held or booked since.', () => showLiPeople('Said yes on LinkedIn, nothing booked', ppl.filter((p) => yesIds.has(p.id)), 'Book the meeting they agreed to (SOP 4), then log it in Zoho.'), yes.length ? 'cc-b2-mwarn' : null);
+    stat(pct(wroteBack.length, messaged.length), 'of the prospects Mack messaged wrote back', `${intF(wroteBack.length)} of ${intF(messaged.length)}.`, () => showLiPeople('Messaged on LinkedIn and wrote back', wroteBack, `${intF(wroteBack.length)} of the ${intF(messaged.length)} prospects Mack messaged have written back at least once.`));
+    stat(intF(inEx.length), `of ${intF(ppl.length)} prospects found in Mack’s LinkedIn`, `By LinkedIn profile; ${intF(ppl.length - inEx.length)} have no profile in Zoho or aren’t in his export.`, () => showLiPeople('B2B prospects found in Mack’s LinkedIn', inEx, 'Matched by the LinkedIn profile in Zoho. A connection, a request or a message puts them in the export.'));
+
+    const talkP3 = by('talking').filter((p) => p.priority === '3').length;
+    const declinedOpen = by('declined').filter((p) => ['1', '3', '5'].includes(p.priority)).length;
+    liNote.textContent = `${intF(by('talking').length)} prospects are in a real two-way conversation on LinkedIn${talkP3 ? `, ${intF(talkP3)} of them still at Priority 3 (move them to 1)` : ''}. ${declinedOpen ? `${intF(declinedOpen)} declined but are still at Priority 1, 3 or 5. ` : ''}The queue’s Update Zoho items list each change.`;
+
+    const counts = new Map(LI_ORDER.map((k) => [k, by(k).length]));
+    if (!counts.get(liFilter)) liFilter = LI_ORDER.find((k) => counts.get(k)) || LI_ORDER[0];
+    liTools.replaceChildren(...LI_ORDER.filter((k) => counts.get(k)).map((k) => {
+      const b = el('button', 'cc-chip', `${LI_STATUS[k]} (${intF(counts.get(k))})`);
+      b.type = 'button'; b.setAttribute('aria-pressed', String(liFilter === k));
+      b.addEventListener('click', () => { liFilter = k; liAll = false; drawLi(); });
+      return b;
+    }));
+    const list = by(liFilter).slice().sort((x, y) => String(y.last || '').localeCompare(String(x.last || '')) || String(x.name).localeCompare(String(y.name)));
+    const tbl = el('table', 'cc-tbl');
+    const th = el('thead'); const hr = el('tr');
+    const cols = liFilter === 'none' ? LI_COLS.filter(([h]) => ['Name', 'Company', 'Priority'].includes(h)).concat([['On LinkedIn', (p) => (p.actual === 'connected' ? 'Connected' + (p.connected_on ? ', ' + dayF(p.connected_on) : '') : p.actual === 'pending' ? 'Request pending' : 'Not connected')]]) : LI_COLS;
+    cols.forEach(([h]) => { const c = el('th', null, h); c.scope = 'col'; hr.append(c); });
+    th.append(hr); tbl.append(th);
+    const tb = el('tbody');
+    list.slice(0, liAll ? 300 : 12).forEach((p) => {
+      const tr = rowOpens(el('tr'), p.id);
+      cols.forEach(([h, f]) => { const td = el('td', h === 'Their last message' && liWaiting(p) ? 'cc-b2-late' : null); const v = f(p); if (v instanceof Node) td.append(v); else td.textContent = v; tr.append(td); });
+      tb.append(tr);
+    });
+    tbl.append(tb);
+    liBody.replaceChildren(tbl);
+    if (list.length > 12) {
+      const more = el('button', 'cc-go', liAll ? 'Show the first 12' : `Show all ${intF(Math.min(list.length, 300))}`);
+      more.type = 'button';
+      more.addEventListener('click', () => { liAll = !liAll; drawLi(); });
+      const bar = el('div', 'cc-tools'); bar.append(more);
+      liBody.append(bar);
+    }
+
+    /* Connection requests by month: everyone Mack invited, not only B2B prospects. */
+    const mo = rows('li_outreach').slice().sort((a, b) => String(a.month).localeCompare(String(b.month)));
+    const N = (v) => Number(v || 0);
+    const ot = el('table', 'cc-tbl cc-b2-litbl');
+    const oh = el('thead'); const ohr = el('tr');
+    ['Month', 'Requests sent', 'Accepted', 'With a note', 'Without a note', 'Standard first message', 'Replied'].forEach((x) => { const c = el('th', null, x); c.scope = 'col'; ohr.append(c); });
+    oh.append(ohr); ot.append(oh);
+    const ob = el('tbody');
+    mo.forEach((r) => {
+      const tr = el('tr');
+      const plain = N(r.sent) - N(r.sent_note);
+      const plainOk = N(r.accepted) - N(r.accepted_note);
+      [monthF(r.month, 'short') + ' ' + String(r.month).slice(0, 4), intF(r.sent), `${intF(r.accepted)} (${pct(N(r.accepted), N(r.sent))})`,
+        N(r.sent_note) ? `${pct(N(r.accepted_note), N(r.sent_note))} of ${intF(r.sent_note)}` : '—',
+        plain ? `${pct(plainOk, plain)} of ${intF(plain)}` : '—',
+        N(r.opener_sent) ? intF(r.opener_sent) : '—', N(r.opener_sent) ? `${intF(r.opener_replied)} (${pct(N(r.opener_replied), N(r.opener_sent))})` : '—',
+      ].forEach((v) => tr.append(el('td', null, v)));
+      ob.append(tr);
+    });
+    ot.append(ob);
+    liOut.replaceChildren(ot);
+    const both = mo.filter((r) => N(r.sent_note) >= 20 && N(r.sent) - N(r.sent_note) >= 20);
+    const sum = (list, k) => list.reduce((t, r) => t + N(r[k]), 0);
+    const op = mo.filter((r) => N(r.opener_sent));
+    const parts = [];
+    if (both.length) {
+      const ns = sum(both, 'sent_note'); const na = sum(both, 'accepted_note');
+      const ps = sum(both, 'sent') - ns; const pa = sum(both, 'accepted') - na;
+      parts.push(`In ${both.map((r) => monthF(r.month)).join(' and ')}, ${pct(na, ns)} of requests with a note were accepted against ${pct(pa, ps)} without one${na / ns < pa / ps ? ': the note isn’t helping' : ''}.`);
+    }
+    if (op.length) parts.push(`The standard first message (the one about the ERP/MSP/consulting space) went to ${intF(sum(op, 'opener_sent'))} new connections from ${monthF(op[0].month)} to ${monthF(op[op.length - 1].month)}, and ${pct(sum(op, 'opener_replied'), sum(op, 'opener_sent'))} replied; it hasn’t been sent since.`);
+    liOutNote.textContent = parts.join(' ');
+    liFoot.textContent = `LinkedIn as of ${asOf ? dayF(ctDay(asOf)) + ' (CT)' : 'the last export'}, from Mack’s account only: requests and messages sent from another teammate’s account aren’t in it. Requests by month count everyone Mack invited, not only B2B prospects; accepted means connected by the export date. Refreshed when Mack downloads a new export.`;
   };
 
   const monthF = (mo, style) => new Date(mo + '-01T00:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', month: style || 'long' });
@@ -2063,7 +2300,7 @@
       const tr = el('tr');
       const n = el('td'); n.append(link('Contacts', p.id, p.name)); tr.append(n);
       const a = el('td'); if (p.account_id) a.append(link('Accounts', p.account_id, p.account)); else a.textContent = 'No company'; tr.append(a);
-      if (trans) tr.append(el('td', null, r.ct.replace('T', ' ').slice(0, 16)), el('td', null, r.from || 'Empty'), el('td', null, r.to || 'Empty'), el('td', null, p.priority ? 'P' + p.priority : 'Not set'), el('td', null, p.li || 'Empty'));
+      if (trans) tr.append(el('td', null, r.src === 'linkedin' ? r.ct.slice(0, 10) + ' (LinkedIn)' : r.ct.replace('T', ' ').slice(0, 16)), el('td', null, r.from || 'Empty'), el('td', null, r.to || 'Empty'), el('td', null, p.priority ? 'P' + p.priority : 'Not set'), el('td', null, p.li || 'Empty'));
       else tr.append(el('td', null, p.priority ? 'P' + p.priority : 'Not set'), el('td', null, p.li || 'Empty'), el('td', null, p.met ? intF(p.met) : '—'));
       tb.append(tr);
     });
@@ -2119,7 +2356,7 @@
     const evt = (k) => [['Today', cell(intF(((pr('today') || {})[k] || []).length))], ['Week', cell(intF(((pr('week') || {})[k] || []).length))], ['Month', cell(intF(((pr('month') || {})[k] || []).length))]];
     const evtList = (k, title) => () => {
       if (!per) { showP3(title + ': this month', [], 'The change history didn’t load, so changes can’t be listed. Reload, or check the sources in the dashboard menu.', true); return; }
-      showP3(title + ' this month', (pr('month') || {})[k] || [], 'Each contact once, with the change recorded (Priority from Zoho’s Priority History, LI Connect from the daily check).', true);
+      showP3(title + ' this month', (pr('month') || {})[k] || [], 'Each contact once, with the change recorded (Priority from Zoho’s Priority History; LI Connect from the daily check, or from Mack’s LinkedIn export before tracking began, marked LinkedIn).', true);
     };
 
     const backlog = list(P3_KPIS.backlog);
@@ -2140,7 +2377,9 @@
     const m = pr('month');
     p3Note.textContent = !per
       ? 'Today, Week and Month show — because the change history (Zoho’s Priority History and the daily LI Connect check) didn’t load. Reload, or check the sources in the dashboard menu; nothing is estimated.'
-      : (m && m.partial ? `Changes are counted from ${dayF(m.tracked)}, when tracking began, so this week’s and this month’s figures are partial. ` : '') + 'Priority changes come from Zoho’s Priority History as they happen; LI Connect changes from a daily check, so they show up the next morning, dated at the contact’s last edit. Times are Central; weeks start Monday.';
+      : (m && m.partial ? (m.li_from
+        ? `Priority changes are counted from ${dayF(m.tracked)}, when tracking began; before that Priority is taken as it stood then. LI Connect changes before ${dayF(m.tracked)} come from Mack’s LinkedIn export (requests he sent and their acceptances, from ${dayF(m.li_from)}); requests sent from another teammate’s account aren’t in it. `
+        : `Changes are counted from ${dayF(m.tracked)}, when tracking began, so this week’s and this month’s figures are partial. `) : '') + 'Priority changes come from Zoho’s Priority History as they happen; LI Connect changes from a daily check, so they show up the next morning, dated at the contact’s last edit. Times are Central; weeks start Monday.';
   };
 
   const drawMonday = () => {
