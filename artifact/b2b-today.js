@@ -2371,11 +2371,43 @@
     kpi({ key: 'pursued', theme: 'progress', icon: 'pursued', label: 'Pursued / pending', big: intF(pending.length), sub: 'Requests pending now', blocks: [{ title: 'New requests sent', rows: evt('pursued') }, { title: 'Pending total ', total: intF(pending.length), rows: net('pending'), foot: 'Net change in pending requests' }], go: per ? evtList('pursued', 'Newly pursued') : () => showP3('Pending: Priority 3, LI Connect Requested', pending) });
     kpi({ key: 'connected', theme: 'teal', icon: 'connected', label: 'Contacts connected', big: intF(connected.length), sub: 'Priority 3 at Connected now', rows: evt('newly_connected'), go: () => showP3('Connected: Priority 3, LI Connect Connected', connected, 'An accepted connection isn’t a conversation yet. When they write back or talk with us, move them to Priority 1.') });
     kpi({ key: 'email', theme: 'gray', icon: 'email', label: 'Email Required', big: intF(email.length), sub: 'Blocked — No action available', rows: evt('newly_email'), go: () => showP3('Email Required: Priority 3', email, 'Tracking only. LinkedIn needs their email to send a request, so there is nothing to do here for now.') });
-    const liTalkP3 = state(['b2b_li_people']) === 'ok' ? rows('b2b_li_people').filter((p) => p.status === 'talking' && p.priority === '3') : [];
+    /* Two-way means they replied to us, not just a Priority: a meeting held (Zoho, Outlook or Fireflies), an email from
+       them, or a reviewed LinkedIn conversation (talking, wrote last, said yes). Every Priority 1 prospect is checked, and
+       Priority 3 prospects with a reply on record are named so they can be moved up. */
+    const mtgBy = state(['mtg_people']) === 'ok' ? new Map(rows('mtg_people').map((x) => [x.id, x])) : new Map();
+    const mailBy = mailOk() ? new Map(rows('b2b_mail_people').map((x) => [x.id, x])) : new Map();
+    const liBy = state(['b2b_li_people']) === 'ok' ? new Map(rows('b2b_li_people').filter((x) => x.in_export).map((x) => [x.id, x])) : new Map();
+    const LI_TWO = new Set(['talking', 'they_wrote', 'said_yes']);
+    const proof = (p) => {
+      const out = [];
+      const mt = mtgBy.get(p.id); if (mt && mt.n > 0) out.push(`${intF(mt.n)} ${mt.n === 1 ? 'meeting' : 'meetings'} held, last ${dayF(mt.last)}`);
+      const ml = mailBy.get(p.id); if (ml && ml.n_in > 0) out.push(`${intF(ml.n_in)} ${ml.n_in === 1 ? 'email' : 'emails'} from them, last ${dayF(ctDay(ml.last_in))}`);
+      const lk = liBy.get(p.id); if (lk && lk.theirs > 0 && LI_TWO.has(lk.status)) out.push(`LinkedIn: ${lk.label.toLowerCase()}${lk.last_in ? ', last ' + dayF(ctDay(lk.last_in)) : ''}`);
+      return out;
+    };
+    const p1all = ppl.filter((p) => p.priority === '1').map((p) => ({ ...p, proof: proof(p) }));
+    const twoWay = p1all.filter((p) => p.proof.length);
+    const unproven = p1all.filter((p) => !p.proof.length);
+    const p3Talking = ppl.filter((p) => p.priority === '3').map((p) => ({ ...p, proof: proof(p) })).filter((p) => p.proof.length);
+    const srcGap = [mtgBy.size ? null : 'meetings', mailBy.size ? null : 'email', liBy.size ? null : 'LinkedIn'].filter(Boolean);
+    const TW_COLS = [
+      ['Name', (p) => link('Contacts', p.id, p.name)],
+      ['Company', (p) => (p.account_id ? link('Accounts', p.account_id, p.account) : p.account || 'No company')],
+      ['Priority', (p) => (p.priority ? 'P' + p.priority : 'Not set')],
+      ['LI Connect', (p) => p.li || 'Empty'],
+      ['Reply on record', (p) => (p.proof.length ? p.proof.join('; ') : 'None found: no meeting, email or LinkedIn reply')],
+    ];
+    const twNote = `A two-way conversation means they replied: a meeting held (Zoho, Outlook or Fireflies), an email from them, or a LinkedIn conversation (Mack’s export).${srcGap.length ? ` Not in this build: ${srcGap.join(', ')}, so some replies may be missing.` : ''} Calls, texts or WhatsApp the team didn’t log can’t be seen.`;
     const since = (pr('all') || {}).tracked;
-    kpi({ key: 'twoway', theme: 'good', icon: 'twoway', label: 'Two-way conversations', big: intF(p1c.length), sub: `Priority 1 and Connected now${liTalkP3.length ? `; LinkedIn shows ${intF(liTalkP3.length)} more still at Priority 3 (move them to 1)` : ''}`,
-      blocks: [{ title: since ? `New since ${dayF(since)} (Priority 3 to 1 while Connected)` : 'New (Priority 3 to 1 while Connected)', rows: evt('promoted') }],
-      go: () => showP3('Two-way conversations: Priority 1 and Connected now', p1c, `Priority 1 means a two-way conversation after a LinkedIn connection.${liTalkP3.length ? ` ${intF(liTalkP3.length)} more are in a two-way conversation on Mack’s LinkedIn but still at Priority 3; the queue’s Update Zoho items list them.` : ''} New conversations started since tracking began are under Today, Week and Month.`) });
+    kpi({ key: 'twoway', theme: 'good', icon: 'twoway', label: 'Two-way conversations', big: intF(twoWay.length),
+      sub: `of ${intF(p1all.length)} at Priority 1 have a reply on record (meeting, email or LinkedIn)`,
+      blocks: [
+        { title: 'Checked', rows: [['No reply found', intF(unproven.length)], ['Talking, still P3', intF(p3Talking.length)]] },
+        { title: since ? `New since ${dayF(since)} (Priority 3 to 1 while Connected)` : 'New (Priority 3 to 1 while Connected)', rows: evt('promoted') },
+      ],
+      flag: unproven.length || p3Talking.length ? `${unproven.length ? `${intF(unproven.length)} at Priority 1 show no reply: confirm or move back to 3. ` : ''}${p3Talking.length ? `${intF(p3Talking.length)} at Priority 3 already replied: move to 1.` : ''}` : null,
+      go: () => showTable('Two-way conversations, checked against replies', TW_COLS,
+        [...unproven, ...p3Talking, ...twoWay].map((p) => p), twNote + ` Listed: Priority 1 with no reply found (${intF(unproven.length)}), Priority 3 who already replied (${intF(p3Talking.length)}), then Priority 1 with a reply (${intF(twoWay.length)}).`) });
 
     const m = pr('month');
     p3Note.textContent = !per
