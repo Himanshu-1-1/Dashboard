@@ -2342,7 +2342,15 @@
           blk.append(bt);
         }
         const dl = el('dl', 'cc-p3-periods');
-        b.rows.forEach(([k, v]) => { const d = el('div'); d.append(el('dt', null, k), el('dd', null, v)); dl.append(d); });
+        b.rows.forEach(([k, v, go]) => {
+          const d = el('div', go ? 'cc-p3-cellgo' : null); d.append(el('dt', null, k), el('dd', null, v));
+          if (go) {
+            d.tabIndex = 0; d.setAttribute('role', 'button'); d.setAttribute('aria-label', `${k}: ${v}. Open the list.`);
+            d.addEventListener('click', (e) => { e.stopPropagation(); go(); });
+            d.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); go(); } });
+          }
+          dl.append(d);
+        });
         blk.append(dl);
         if (b.foot) blk.append(el('p', 'cc-p3-foot', b.foot));
         c.append(blk);
@@ -2406,7 +2414,11 @@
     kpi({ key: 'twoway', theme: 'good', icon: 'twoway', label: 'Two-way conversations', big: intF(twoWay.length + p3Talking.length),
       sub: 'Priority 1 and 3 prospects who replied (meeting, email or LinkedIn)',
       blocks: [
-        { title: 'Who replied', rows: [['Priority 1', intF(twoWay.length)], ['Priority 3', intF(p3Talking.length)], ['P1, no reply', intF(unproven.length)]] },
+        { title: 'Who replied', rows: [
+          ['Priority 1', intF(twoWay.length), () => showTable('Two-way conversations: Priority 1 who replied', TW_COLS, twoWay, twNote)],
+          ['Priority 3', intF(p3Talking.length), () => showTable('Two-way conversations: Priority 3 who replied', TW_COLS, p3Talking, twNote + ' They are in a conversation, so move them to Priority 1 in Zoho.')],
+          ['P1, no reply', intF(unproven.length), () => showTable('Priority 1 with no reply found', TW_COLS, unproven, twNote + ' Confirm the conversation and log it in Zoho, or move them back to Priority 3.')],
+        ] },
         { title: since ? `New since ${dayF(since)} (Priority 3 to 1 while Connected)` : 'New (Priority 3 to 1 while Connected)', rows: evt('promoted') },
       ],
       flag: unproven.length || p3Talking.length ? `${p3Talking.length ? `Move the ${intF(p3Talking.length)} at Priority 3 to 1. ` : ''}${unproven.length ? `${intF(unproven.length)} at Priority 1 show no reply: confirm or move back to 3.` : ''}` : null,

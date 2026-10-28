@@ -727,3 +727,7 @@ tr.cc-days-row > td { padding: 0 12px 12px; background: color-mix(in oklab, var(
 @media (prefers-reduced-motion: reduce) { .cc-days-chev { transition: none; } }
 .cc-p3-flaggo { font: inherit; font-weight: 600; color: inherit; background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; }
 .cc-p3-flaggo:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.cc-p3-cellgo { cursor: pointer; border-radius: 4px; }
+.cc-p3-cellgo dd { text-decoration: underline; text-underline-offset: 3px; }
+.cc-p3-cellgo:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
+.cc-p3-cellgo:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
