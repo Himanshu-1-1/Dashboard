@@ -1245,6 +1245,7 @@
   const mailFoot = el('p', 'cc-b2-mfoot');
   mailCard.append(mailStats, mailWeeks, mailKey, mailNote, mailTools, mailBody, mailFoot);
   const liCard = card('b2-li', 'LinkedIn with B2B prospects', 'From Mack’s LinkedIn data export, matched to Zoho by LinkedIn profile. Each conversation was read once and given a status and a short note; message text isn’t kept.');
+  const liPeriodBar = el('div', 'cc-tools cc-b2-chips');
   const liStats = el('div', 'cc-b2-mstats');
   const liNote = el('p', 'cc-b2-insight');
   const liTools = el('div', 'cc-tools cc-b2-chips');
@@ -1253,7 +1254,7 @@
   const liOut = el('div', 'cc-b2-wrap');
   const liOutNote = el('p', 'cc-b2-insight');
   const liFoot = el('p', 'cc-b2-mfoot');
-  liCard.append(liStats, liNote, liTools, liBody, liOutHead, liOutNote, liOut, liFoot);
+  liCard.append(liPeriodBar, liStats, liNote, liTools, liBody, liOutHead, liOutNote, liOut, liFoot);
   const mtg = el('section', 'cc-card cc-mt');
   mtg.id = 'b2-mtg';
   mtg.setAttribute('aria-labelledby', 'b2-mtg-title');
@@ -2140,6 +2141,21 @@
   /* LinkedIn conversations and connection requests (datasets li_dm and li_outreach; calcs b2b_li_people, b2b_li_queue). */
   let liFilter = 'they_wrote';
   let liAll = false;
+  /* The card opens on the export's month (Hemang, Oct 29, 2026: “keep it as October”): who is left to reply to, who we
+     wrote to and are waiting on, who we talked with, who connected that month, and who we connected with but never
+     messaged. B2B campaign prospects only; Do Not Contact and Priority 9 and 11 are left out. All time shows the
+     reviewed status of every conversation. */
+  let liPeriod = 'month';
+  let liGroup = 'reply';
+  const liLastFrom = (p) => (p.last_in && (!p.last_out || p.last_in > p.last_out) ? 'them' : p.last_out ? 'us' : null);
+  const LI_MONTH_GROUPS = [
+    ['reply', 'Left to reply', (p, inM) => inM(p.last_in) && liLastFrom(p) === 'them' && !['pitching', 'pleasantries'].includes(p.status), 'Their message that month is the latest in the thread, and it isn’t a sales pitch or a pleasantry. Answer on LinkedIn, or close the loop.'],
+    ['awaiting', 'We wrote, no answer yet', (p, inM) => inM(p.last_out) && liLastFrom(p) === 'us', 'Mack wrote that month and they haven’t answered. Follow up after a week, or switch to email.'],
+    ['talked', 'Talked both ways', (p, inM) => inM(p.last_in) && inM(p.last_out), 'Messages went both ways that month.'],
+    ['connected', 'Connected this month', (p, inM) => inM(p.connected_on ? p.connected_on + 'T12:00:00Z' : null), 'Accepted Mack’s request (or he accepted theirs) that month. Send the first message.'],
+    ['never', 'Connected, never messaged', (p) => p.actual === 'connected' && !p.msgs, 'Connected with Mack on LinkedIn at any time, with no message either way. Start the conversation.'],
+    ['pending', 'Request not accepted yet', (p) => p.actual === 'pending', 'Mack’s connection request is still pending. Follow up by email, or withdraw and retry later.'],
+  ];
   const LI_ORDER = ['they_wrote', 'said_yes', 'talking', 'no_reply', 'pitching', 'declined', 'pleasantries', 'none'];
   const liHas = () => state(['li_dm']) === 'ok' && rows('li_dm').length > 0;
   const liWaiting = (p) => p.reply_needed && p.last_in && !p.dnc && !['9', '11'].includes(p.priority)
@@ -2162,6 +2178,7 @@
     if (st === 'loading') { clear(); liNote.textContent = 'Loading Mack’s LinkedIn data…'; return; }
     if (!liHas() || st !== 'ok') {
       clear();
+      liPeriodBar.replaceChildren();
       liOutHead.hidden = true;
       liNote.textContent = liHas() || state(['li_dm']) === 'error' && !window.CC_MAIL_PRIVATE
         ? 'Mack’s LinkedIn data didn’t load, so LinkedIn conversations aren’t shown. The rest of this page doesn’t depend on it.'
@@ -2178,15 +2195,65 @@
     const yes = state(['b2b_li_queue']) === 'ok' ? rows('b2b_li_queue').filter((a) => a.type === 'Meeting ask') : [];
     const yesIds = new Set(yes.map((a) => a.id));
     const asOf = (inEx.find((p) => p.as_of) || {}).as_of || null;
+    const month = asOf ? ctDay(asOf).slice(0, 7) : todayCT().slice(0, 7);
+    const monthName = monthF(month) + ' ' + month.slice(0, 4);
+    const inM = (iso) => Boolean(iso) && ctDay(iso).slice(0, 7) === month;
+    liPeriodBar.replaceChildren(...[['month', monthName], ['all', 'All time']].map(([k, label]) => {
+      const b = el('button', 'cc-chip', label); b.type = 'button'; b.setAttribute('aria-pressed', String(liPeriod === k));
+      b.addEventListener('click', () => { liPeriod = k; liAll = false; drawLi(); });
+      return b;
+    }));
 
     liStats.replaceChildren();
     const stat = (big, label, sub, go, cls) => {
       const c = el('div', 'cc-b2-mstat' + (cls ? ' ' + cls : ''));
       c.append(el('b', null, big), el('span', null, label));
-      if (sub) c.append(el('small', null, sub));
+      if (sub) c.append(Array.isArray(sub) ? fillParts(el('small'), sub) : el('small', null, sub));
       if (go) press(c, go);
       liStats.append(c);
     };
+    if (liPeriod === 'month') {
+      const live = ppl.filter((p) => p.in_export && !p.dnc && !['9', '11'].includes(p.priority));
+      const groups = LI_MONTH_GROUPS.map(([k, label, keep, note]) => ({ k, label, note, list: live.filter((p) => keep(p, inM)) }));
+      const g = (k) => groups.find((x) => x.k === k);
+      const pickG = (k) => () => { liGroup = k; liAll = false; drawLi(); liTools.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); };
+      const asOfDay = asOf ? dayF(ctDay(asOf)) : null;
+      stat(intF(g('reply').list.length), 'left to reply to', `They wrote in ${monthF(month)} and the thread waits on us.`, pickG('reply'), g('reply').list.length ? 'cc-b2-mwarn' : null);
+      stat(intF(g('awaiting').list.length), 'we wrote, no answer yet', `Mack wrote in ${monthF(month)}; their reply hasn’t come.`, pickG('awaiting'));
+      stat(intF(g('never').list.length), 'connected, never messaged', 'No message either way since connecting: not reached out yet.', pickG('never'), g('never').list.length ? 'cc-b2-mwarn' : null);
+      const anyM = live.filter((p) => inM(p.last_in) || inM(p.last_out));
+      stat(intF(anyM.length), `prospects messaged in ${monthF(month)}`, [nb(intF(g('talked').list.length), pickG('talked')), ' talked both ways; ', nb(intF(g('connected').list.length), pickG('connected')), ' connected this month.'], () => showLiPeople(`Messaged on LinkedIn in ${monthName}`, anyM));
+      liNote.textContent = `${monthName}${asOfDay ? ` up to ${asOfDay}, the date of Mack’s export` : ''}. B2B campaign prospects only (Do Not Contact and Priority 9 and 11 left out), matched to Zoho by LinkedIn profile. All time shows every conversation’s reviewed status.`;
+      if (!groups.some((x) => x.k === liGroup && x.list.length)) liGroup = (groups.find((x) => x.list.length) || groups[0]).k;
+      liTools.replaceChildren(...groups.map((x) => {
+        const b = el('button', 'cc-chip', `${x.label} (${intF(x.list.length)})`);
+        b.type = 'button'; b.setAttribute('aria-pressed', String(liGroup === x.k));
+        b.addEventListener('click', () => { liGroup = x.k; liAll = false; drawLi(); });
+        return b;
+      }));
+      const cur = g(liGroup);
+      const lst = cur.list.slice().sort((x, y) => String(y.last || y.connected_on || '').localeCompare(String(x.last || x.connected_on || '')) || String(x.name).localeCompare(String(y.name)));
+      const linkCol = ['On LinkedIn', (p) => (p.actual === 'connected' ? 'Connected' + (p.connected_on ? ', ' + fullDayF(p.connected_on) : '') : p.actual === 'pending' ? 'Request pending' + (p.invited_at ? ' since ' + fullDayF(ctDay(p.invited_at)) : '') : 'Not connected')];
+      const mcols = ['never', 'pending', 'connected'].includes(liGroup) ? LI_COLS.filter(([h]) => ['Name', 'Company', 'Priority', 'Assigned'].includes(h)).concat([linkCol]) : LI_COLS;
+      const t2 = el('table', 'cc-tbl'); const th2 = el('thead'); const hr2 = el('tr');
+      mcols.forEach(([h]) => { const c = el('th', null, h); c.scope = 'col'; hr2.append(c); });
+      th2.append(hr2); t2.append(th2);
+      const tb2 = el('tbody');
+      lst.slice(0, liAll ? 300 : 12).forEach((p) => {
+        const tr = rowOpens(el('tr'), p.id);
+        mcols.forEach(([h, f]) => { const td = el('td', h === 'Their last message' && liGroup === 'reply' ? 'cc-b2-late' : null); const v = f(p); if (v instanceof Node) td.append(v); else td.textContent = v; tr.append(td); });
+        tb2.append(tr);
+      });
+      t2.append(tb2);
+      liBody.replaceChildren(el('p', 'cc-b2-insight', cur.note), lst.length ? t2 : el('p', 'cc-b2-insight', 'Nobody here.'));
+      if (lst.length > 12) {
+        const more = el('button', 'cc-go', liAll ? 'Show the first 12' : `Show all ${intF(Math.min(lst.length, 300))}`);
+        more.type = 'button';
+        more.addEventListener('click', () => { liAll = !liAll; drawLi(); });
+        const bar = el('div', 'cc-tools'); bar.append(more);
+        liBody.append(bar);
+      }
+    } else {
     stat(intF(waiting.length), 'LinkedIn messages waiting on us', `Their message asks or offers something, unanswered, in the last ${LI_REPLY_DAYS} days.`, () => showLiPeople('LinkedIn messages waiting on us', waiting, 'Their latest message asks a question, offers a time, shares a contact or proposes something, and Mack hasn’t answered. The queue drops one once we email them or meet them after it.'), waiting.length ? 'cc-b2-mwarn' : null);
     stat(intF(yes.length), 'said yes, nothing booked', 'They agreed to talk on LinkedIn; no meeting held or booked since.', () => showLiPeople('Said yes on LinkedIn, nothing booked', ppl.filter((p) => yesIds.has(p.id)), 'Book the meeting they agreed to (SOP 4), then log it in Zoho.'), yes.length ? 'cc-b2-mwarn' : null);
     stat(pct(wroteBack.length, messaged.length), 'of the prospects Mack messaged wrote back', `${intF(wroteBack.length)} of ${intF(messaged.length)}.`, () => showLiPeople('Messaged on LinkedIn and wrote back', wroteBack, `${intF(wroteBack.length)} of the ${intF(messaged.length)} prospects Mack messaged have written back at least once.`));
@@ -2226,6 +2293,7 @@
       more.addEventListener('click', () => { liAll = !liAll; drawLi(); });
       const bar = el('div', 'cc-tools'); bar.append(more);
       liBody.append(bar);
+    }
     }
 
     /* Connection requests by month: everyone Mack invited, not only B2B prospects. */
