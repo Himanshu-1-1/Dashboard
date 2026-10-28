@@ -6,9 +6,9 @@ so LI Connect changes are found here by comparing each B2B contact's value with 
 Priority and LI Connect values and times only: no names, emails or other details are written.
 
   build   DIR   DIR/contacts.json (+ DIR/prev/ from the last run, if any) -> DIR/p3_base.json, DIR/li_events.json,
-                DIR/p3_state.json
-  jsfile  DIR   DIR/p3_base.json + DIR/li_events.json -> DIR/p3.js (window.__P3__), the file the p3-snapshot branch
-                carries for the locked public site; refuses any field that isn't an ID, value or time
+                DIR/p3_state.json and DIR/p3_log.json (the two lists in one, for the dashboards)
+  jsfile  DIR   DIR/p3_log.json -> DIR/p3.js (window.__P3__, dataset p3_log), the file the p3-snapshot branch carries for
+                the locked public site; refuses any field that isn't an ID, value or time
 
 contacts.json: {"data": [{"id", "Priority", "LI_Connect", "Modified_Time"}, ...]}, every contact tagged
 "May 2026 - 100 B2B" from Zoho COQL, all pages joined.
@@ -25,6 +25,10 @@ Modified_Time when that falls after the previous run (the last edit, so close to
 
 p3_state.json: {"as_of", "li": {contact_id: value}}: what the next run compares against.
 
+p3_log.json: the baseline and the changes as one list of rows with the same fields, {kind: "base" | "li", contact_id,
+priority, li, from, to, at} (base rows fill priority and li, change rows from and to). The dashboards load this one
+file, which is never empty, since a dashboard can't load a file with no rows.
+
 A run stops without writing anything when the contact list is under 80% of the previous run's (an incomplete query).
 """
 import json
@@ -37,8 +41,7 @@ LI_OK = re.compile(r'^[A-Za-z][A-Za-z ]{0,39}$')
 PR_OK = re.compile(r'^\d{1,3}$')
 ID_OK = re.compile(r'^\d{6,25}$')
 ISO = re.compile(r'^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$')
-EVENT_FIELDS = {'contact_id', 'field', 'from', 'to', 'at'}
-BASE_FIELDS = {'contact_id', 'priority', 'li', 'at'}
+LOG_FIELDS = {'kind', 'contact_id', 'priority', 'li', 'from', 'to', 'at'}
 
 
 def stamp(dt):
@@ -122,24 +125,26 @@ def build(d):
     save(d + '/p3_base.json', base)
     save(d + '/li_events.json', events)
     save(d + '/p3_state.json', {'as_of': now, 'li': li})
+    log = [{'kind': 'base', 'contact_id': b['contact_id'], 'priority': b['priority'], 'li': b['li'], 'from': None, 'to': None, 'at': b['at']} for b in base]
+    log += [{'kind': 'li', 'contact_id': e['contact_id'], 'priority': None, 'li': None, 'from': e['from'], 'to': e['to'], 'at': e['at']} for e in events]
+    save(d + '/p3_log.json', log)
     print('contacts %d, baseline rows added %d, LI Connect changes found %d (%d in the log)%s'
           % (len(cur), added, new_events, len(events), '' if state else '; first run, baseline only'))
 
 
 def jsfile(d):
-    base = load(d + '/p3_base.json', None)
-    events = load(d + '/li_events.json', None)
-    if base is None or events is None:
-        sys.exit('run build first')
-    for b in base:
-        if set(b) != BASE_FIELDS or not ID_OK.match(str(b['contact_id'])) or not ISO.match(b['at'] or '') \
-                or (b['priority'] is not None and not PR_OK.match(b['priority'])) or (b['li'] is not None and not LI_OK.match(b['li'])):
+    log = load(d + '/p3_log.json', None)
+    if not log:
+        sys.exit('p3_log.json is missing or empty: run build first')
+    val = lambda v, ok: v is None or bool(ok.match(v))
+    for r in log:
+        if set(r) != LOG_FIELDS or r['kind'] not in ('base', 'li') or not ID_OK.match(str(r['contact_id'])) or not ISO.match(r['at'] or ''):
+            sys.exit('unexpected row, not publishing')
+        if r['kind'] == 'base' and not (val(r['priority'], PR_OK) and val(r['li'], LI_OK) and r['from'] is None and r['to'] is None):
             sys.exit('unexpected baseline row, not publishing')
-    for e in events:
-        if set(e) != EVENT_FIELDS or e['field'] != 'LI_Connect' or not ID_OK.match(str(e['contact_id'])) or not ISO.match(e['at'] or '') \
-                or any(x is not None and not LI_OK.match(x) for x in (e['from'], e['to'])):
-            sys.exit('unexpected event row, not publishing')
-    body = {'generated_at': stamp(datetime.now(timezone.utc)), 'datasets': {'p3_base': base, 'li_events': events}}
+        if r['kind'] == 'li' and not (r['priority'] is None and r['li'] is None and val(r['from'], LI_OK) and val(r['to'], LI_OK)):
+            sys.exit('unexpected change row, not publishing')
+    body = {'generated_at': stamp(datetime.now(timezone.utc)), 'datasets': {'p3_log': log}}
     with open(d + '/p3.js', 'w') as f:
         f.write('window.__P3__ = ' + json.dumps(body) + ';\n')
     print('wrote', d + '/p3.js')

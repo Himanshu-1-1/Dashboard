@@ -485,6 +485,20 @@
      contact's baseline has no known earlier value and is used only as the starting point for the next one. */
   dash.loader('p3_hist', { description: 'Zoho’s COQL answer as rows: Full_Name is the contact (Full_Name_id), Priority the value it moved to, Modified_Time when.', fn: coqlRows });
   dash.loader('other_links', { description: 'Zoho’s COQL answer as rows: Other_Contacts is the contact, Other_Accounts the extra Account linked to them.', fn: coqlRows });
+  /* The baseline and the LI Connect changes travel as one file, p3_log (a dashboard can't load a file with no rows, and
+     the change list starts empty): kind "base" rows are p3_base, kind "li" rows are li_events. */
+  dash.calc('p3_base', {
+    title: 'Priority and LI Connect baseline',
+    description: 'Each B2B contact’s Priority and LI Connect when tracking began (Oct 28, 2026) or when the daily check first saw them: the base rows of p3_log.',
+    inputs: ['p3_log'],
+    fn: (p3_log) => p3_log.filter((r) => r.kind === 'base').map((r) => ({ contact_id: String(r.contact_id), priority: prOf(r.priority), li: liOf(r.li), at: r.at })),
+  });
+  dash.calc('li_events', {
+    title: 'LI Connect changes',
+    description: 'One row per LI Connect change found by the daily check: the li rows of p3_log.',
+    inputs: ['p3_log'],
+    fn: (p3_log) => p3_log.filter((r) => r.kind === 'li').map((r) => ({ contact_id: String(r.contact_id), field: 'LI_Connect', from: liOf(r.from), to: liOf(r.to), at: r.at })),
+  });
   dash.calc('p3_events', {
     title: 'Priority and LI Connect changes',
     description: 'One row per change, {contact_id, field: Priority or LI_Connect, from, to, at}. Priority from Zoho’s Priority History (the value before is the contact’s previous history row, or their baseline when the change came after it); LI Connect from the daily snapshot (at = the contact’s last edit when it falls since the previous snapshot, otherwise the snapshot time).',
@@ -1051,7 +1065,7 @@
   const mtgTitleBox = el('div');
   const mtgTitle = el('h2', null, 'P1 Meeting Frequency & Relationship Depth');
   mtgTitle.id = 'b2-mtg-title';
-  mtgTitleBox.append(mtgTitle, el('p', 'cc-b2-insight', 'Priority 1 partners (two-way conversation): how often we have met each. Meetings come from Zoho and the team’s Outlook calendars. Who to talk to next is at the bottom of this page.'));
+  mtgTitleBox.append(mtgTitle, el('p', 'cc-b2-insight', 'Priority 1 partners (two-way conversation): how often we have met each. Meetings come from Zoho and the team’s Outlook calendars. Who to talk to next is right below.'));
   mtgHead.append(mtgTitleBox);
   const mtgPath = el('div', 'cc-mt-path');
   const mtgBar = el('ol', 'cc-mt-bar');
@@ -1245,7 +1259,7 @@
     if (drillFrom && drillFrom !== drill && drillFrom.parentElement === root && drillFrom.nextElementSibling !== drill) drillFrom.after(drill);
   };
 
-  root.append(pf, score, p3, na, mtg, pmCard, rw, rb, mailCard, grid1, drill, nextCard, queueCard, monCard, grid2, sopCard, dqCard, plan, br);
+  root.append(pf, score, p3, na, mtg, plan, pmCard, rw, rb, mailCard, grid1, drill, nextCard, queueCard, monCard, grid2, sopCard, dqCard, br);
   /* SOP links: an animated playbook page instead of the word. The link keeps its title and aria-label. */
   const SOP_ICON = '<svg class="cc-sop-ico" viewBox="0 0 32 36" aria-hidden="true" focusable="false">'
     + '<g class="cc-sop-spark"><circle cx="27" cy="5" r="1.4"/><circle cx="4" cy="9" r="1"/><circle cx="29" cy="15" r="1"/><path d="M24 2.5v3M22.5 4h3"/></g>'

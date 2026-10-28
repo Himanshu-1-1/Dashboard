@@ -245,7 +245,7 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
     const json = window.__DASH_DATA__;
     const extras = [window.__BOXBYTE__, window.__COURIER__, window.__RESEARCH__, window.__MAIL__, window.__CAL__, window.__FF__, window.__LINKSYNC__, window.__P3__, window.__SEALED__].filter((x) => x && x.datasets);
     if (json && json.datasets) {
-      raw = { ...json, datasets: Object.assign({ wi_research: [], wi_mack: [], li_sync: [], b2b_cal: [], b2b_ff: [], p3_base: [], li_events: [] }, json.datasets, ...extras.map((x) => x.datasets)) };
+      raw = { ...json, datasets: Object.assign({ wi_research: [], wi_mack: [], li_sync: [], b2b_cal: [], b2b_ff: [], p3_log: [] }, json.datasets, ...extras.map((x) => x.datasets)) };
       cache = {};
       runAll();
       stamp('Data from Zoho CRM as of ' + when(json.generated_at) + '.');
