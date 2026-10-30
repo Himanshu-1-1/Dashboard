@@ -436,6 +436,7 @@ text.cc-clickable { cursor: pointer; }
 .cc-bcol-head { display: grid; gap: 2px; }
 .cc-bcol-top { display: flex; justify-content: space-between; align-items: baseline; gap: var(--cds-gap-sm); }
 .cc-bcol-top h4 { margin: 0; font-size: var(--cds-font-size-body); font-weight: var(--cds-font-weight-medium); }
+.cc-bcol-step { display: inline-grid; place-items: center; min-width: 1.5em; height: 1.5em; margin-right: 6px; border-radius: 50%; background: color-mix(in oklab, var(--color-fg) 12%, var(--color-bg)); color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; vertical-align: 1px; }
 .cc-bcol-n { font-variant-numeric: tabular-nums; font-weight: var(--cds-font-weight-medium); }
 .cc-bcol-sub { margin: 0; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
 .cc-bgroup { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); text-transform: uppercase; letter-spacing: .04em; }
@@ -1312,7 +1313,7 @@ body.cc-locked .cc { display: none; }
       <div class="cc-dkpis dash-skeleton" id="dl-kpi-row" data-source="deals_tagged"></div>
     </article>
     <article class="cc-card" id="dl-board-card">
-      <div class="cc-card-head"><h3>Deals board</h3><p>Open stages from closest to signing, then won and lost. Each column shows its deals, the known value and how many have an amount. Select a deal to open it in Zoho.</p></div>
+      <div class="cc-card-head"><h3>Deals board</h3><p>Open stages in order, 1 Identify to 4 Proposals, then 5 Closed Won, 6 Closed Lost and 7 Lost to Competition. Each column shows its deals, the known value and how many have an amount. Select a deal to open it in Zoho.</p></div>
       <div class="cc-board dash-skeleton" id="dl-board" data-source="deals_tagged"></div>
       <p class="cc-insight" id="ins-dl-board"></p>
     </article>
@@ -4806,7 +4807,7 @@ dash.calc('attention', {
   };
   const DRILL_STAGE = {};
   const STAGE_FIELDS = ['stage_label', 'stage'];
-  const STAGE_SEQ = ['Proposals', 'Discovery', 'Hold', 'Identify', 'Closed Won', 'Closed', 'Closed Lost', 'Closed Lost to Competition'];
+  const STAGE_SEQ = ['Identify', 'Hold', 'Discovery', 'Proposals', 'Closed Won', 'Closed', 'Closed Lost', 'Closed Lost to Competition'];
   const stageRankOf = (s) => { const i = STAGE_SEQ.indexOf(s); return i < 0 ? 99 : i; };
   const drawDrill = (key) => {
     const cfg = DRILLS[key];
@@ -5084,7 +5085,7 @@ dash.calc('attention', {
   const DL_KIND_ORDER = ['Client', 'Partnership', 'Platform provider', 'No Deal Type'];
   const DL_KIND_COLOR = { Client: dash.colors[4], Partnership: dash.colors[3], 'Platform provider': dash.colors[7], 'No Deal Type': 'var(--cds-chart-muted)' };
   const DL_KIND_NAME = { Client: 'Client', Partnership: 'Partnership', 'Platform provider': 'Platform', 'No Deal Type': 'No Deal Type' };
-  const DL_OPEN = ['Proposals', 'Discovery', 'Hold', 'Identify'];
+  const DL_OPEN = ['Identify', 'Hold', 'Discovery', 'Proposals'];
   const DL_CLOSED = [['Closed', 'Closed Won'], ['Closed Lost', 'Closed Lost'], ['Closed Lost to Competition', 'Lost to Competition']];
   const DL_AGES = [
     ['lt14', 'Under 14 days', 'color-mix(in oklab, var(--color-fg) 16%, var(--color-panel))'],
@@ -5224,7 +5225,9 @@ dash.calc('attention', {
       const bHost = root.querySelector('#dl-board-card');
       const colN = el('span', 'cc-bcol-n', intF(list.length));
       if (list.length && bHost) listable(colN, bHost, 'board:' + stage, 'Show deals at ' + label, () => dlSpec('At ' + label, (d) => d.stage === stage, { lost: LOST.includes(stage) }));
-      top.append(el('h4', null, label), colN);
+      const h4 = el('h4');
+      h4.append(el('span', 'cc-bcol-step', String(i + 1)), label);
+      top.append(h4, colN);
       const colSub = el('p', 'cc-bcol-sub');
       if (known.length && bHost) {
         const amt = el('b', 'cc-num-link', known.length + ' of ' + list.length);
