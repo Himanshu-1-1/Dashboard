@@ -2,12 +2,13 @@
 .cc-pv-launch { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--cds-gap-md); margin-bottom: var(--cds-gap-lg); padding: var(--cds-pad-md) var(--cds-pad-lg); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-panel); }
 .cc-pv-launch-txt { display: grid; gap: 2px; max-width: 72ch; font-size: var(--cds-font-size-body); line-height: 1.45; }
 .cc-pv-launch-txt span { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
-.cc-pv-open, .cc-pv-exit { font: inherit; font-size: var(--cds-font-size-body); font-weight: var(--cds-font-weight-medium, 500); padding: 8px 14px; border-radius: var(--cds-radius); cursor: pointer; white-space: nowrap; }
+.cc-pv-launch-acts { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); }
+.cc-pv-open, .cc-pv-exit, .cc-pv-copy { font: inherit; font-size: var(--cds-font-size-body); font-weight: var(--cds-font-weight-medium, 500); padding: 8px 14px; border-radius: var(--cds-radius); cursor: pointer; white-space: nowrap; }
 .cc-pv-open { border: 1px solid var(--color-fg); background: var(--color-fg); color: var(--color-bg); }
-.cc-pv-exit { border: 1px solid var(--color-border-line); background: var(--color-panel); color: var(--color-fg); }
+.cc-pv-exit, .cc-pv-copy { border: 1px solid var(--color-border-line); background: var(--color-panel); color: var(--color-fg); }
 .cc-pv-open:hover { opacity: .88; }
-.cc-pv-exit:hover { border-color: var(--color-fg-muted); }
-.cc-pv-open:focus-visible, .cc-pv-exit:focus-visible, .cc-pv-input:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
+.cc-pv-exit:hover, .cc-pv-copy:hover { border-color: var(--color-fg-muted); }
+.cc-pv-open:focus-visible, .cc-pv-exit:focus-visible, .cc-pv-copy:focus-visible, .cc-pv-input:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
 
 html.cc-pv-on, html.cc-pv-on body { overflow: hidden; }
 .cc-pv { position: fixed; inset: 0; z-index: 2147483000; overflow-y: auto; background: var(--color-bg); color: var(--color-fg); font-family: var(--font-anthropic-sans, inherit); -webkit-font-smoothing: antialiased; }

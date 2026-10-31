@@ -6,12 +6,14 @@
 (() => {
   if (window.CC_PV) return;
   const LOST = ['Closed Lost', 'Closed Lost to Competition'];
+  const slugOf = (s) => String(s || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  const HASH_RE = /^#partner(?:=([a-z0-9-]+))?$/i;
   const statusOf = (stage) => (stage === 'Closed' ? 'won' : LOST.includes(stage) ? 'lost' : 'open');
   const STAGE_LABEL = { won: 'Won', lost: 'Lost' };
 
   dash.calc('pv_partners', {
     title: 'Signed referral partners and the client deals they referred',
-    description: 'One row per party with a signed Referral Partner Agreement in Zoho Sign (agreements calc: signed once any copy is signed; internal test sends left out), with the client deals they referred (rb_rows: every Deal Type except Reseller/ Referral Partner and Platform Provider Agreement, so their own agreement deal never shows). A deal belongs to a partner when its Referred By Contact is that partner, or when it has no Referred By Contact and its Referred By Account is the partner’s company; for an agreement signed by a company with no contact, every deal whose Referred By Account is that company. Stages: Closed shows as Won, Closed Lost and Closed Lost to Competition as Lost, the rest as in Zoho. Dates are Central time.',
+    description: 'One row per party with a signed Referral Partner Agreement (with a URL slug from their name, made unique when two names match) in Zoho Sign (agreements calc: signed once any copy is signed; internal test sends left out), with the client deals they referred (rb_rows: every Deal Type except Reseller/ Referral Partner and Platform Provider Agreement, so their own agreement deal never shows). A deal belongs to a partner when its Referred By Contact is that partner, or when it has no Referred By Contact and its Referred By Account is the partner’s company; for an agreement signed by a company with no contact, every deal whose Referred By Account is that company. Stages: Closed shows as Won, Closed Lost and Closed Lost to Competition as Lost, the rest as in Zoho. Dates are Central time.',
     inputs: ['agreements', 'rb_rows'],
     fn: (agreements, rb_rows) => {
       const seen = new Set();
@@ -37,7 +39,12 @@
             signed_on: String(a.completed || a.sent || '').slice(0, 10) || null, deals,
           };
         })
-        .sort((x, y) => x.name.localeCompare(y.name));
+        .sort((x, y) => x.name.localeCompare(y.name))
+        .map((p, i, all) => {
+          const base = slugOf(p.name) || 'partner';
+          const clash = all.some((q, j) => j !== i && (slugOf(q.name) || 'partner') === base);
+          return { ...p, slug: clash ? base + '-' + String(p.contact_id || p.account_id || i).slice(-6) : base };
+        });
     },
   });
 
@@ -46,7 +53,8 @@
   const fmtMoney = (v) => (v > 0 ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v) : '—');
   const plural = (n, one, many) => `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
 
-  const st = { open: false, key: null, active: -1, list: [], overlay: null, inerted: [] };
+  const st = { open: false, key: null, want: null, active: -1, list: [], overlay: null, inerted: [] };
+  const setHash = (h) => { try { history.replaceState(null, '', h ? '#' + h : location.pathname + location.search); } catch (err) { /* sandboxed frame */ } };
 
   const partners = () => { const d = dash.data('pv_partners'); return d && d.status === 'ok' ? d.data || [] : null; };
   const loadState = () => { const d = dash.data('pv_partners'); return d ? d.status : 'loading'; };
@@ -85,7 +93,9 @@
   const closeList = (ui) => { ui.listbox.hidden = true; ui.input.setAttribute('aria-expanded', 'false'); ui.input.removeAttribute('aria-activedescendant'); st.active = -1; };
   const choose = (ui, p) => {
     st.key = p.key;
+    st.want = null;
     ui.input.value = p.name;
+    setHash('partner=' + p.slug);
     closeList(ui);
     renderBody(ui);
     ui.input.blur();
@@ -99,6 +109,18 @@
     const ls = loadState();
     if (ls === 'loading') { body.append(el('p', 'cc-pv-empty', 'Loading signed partners and their deals…')); return; }
     if (ls !== 'ok') { body.append(el('p', 'cc-pv-empty', 'Partner view can’t load right now: ' + loadError() + '.')); return; }
+    if (st.want) {
+      const hit = (partners() || []).find((x) => x.slug === st.want);
+      const asked = st.want;
+      st.want = null;
+      if (hit) { st.key = hit.key; ui.input.value = hit.name; }
+      else {
+        st.key = null;
+        setHash('partner');
+        body.append(el('p', 'cc-pv-empty', `This link names “${asked}”, which isn’t a signed partner. Choose a partner above.`));
+        return;
+      }
+    }
     const p = (partners() || []).find((x) => x.key === st.key);
     if (!p) {
       st.key = null;
@@ -217,18 +239,25 @@
   };
 
   let ui = null;
-  const open = () => {
-    if (st.open) return;
+  const open = (want) => {
+    const slug = typeof want === 'string' && want ? want.toLowerCase() : null;
+    if (st.open) {
+      if (slug && ui) { st.want = slug; closeList(ui); renderBody(ui); }
+      return;
+    }
     st.open = true;
     st.key = null;
+    st.want = slug;
     if (!ui) ui = build();
     ui.input.value = '';
+    setHash(slug ? 'partner=' + slug : 'partner');
     st.inerted = [...document.body.children].filter((n) => n !== ui.overlay && !n.inert && n.tagName !== 'SCRIPT');
     st.inerted.forEach((n) => { n.inert = true; n.setAttribute('aria-hidden', 'true'); });
     document.body.append(ui.overlay);
     document.documentElement.classList.add('cc-pv-on');
     renderBody(ui);
-    ui.input.focus();
+    if (!slug) ui.input.focus();
+    else ui.exit.focus();
   };
   const close = () => {
     if (!st.open) return;
@@ -238,8 +267,17 @@
     st.inerted.forEach((n) => { n.inert = false; n.removeAttribute('aria-hidden'); });
     st.inerted = [];
     document.documentElement.classList.remove('cc-pv-on');
+    const refTab = document.getElementById('tab-ref');
+    const refPage = document.getElementById('ref');
+    if (refTab && refPage && refPage.hidden) refTab.click();
+    setHash('ref');
     const btn = document.getElementById('cc-pv-open');
     if (btn) btn.focus();
+  };
+  const fromHash = () => {
+    const m = location.hash.match(HASH_RE);
+    if (m) open(m[1] || null);
+    else if (st.open) close();
   };
 
   const mount = () => {
@@ -248,17 +286,31 @@
     const box = el('div', 'cc-pv-launch');
     box.id = 'cc-pv-launch';
     const txt = el('div', 'cc-pv-launch-txt');
-    txt.append(el('strong', null, 'Partner view'), el('span', null, 'Shows one signed partner’s referred deals and hides the rest of the dashboard, for a screen share. Pick the partner before you start sharing: the list shows every signed partner’s name.'));
+    txt.append(el('strong', null, 'Partner view'), el('span', null, 'Shows one signed partner’s referred deals and hides the rest of the dashboard, for a screen share. Pick the partner before you start sharing: the list shows every signed partner’s name. Its own link is this page’s address with #partner at the end (add =their-name, as the address shows once you pick, to open one partner straight away). The link still asks for the team passcode, so it’s for us, not for partners.'));
     const btn = el('button', 'cc-pv-open', 'Open partner view');
     btn.id = 'cc-pv-open';
     btn.type = 'button';
-    btn.addEventListener('click', open);
-    box.append(txt, btn);
+    btn.addEventListener('click', () => open());
+    const acts = el('div', 'cc-pv-launch-acts');
+    if (/^https?:$/.test(location.protocol) && /\.github\.io$/i.test(location.hostname)) {
+      const copy = el('button', 'cc-pv-copy', 'Copy link');
+      copy.type = 'button';
+      copy.title = 'Copies this dashboard’s address that opens straight into Partner view';
+      copy.addEventListener('click', async () => {
+        const url = location.href.split('#')[0] + '#partner';
+        try { await navigator.clipboard.writeText(url); copy.textContent = 'Link copied'; } catch (err) { copy.textContent = url; }
+        setTimeout(() => { copy.textContent = 'Copy link'; }, 2500);
+      });
+      acts.append(copy);
+    }
+    acts.append(btn);
+    box.append(txt, acts);
     const intro = sec.querySelector('.cc-intro');
     if (intro) intro.after(box); else sec.prepend(box);
   };
 
   dash.onData(() => { if (st.open && ui) { if (!ui.listbox.hidden) renderList(ui); renderBody(ui); } });
   window.CC_PV = { open, close };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount); else mount();
+  const start = () => { mount(); fromHash(); window.addEventListener('hashchange', fromHash); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();

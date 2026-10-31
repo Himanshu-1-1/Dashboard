@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Partner view</title>
+<style>
+  :root { color-scheme: light dark; }
+  html, body { margin: 0; }
+  body { background: #f3f2ee; color: #0b0b0b; font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; display: grid; place-items: center; min-height: 100vh; padding: 16px; box-sizing: border-box; }
+  @media (prefers-color-scheme: dark) { body { background: #121211; color: #fff; } a { color: #8fb8ff; } }
+  p { margin: 0; text-align: center; }
+</style>
+<script>
+  (() => {
+    const slug = (location.hash.slice(1).match(/^[a-z0-9-]+$/i) || [''])[0].toLowerCase();
+    location.replace('../#partner' + (slug ? '=' + slug : ''));
+  })();
+</script>
+</head>
+<body>
+<p>Opening Partner view… <a href="../#partner">Continue</a></p>
+</body>
+</html>
