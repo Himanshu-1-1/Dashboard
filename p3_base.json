@@ -1,0 +1,3440 @@
+[
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000001763899",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000001763939",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000001907256",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000001952001",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000001952081",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000001952194",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000001997112",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002433001",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002480205",
+  "li": "Connected",
+  "priority": "99"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002480248",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002480291",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002501001",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002501075",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002616043",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002621001",
+  "li": "Connected",
+  "priority": null
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002682076",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002682103",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002682184",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002682222",
+  "li": "Connected",
+  "priority": "9"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002683021",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002683101",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002708266",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002708288",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002708310",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002708332",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002708354",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002708376",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002708420",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002708574",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002708596",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002708684",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002708728",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002708750",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002708772",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002708838",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002708860",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002708882",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002708926",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002708970",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002708992",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002710071",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002715063",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002715064",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002715065",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002715073",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002715075",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002715076",
+  "li": "Connected",
+  "priority": "9"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002715077",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002715080",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002715081",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002715082",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002715085",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002729048",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002733001",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002733082",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002733120",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002733158",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002733196",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002733340",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002733362",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002733386",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002733424",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002738016",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002738066",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002738101",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002738227",
+  "li": "Connected",
+  "priority": "9"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002745014",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002745058",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002745124",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002745180",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002745202",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002745224",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002745246",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002745268",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002745334",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002745356",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002769013",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813054",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813063",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813168",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813187",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813198",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813204",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813214",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813224",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813225",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813226",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813227",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813228",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813229",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813231",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813232",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813235",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813236",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813237",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813238",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813240",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813242",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813244",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813245",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813246",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813247",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813248",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813249",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813251",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813252",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813253",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813254",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813260",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813264",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813274",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813280",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813300",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813303",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813304",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813308",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813309",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813310",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813312",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813322",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813336",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813350",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813353",
+  "li": "Connected",
+  "priority": "11"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813385",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813386",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813388",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813389",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813390",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813391",
+  "li": "Connected",
+  "priority": "9"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002813392",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002853001",
+  "li": "Connected",
+  "priority": "99"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870022",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870024",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870025",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870028",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870029",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870030",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870031",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870037",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870053",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870055",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870063",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870076",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870077",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870086",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870098",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870105",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870111",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870112",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870115",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870122",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870123",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870124",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870126",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870128",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870130",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870132",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870133",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870134",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870135",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870136",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870137",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870138",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870139",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870140",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870142",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870143",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870144",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870145",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870146",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870147",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870148",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870149",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870150",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870153",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870154",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870157",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870158",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870159",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870160",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870161",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870162",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870163",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870164",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870165",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870166",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870167",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870168",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870169",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870171",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870172",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870173",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870174",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870175",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870176",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870180",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870182",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870184",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870186",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870187",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870188",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870189",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870190",
+  "li": "Connected",
+  "priority": "9"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870191",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870192",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870193",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870194",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870195",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870196",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870197",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870198",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870203",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870204",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870205",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870206",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870208",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870209",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870210",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870212",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870219",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870220",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870221",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870222",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870224",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870225",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870226",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870227",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870228",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870229",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870230",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870231",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870232",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870234",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870235",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870236",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870237",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870238",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870240",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870241",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870242",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870244",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870246",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870247",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870248",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870249",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870250",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870251",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870253",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870255",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870256",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870258",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870259",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870260",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870261",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870264",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870265",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870266",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870268",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870273",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870276",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870281",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870282",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870284",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870286",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870289",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870290",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870291",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870292",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870293",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870295",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870296",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870297",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870298",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870299",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870300",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870301",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870302",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870303",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870304",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870305",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870306",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870307",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870308",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870310",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870314",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870315",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870317",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870318",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870319",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870321",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870324",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870326",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870327",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870328",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870329",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870330",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870331",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870332",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870333",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870334",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870335",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870336",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870337",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870338",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870339",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870340",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870341",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870342",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870345",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870346",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870348",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870349",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870350",
+  "li": "Connected",
+  "priority": "9"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870352",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870353",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870354",
+  "li": "Connected",
+  "priority": "99"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870355",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870356",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870357",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870358",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870359",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870360",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870362",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870365",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870366",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870368",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870369",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870374",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870377",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870378",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870379",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870381",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870383",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870384",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870387",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870388",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870389",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870390",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870391",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870392",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870394",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870395",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870397",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870399",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870400",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870401",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870402",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870404",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870406",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870407",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870408",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870409",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870411",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870412",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870413",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870414",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870415",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870416",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870418",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870419",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870420",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870421",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870422",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870424",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870427",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870429",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870431",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870432",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870433",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870434",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870437",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870440",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870442",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870444",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870445",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870446",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870447",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870448",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870449",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870451",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870452",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870455",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870458",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870459",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870460",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870461",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870462",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870463",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870466",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870467",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870468",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870469",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870470",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870471",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870474",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870475",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870476",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870478",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870479",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870480",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870481",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870482",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870483",
+  "li": "Connected",
+  "priority": "9"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870484",
+  "li": "Email Required",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870486",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870487",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870488",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870489",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870490",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870492",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870493",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870494",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870495",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870496",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870499",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870500",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870501",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870504",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870506",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870507",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870509",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870511",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870514",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002870516",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002950003",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000002950218",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003202059",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003320002",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003357185",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003484175",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812756",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812763",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812764",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812765",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812766",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812767",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812768",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812770",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812773",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812774",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812775",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812776",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812778",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812779",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812780",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812781",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812782",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812783",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812785",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812786",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812787",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812788",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812792",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812794",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812803",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812812",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812813",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812814",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812815",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812816",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812817",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812818",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812819",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812820",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812821",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812822",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812823",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812824",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812825",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812830",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812831",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812832",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812841",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812847",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812852",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812862",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812864",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812866",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812869",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812871",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812872",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812874",
+  "li": "Requested",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812875",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812878",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003812880",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000003838001",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000004545210",
+  "li": "Connected",
+  "priority": "99"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000005246001",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000005246018",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000005475017",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000007413001",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000007707053",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000007707068",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000007863285",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000007929237",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000008025018",
+  "li": "Connected",
+  "priority": "9"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000008025130",
+  "li": "Connected",
+  "priority": "99"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000008045668",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000008102040",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000008105039",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000008105134",
+  "li": "Connected",
+  "priority": "99"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000008118005",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000008133271",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000008212001",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000008238015",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000008238028",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000008238035",
+  "li": "Requested",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000008238114",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000008238121",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000008275003",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000008322020",
+  "li": null,
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000008351067",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000008497001",
+  "li": "Connected",
+  "priority": "99"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000008681001",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000008832001",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000009854025",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000009994022",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000010035001",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011001034",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011490088",
+  "li": "Connected",
+  "priority": "3"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011889004",
+  "li": null,
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011889025",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011889032",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011889041",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011914004",
+  "li": null,
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932004",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932011",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932018",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932022",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932028",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932035",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932042",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932049",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932056",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932063",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932070",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932077",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932084",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932091",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932098",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932105",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932112",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932119",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932126",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932133",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932140",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932147",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932154",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932161",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932168",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932175",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932182",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932189",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932196",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932203",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932210",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932217",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932224",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932231",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932238",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011932242",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011970004",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011970011",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011970018",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011970025",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011970032",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011970039",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011970046",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011970053",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011970060",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-28T19:52:57Z",
+  "contact_id": "6988700000011970067",
+  "li": "Connected",
+  "priority": "5"
+ },
+ {
+  "at": "2026-10-30T10:48:26Z",
+  "contact_id": "6988700000002430001",
+  "li": "Connected",
+  "priority": "1"
+ },
+ {
+  "at": "2026-10-31T10:47:49Z",
+  "contact_id": "6988700000012007001",
+  "li": null,
+  "priority": null
+ }
+]
