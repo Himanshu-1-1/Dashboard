@@ -274,7 +274,19 @@
     const btn = document.getElementById('cc-pv-open');
     if (btn) btn.focus();
   };
+  const isLocked = () => {
+    const gate = document.getElementById('cc-gate');
+    return document.body.classList.contains('cc-locked') || Boolean(gate && !gate.hidden);
+  };
+  let waiting = null;
+  const whenUnlocked = (fn) => {
+    if (!isLocked()) { fn(); return; }
+    if (waiting) waiting.disconnect();
+    waiting = new MutationObserver(() => { if (!isLocked()) { waiting.disconnect(); waiting = null; fn(); } });
+    waiting.observe(document.body, { attributes: true, attributeFilter: ['class', 'hidden'], subtree: true });
+  };
   const fromHash = () => {
+    if (isLocked()) { whenUnlocked(fromHash); return; }
     const m = location.hash.match(HASH_RE);
     if (m) open(m[1] || null);
     else if (st.open) close();
