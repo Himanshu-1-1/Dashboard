@@ -199,14 +199,13 @@
     head.append(who);
 
     const deals = p.deals.slice();
-    const clients = new Set(deals.map((d) => d.client || 'deal:' + d.id)).size;
     const won = deals.filter((d) => d.status === 'won');
     const open = deals.filter((d) => d.status === 'open').length;
     const lost = deals.filter((d) => d.status === 'lost').length;
     const wonValue = won.reduce((s, d) => s + (d.amount || 0), 0);
     const totalAmount = deals.reduce((s, d) => s + (d.amount || 0), 0);
     const stats = el('div', 'cc-pv-stats');
-    stats.append(stat(clients.toLocaleString('en-US'), clients === 1 ? 'Client referred' : 'Clients referred'), stat(open.toLocaleString('en-US'), 'Active'), stat(won.length.toLocaleString('en-US'), 'Won'), stat(lost.toLocaleString('en-US'), 'Lost'), stat(totalAmount > 0 ? fmtMoney(totalAmount) : '$0', 'Total amount'));
+    stats.append(stat(deals.length.toLocaleString('en-US'), deals.length === 1 ? 'Deal' : 'Deals'), stat(open.toLocaleString('en-US'), 'Active'), stat(won.length.toLocaleString('en-US'), 'Won'), stat(lost.toLocaleString('en-US'), 'Lost'), stat(totalAmount > 0 ? fmtMoney(totalAmount) : '$0', 'Total amount'));
     if (wonValue > 0) stats.append(stat(fmtMoney(wonValue), 'Won value'));
     head.append(stats);
     body.append(head);
