@@ -1283,16 +1283,25 @@
   const planTitleBox = el('div');
   const planTitle = el('h2', null, 'Who to talk to next');
   planTitle.id = 'b2-mp-title';
-  planTitleBox.append(planTitle, el('p', 'cc-b2-insight', 'Priority 1 partners, from Zoho and the team’s Outlook calendars: who to ask for a first meeting, who is booked, and who to talk to again. Select a count to list the people; select it again to close.'));
+  planTitleBox.append(planTitle, el('p', 'cc-b2-insight', 'Priority 1 partners, from Zoho, the team’s Outlook calendars, email, LinkedIn and Zoho Sign: what to do first, and where each partner stands, with one next step per person. Select a count to list the people; select it again to close.'));
   planHead.append(planTitleBox);
+  const planVerdict = el('p', 'cc-mp-verdict');
+  planVerdict.hidden = true;
+  const planActsCap = el('p', 'cc-mp-cap', 'Do first');
+  const planActs = el('div', 'cc-mp-tiles cc-mp-acts');
+  planActs.setAttribute('role', 'group');
+  planActs.setAttribute('aria-label', 'Do first');
+  const planTilesCap = el('p', 'cc-mp-cap', 'Where each partner stands');
   const planTiles = el('div', 'cc-mp-tiles');
   planTiles.setAttribute('role', 'group');
-  planTiles.setAttribute('aria-label', 'Who to talk to next');
+  planTiles.setAttribute('aria-label', 'Where each partner stands');
   const planList = el('div', 'cc-b2-wrap cc-mp-list');
   planList.id = 'b2-mp-list';
   planList.hidden = true;
   const planOwners = el('div', 'cc-pm-owners');
-  plan.append(planHead, planOwners, planTiles, planList);
+  const planGap = el('p', 'cc-b2-insight cc-mp-gap');
+  planGap.hidden = true;
+  plan.append(planHead, planOwners, planVerdict, planActsCap, planActs, planTilesCap, planTiles, planList, planGap);
   const mtgOwners = el('div', 'cc-pm-owners');
   mtg.append(mtgHead, mtgOwners, mtgPath, mtgGap, mtgGrid, mtgNote);
   const br = el('section', 'cc-card cc-br');
@@ -2852,8 +2861,18 @@
     drawMtg();
   };
 
-  /* Who to talk to next (Priority 1). */
+  /* Who to talk to next (Priority 1): Do first (actions worked out from email, LinkedIn, Zoho Sign and deals) and
+     where each partner stands (meetings), with one next step per person. */
   let planTab = null;
+  const REPLY_OWED_DAYS = 30;
+  const AGAIN_LONG = 90;
+  const ACTS = [
+    ['reply', 'Reply owed', 'They wrote last, after any meeting; nothing booked', 'bad'],
+    ['agree', 'Agreement to chase', 'Referral agreement out for signature or expired', 'bad'],
+    ['deal', 'Create the partner deal', 'Met, no Referral Partner deal (SOP 002)', 'warn'],
+    ['check', 'Check Priority 1', 'Not met; no reply on record, or LinkedIn still pending', 'warn'],
+    ['owner', 'No CRM Owner', 'Set Assigned in Zoho', 'warn'],
+  ];
   const PLAN = [
     ['ask', 'Ask for a first meeting', 'No meeting held or booked', 'warn'],
     ['booked', 'Meeting booked', 'Next meeting on a calendar or in Zoho', 'ok'],
@@ -2861,46 +2880,118 @@
     ['recent', 'Met recently', `Met within ${AGAIN_DAYS} days, nothing booked`, 'none'],
     ['log', 'Log in Zoho', 'Outlook meetings Zoho doesn’t show as Completed', 'bad'],
   ];
+  const clip = (s, n) => { const t = String(s || '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n - 1).replace(/[\s,;:.]+\S*$/, '') + '…' : t; };
+  const agRank = { 'Out for signature': 3, 'Expired, not re-sent': 2, Signed: 4 };
   const drawPlan = () => {
     const st = state(['p1_meet_plan']);
-    if (st !== 'ok') { planOwners.replaceChildren(); planTiles.replaceChildren(); planList.hidden = true; return; }
+    if (st !== 'ok') { planOwners.replaceChildren(); planVerdict.hidden = true; planActs.replaceChildren(); planTiles.replaceChildren(); planList.hidden = true; planGap.hidden = true; return; }
     const rowsAll = rows('p1_meet_plan');
     mtgOwner = ownerTabs(planOwners, rowsAll, mtgOwner, mtgPick);
-    const rowsP = mtgOwner === 'All' ? rowsAll : rowsAll.filter((r) => ownerOf(r) === mtgOwner);
     const mail = mailOk() ? new Map(rows('b2b_mail_people').map((r) => [r.id, r])) : null;
+    const li = liHas() && state(['b2b_li_people']) === 'ok' ? new Map(rows('b2b_li_people').filter((x) => x.in_export).map((x) => [x.id, x])) : null;
+    const brief = state(['b2b_briefs']) === 'ok' ? new Map(rows('b2b_briefs').map((b) => [String(b.zoho_id), b])) : null;
+    const pdeal = state(['b2b_partner_deals']) === 'ok' ? new Map(rows('b2b_partner_deals').map((d) => [String(d.id), d])) : null;
+    let agC = null; let agA = null;
+    if (state(['agreements']) === 'ok') {
+      agC = new Map(); agA = new Map();
+      const keep = (m, k, a) => { if (!k) return; const prev = m.get(k); if (!prev || (agRank[a.state] || 1) > (agRank[prev.state] || 1)) m.set(k, a); };
+      rows('agreements').filter((a) => a.kind !== 'MNDA').forEach((a) => { if (a.contact_id) keep(agC, String(a.contact_id), a); else keep(agA, String(a.account_id || ''), a); });
+    }
+    const LI_TWO = new Set(['talking', 'they_wrote', 'said_yes']);
+    const t0 = dayMs(todayCT());
+    const ago = (iso) => Math.round((t0 - dayMs(ctDay(iso))) / 864e5);
+    const enrich = (r) => {
+      const m = mail ? mail.get(r.id) : null;
+      const l = li ? li.get(r.id) : null;
+      const b = brief ? brief.get(r.id) : null;
+      const d = pdeal ? pdeal.get(r.id) : null;
+      const a = agC ? agC.get(r.id) || (r.account_id ? agA.get(String(r.account_id)) : null) || null : null;
+      const after = (iso) => !r.last || ctDay(iso) > r.last;
+      const waits = [];
+      if (m && m.status === 'They wrote last' && m.last_in && ago(m.last_in) <= REPLY_OWED_DAYS && after(m.last_in)) waits.push({ ch: 'email', at: m.last_in });
+      if (l && liWaiting(l) && after(l.last_in)) waits.push({ ch: 'LinkedIn message', at: l.last_in });
+      waits.sort((x, y) => String(y.at).localeCompare(String(x.at)));
+      const reply = !r.next && waits.length ? waits[0] : null;
+      const proof = r.n > 0 || (m && m.n_in > 0) || (l && l.theirs > 0 && LI_TWO.has(l.status));
+      const known = Boolean(mail && li);
+      const liPending = r.li === 'Connected' && l && l.actual === 'pending';
+      const ag = a ? a.state : null;
+      const rp = d ? (d.deals || []) : [];
+      const dealGap = Boolean(r.n > 0 && d && !rp.length && !d.other && ag !== 'Signed');
+      const check = r.group === 'ask' && (liPending || (known && !proof));
+      const ask = b && Array.isArray(b.ask_next) && b.ask_next.length ? clip(b.ask_next[0], 110) : '';
+      let step;
+      if (reply) step = `Reply to their ${reply.ch} of ${dayF(ctDay(reply.at))}`;
+      else if (ag === 'Out for signature') step = `Chase the signature on the referral agreement${a.sent ? ` sent ${dayF(a.sent)}` : ''}`;
+      else if (r.next) step = `Prepare for ${whenF(r.next)}${b ? '; read their brief' : ''}${ag === 'Expired, not re-sent' ? '; re-send the expired agreement after it' : ''}`;
+      else if (ag === 'Expired, not re-sent') step = 'Re-send the referral agreement; the last copy expired';
+      else if (dealGap) step = 'Create their Referral Partner deal (SOP 002)';
+      else if (r.group === 'ask') step = liPending ? 'LinkedIn request still pending: set LI Connect to Requested, or move back to Priority 3'
+        : check ? 'No reply on record: confirm the conversation, or move back to Priority 3' : 'Ask for a first meeting (SOP 4)';
+      else if (r.group === 'again') step = `Suggest a follow-up call${ask ? ': ' + ask : ''}`;
+      else step = `Follow up on the last meeting${ask ? ': ' + ask : ''}`;
+      const why = [r.n ? `${intF(r.n)} ${r.n === 1 ? 'meeting' : 'meetings'}, last ${dayF(r.last)}` : 'Never met',
+        m && m.last_in ? `they emailed ${dayF(ctDay(m.last_in))}` : null,
+        l && l.status !== 'none' ? `LinkedIn: ${String(l.label || '').toLowerCase()}` : null,
+        ag ? `agreement ${ag.toLowerCase()}` : null,
+        rp.length ? `deal at ${rp.map((x) => x.stage).join(', ')}` : null].filter(Boolean).join('; ');
+      return { ...r, m, l, a, ag, rp, reply, proof, liPending, dealGap, check, step, why, hasBrief: Boolean(b) };
+    };
+    const rowsE = (mtgOwner === 'All' ? rowsAll : rowsAll.filter((r) => ownerOf(r) === mtgOwner)).map(enrich);
+    const byName = (a, b) => String(a.name).localeCompare(String(b.name));
     const lists = {
-      ask: rowsP.filter((r) => r.group === 'ask').sort((a, b) => (b.connected ? 1 : 0) - (a.connected ? 1 : 0)
-        || (mail ? (((mail.get(b.id) || {}).status === 'They wrote last') ? 1 : 0) - (((mail.get(a.id) || {}).status === 'They wrote last') ? 1 : 0) : 0)
-        || String(a.name).localeCompare(String(b.name))),
-      booked: rowsP.filter((r) => r.group === 'booked').sort((a, b) => String(a.next).localeCompare(String(b.next))),
-      again: rowsP.filter((r) => r.group === 'again').sort((a, b) => (b.since || 0) - (a.since || 0)),
-      recent: rowsP.filter((r) => r.group === 'recent').sort((a, b) => (a.since || 0) - (b.since || 0)),
-      log: rowsP.filter((r) => r.to_log && r.to_log.length).sort((a, b) => b.to_log.length - a.to_log.length || String(a.name).localeCompare(String(b.name))),
+      reply: rowsE.filter((r) => r.reply).sort((a, b) => String(b.reply.at).localeCompare(String(a.reply.at))),
+      agree: rowsE.filter((r) => r.ag === 'Out for signature' || r.ag === 'Expired, not re-sent').sort((a, b) => (agRank[b.ag] || 0) - (agRank[a.ag] || 0) || (b.n || 0) - (a.n || 0) || byName(a, b)),
+      deal: rowsE.filter((r) => r.dealGap).sort((a, b) => (b.n || 0) - (a.n || 0) || String(b.last).localeCompare(String(a.last))),
+      check: rowsE.filter((r) => r.check).sort((a, b) => (b.liPending ? 1 : 0) - (a.liPending ? 1 : 0) || byName(a, b)),
+      owner: rowsE.filter((r) => !r.assigned).sort(byName),
+      ask: rowsE.filter((r) => r.group === 'ask').sort((a, b) => (a.check ? 1 : 0) - (b.check ? 1 : 0) || (b.connected ? 1 : 0) - (a.connected ? 1 : 0)
+        || (b.m && b.m.status === 'They wrote last' ? 1 : 0) - (a.m && a.m.status === 'They wrote last' ? 1 : 0) || byName(a, b)),
+      booked: rowsE.filter((r) => r.group === 'booked').sort((a, b) => String(a.next).localeCompare(String(b.next))),
+      again: rowsE.filter((r) => r.group === 'again').sort((a, b) => (b.since || 0) - (a.since || 0)),
+      recent: rowsE.filter((r) => r.group === 'recent').sort((a, b) => (a.since || 0) - (b.since || 0)),
+      log: rowsE.filter((r) => r.to_log && r.to_log.length).sort((a, b) => b.to_log.length - a.to_log.length || byName(a, b)),
     };
     const nameC = ['Name', (r) => link('Contacts', r.id, r.name)];
     const coC = ['Company', (r) => (r.account_id ? link('Accounts', r.account_id, r.account) : r.account || 'No company')];
     const ownC = ['Owner (Assigned)', (r) => r.assigned || 'Not assigned'];
-    const mailC = mail ? [['Email', (r) => { const m = mail.get(r.id); if (!m) return '—'; return m.status + (m.last_in ? `; they wrote ${dayF(m.last_in)}` : '') + (m.last_out ? `; we wrote ${dayF(m.last_out)}` : ''); }]] : [];
+    const stepC = ['Next step', (r) => r.step];
+    const whyC = ['On record', (r) => r.why];
+    const lastC = ['Last met', (r) => (r.last ? fullDayF(r.last) : 'Not yet')];
+    const mailC = mail ? [['Email', (r) => { const m = r.m; if (!m) return '—'; return m.status + (m.last_in ? `; they wrote ${dayF(ctDay(m.last_in))}` : '') + (m.last_out ? `; we wrote ${dayF(ctDay(m.last_out))}` : ''); }]] : [];
+    const liC = ['LinkedIn', (r) => [r.li ? 'Zoho: ' + r.li : 'Zoho: not set', r.l ? 'Mack’s LinkedIn: ' + (r.l.actual === 'connected' ? 'connected' : r.l.actual === 'pending' ? `request pending${r.l.invited_at ? ' since ' + dayF(ctDay(r.l.invited_at)) : ''}` : 'not connected') : null].filter(Boolean).join('; ')];
     const COLS = {
-      ask: [nameC, coC, ['LinkedIn', (r) => r.li || 'Not set'], ...mailC, ownC, ['In Zoho since', (r) => (r.created ? fullDayF(r.created) : '—')]],
-      booked: [nameC, coC, ['Next meeting', (r) => whenF(r.next)], ['Meetings so far', (r) => intF(r.n)], ['Last met', (r) => (r.last ? fullDayF(r.last) : 'Not yet')], ownC],
-      again: [nameC, coC, ['Last met', (r) => fullDayF(r.last)], ['Days since', (r) => intF(r.since)], ['Meetings', (r) => intF(r.n)], ...mailC, ownC],
-      recent: [nameC, coC, ['Last met', (r) => fullDayF(r.last)], ['Days since', (r) => intF(r.since)], ['Meetings', (r) => intF(r.n)], ['Source', srcF], ownC],
+      reply: [nameC, coC, ['Their last message', (r) => `${r.reply.ch === 'email' ? 'Email' : 'LinkedIn'}, ${fullDayF(ctDay(r.reply.at))} (${intF(ago(r.reply.at))} days ago)`], lastC, stepC, ownC],
+      agree: [nameC, coC, ['Agreement', (r) => r.ag + (r.a && r.a.sent ? `; sent ${fullDayF(r.a.sent)}` : '')], ['Meetings', (r) => intF(r.n)], lastC, stepC, ownC],
+      deal: [nameC, coC, ['Meetings', (r) => intF(r.n)], lastC, whyC, ownC],
+      check: [nameC, coC, liC, ...mailC, whyC, stepC, ownC],
+      owner: [nameC, coC, ['Stands', (r) => (PLAN.find((x) => x[0] === r.group) || [null, '—'])[1]], stepC],
+      ask: [nameC, coC, ['LinkedIn', (r) => r.li || 'Not set'], ...mailC, stepC, ownC],
+      booked: [nameC, coC, ['Next meeting', (r) => whenF(r.next)], ['Meetings so far', (r) => intF(r.n)], lastC, stepC, ownC],
+      again: [nameC, coC, lastC, ['Days since', (r) => intF(r.since)], ['Meetings', (r) => intF(r.n)], stepC, ownC],
+      recent: [nameC, coC, lastC, ['Days since', (r) => intF(r.since)], ['Meetings', (r) => intF(r.n)], ['Source', srcF], stepC, ownC],
       log: [nameC, coC, ['Meetings to log (CT)', (r) => r.to_log.map((x) => fullDayF(x.day)).join(', ')], ['Calendars', (r) => calsF([...new Set(r.to_log.flatMap((x) => x.cals.split(',')))].join(','))], ownC],
     };
     const NOTE = {
-      ask: 'Priority 1 prospects with no meeting held in Zoho or on any team calendar, and nothing booked. Connected on LinkedIn first' + (mail ? ', then those who wrote to us last' : '') + '. Ask with SOP 4.',
+      reply: `Their email (last ${REPLY_OWED_DAYS} days) or LinkedIn message (last ${LI_REPLY_DAYS} days) is the latest in the thread, came after any meeting, and nothing is booked. Newest first.`,
+      agree: 'Their Referral Partner Agreement in Zoho Sign is out for signature or expired without a new copy. Out for signature first, then by meetings held.',
+      deal: 'Met at least once, but no Referral Partner deal names them and they have no other deal or signed agreement. SOP 002 says to create the deal after the first meeting. Most meetings first.',
+      check: 'Priority 1 means a two-way conversation, but these partners have never met us, never emailed us and have no LinkedIn conversation on record, or Mack’s LinkedIn request is still pending while Zoho says Connected. Confirm the conversation, or move them back to Priority 3.',
+      owner: 'Priority 1 partners with nobody in Zoho’s Assigned field, so nobody owns the next step.',
+      ask: 'Priority 1 prospects with no meeting held in Zoho or on any team calendar, and nothing booked. Ready to ask first (connected, then those who wrote last); those to check are at the bottom. Ask with SOP 4.',
       booked: 'A meeting is booked in Zoho or on a team calendar. Soonest first.',
-      again: `Met before, last meeting ${AGAIN_DAYS} or more days ago, and nothing booked. Longest gap first: suggest a follow-up call.`,
+      again: `Met before, last meeting ${AGAIN_DAYS} or more days ago, and nothing booked. Longest gap first; the step uses the “ask next” point from their meeting brief where there is one.`,
       recent: `Met within the last ${AGAIN_DAYS} days with nothing booked yet. They move to Talk to again after ${AGAIN_DAYS} days.`,
       log: 'Meetings on the team’s Outlook calendars that Zoho doesn’t show as Completed on that day. Log each one in Zoho as a meeting linked to the contact with Meeting Status Completed (SOP 7), so the CRM and the deal SOP see it.',
     };
+    const ALL = [...ACTS, ...PLAN];
+    const tiles = () => [...planActs.querySelectorAll('.cc-mp-tile'), ...planTiles.querySelectorAll('.cc-mp-tile')];
     const show = (k) => {
       planTab = k;
-      planTiles.querySelectorAll('.cc-mp-tile').forEach((b) => b.setAttribute('aria-expanded', String(b.dataset.k === k)));
+      tiles().forEach((b) => b.setAttribute('aria-expanded', String(b.dataset.k === k)));
       planList.hidden = !k;
       if (!k) { planList.replaceChildren(); return; }
-      const [, label] = PLAN.find((x) => x[0] === k);
+      const [, label] = ALL.find((x) => x[0] === k);
       const list = lists[k];
       if (!list.length) { planList.replaceChildren(el('p', 'cc-pm-done', 'Nobody here right now.')); return; }
       const tbl = el('table', 'cc-tbl');
@@ -2911,22 +3002,61 @@
       list.forEach((r) => { const tr = rowOpens(el('tr'), r.id); COLS[k].forEach(([, f]) => { const v = f(r); const td = el('td'); if (v instanceof Node) td.append(v); else td.textContent = v == null || v === '' ? '—' : v; tr.append(td); }); tb.append(tr); });
       tbl.append(tb);
       planList.replaceChildren(el('p', 'cc-na-cap', `${mtgOwner === 'All' ? '' : mtgOwner + ': '}${label} (${intF(list.length)})`), el('p', 'cc-b2-insight', NOTE[k] + (mtgOwner === 'All' ? '' : ` Showing Priority 1 prospects ${ownerLabel(mtgOwner)}.`)), tbl);
-      if (k === 'ask') planList.insertBefore(sopBtn(4, 'SOP 4 Ask for a first meeting'), planList.children[2]);
-      if (k === 'log') planList.insertBefore(sopBtn(7, 'SOP 7 Log a meeting'), planList.children[2]);
+      const sop = { ask: [4, 'SOP 4 Ask for a first meeting'], log: [7, 'SOP 7 Log a meeting'], reply: [3, 'SOP 3 Reply and follow up'], agree: [5, 'SOP 5 Send and follow up on the agreement'] }[k];
+      if (sop) planList.insertBefore(sopBtn(sop[0], sop[1]), planList.children[2]);
+      if (k === 'deal') {
+        const a = el('a', 'cc-b2-sop', 'SOP 002 Referral Partner deal creation');
+        a.href = PM_SOP_URL; a.target = '_blank'; a.rel = 'noopener';
+        planList.insertBefore(a, planList.children[2]);
+      }
     };
-    planTiles.replaceChildren(...PLAN.map(([k, label, sub, tone]) => {
+    const tile = ([k, label, sub, tone]) => {
       const n = lists[k].length;
       const cls = tone === 'none' ? 'cc-pm-none' : tone === 'ok' ? (n ? 'cc-pm-ok' : 'cc-pm-none') : n ? (tone === 'bad' ? 'cc-pm-bad' : 'cc-mp-warn') : 'cc-pm-ok';
       const b = el('button', 'cc-pm-tile cc-na-tile cc-mp-tile ' + cls);
       b.type = 'button'; b.dataset.k = k; b.setAttribute('aria-controls', 'b2-mp-list');
       const txt = el('span', 'cc-na-txt');
-      txt.append(el('span', 'cc-pm-label', label), el('span', 'cc-pm-sub', sub));
+      const long = k === 'again' ? lists.again.filter((r) => (r.since || 0) >= AGAIN_LONG).length : 0;
+      txt.append(el('span', 'cc-pm-label', label), el('span', 'cc-pm-sub', sub + (long ? `; ${intF(long)} over ${AGAIN_LONG} days` : '')));
       b.append(el('span', 'cc-pm-num', intF(n)), txt, el('span', 'cc-na-chev'));
       b.setAttribute('aria-label', `${label}: ${intF(n)}. ${planTab === k ? 'Hide' : 'Show'} the list.`);
       b.addEventListener('click', () => show(planTab === k ? null : k));
       return b;
-    }));
-    show(PLAN.some(([k]) => k === planTab) ? planTab : null);
+    };
+    planActs.replaceChildren(...ACTS.map(tile));
+    planTiles.replaceChildren(...PLAN.map(tile));
+    /* The verdict: the order to work in, every count opening its list. */
+    const vb = (k, text) => { const b = el('button', 'cc-mp-vlink', text); b.type = 'button'; b.addEventListener('click', () => show(k)); return b; };
+    const n = (k) => lists[k].length;
+    const parts = [];
+    if (n('reply')) parts.push(['reply', `reply to ${intF(n('reply'))} ${n('reply') === 1 ? 'partner' : 'partners'} waiting on us`]);
+    if (n('agree')) parts.push(['agree', `chase ${intF(n('agree'))} referral ${n('agree') === 1 ? 'agreement' : 'agreements'}`]);
+    if (n('deal')) parts.push(['deal', `create ${intF(n('deal'))} Referral Partner ${n('deal') === 1 ? 'deal' : 'deals'}`]);
+    const longGap = lists.again.filter((r) => (r.since || 0) >= AGAIN_LONG).length;
+    if (longGap) parts.push(['again', `reconnect with ${intF(longGap)} not met in ${AGAIN_LONG}+ days`]);
+    const tail = [];
+    if (n('check')) tail.push(['check', `${intF(n('check'))} at Priority 1 have no two-way conversation on record`]);
+    if (n('log')) tail.push(['log', `${intF(n('log'))} have meetings to log in Zoho`]);
+    if (n('owner')) tail.push(['owner', `${intF(n('owner'))} have no CRM Owner`]);
+    planVerdict.replaceChildren();
+    if (!rowsE.length) planVerdict.hidden = true;
+    else {
+      planVerdict.hidden = false;
+      const lead = el('b', null, mtgOwner === 'All' ? 'In order: ' : `${mtgOwner === NO_OWNER ? 'Unassigned' : mtgOwner}, in order: `);
+      planVerdict.append(lead);
+      if (!parts.length) planVerdict.append(document.createTextNode('nothing is waiting on us right now. '));
+      parts.forEach(([k, t], i) => { if (i) planVerdict.append(document.createTextNode(i === parts.length - 1 ? ', then ' : ', ')); planVerdict.append(vb(k, t)); });
+      if (parts.length) planVerdict.append(document.createTextNode('. '));
+      if (tail.length) {
+        planVerdict.append(document.createTextNode('Also: '));
+        tail.forEach(([k, t], i) => { if (i) planVerdict.append(document.createTextNode(i === tail.length - 1 ? ' and ' : ', ')); planVerdict.append(vb(k, t)); });
+        planVerdict.append(document.createTextNode('.'));
+      }
+    }
+    const gaps = [mail ? null : 'email', li ? null : 'LinkedIn', brief ? null : 'meeting briefs', pdeal ? null : 'deals', agC ? null : 'Zoho Sign agreements'].filter(Boolean);
+    planGap.hidden = !gaps.length;
+    planGap.textContent = gaps.length ? `Not loaded here: ${gaps.join(', ')}. Steps that need ${gaps.length === 1 ? 'it' : 'them'} are left out, so some counts above are floors.` : '';
+    show(ALL.some(([k]) => k === planTab) ? planTab : null);
   };
 
   const showMtg = (title, list, note, mode) => {
