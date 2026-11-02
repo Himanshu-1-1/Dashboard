@@ -1264,7 +1264,7 @@
   const mtgTitleBox = el('div');
   const mtgTitle = el('h2', null, 'P1 Meeting Frequency & Relationship Depth');
   mtgTitle.id = 'b2-mtg-title';
-  mtgTitleBox.append(mtgTitle, el('p', 'cc-b2-insight', 'Priority 1 partners (two-way conversation): how often we have met each. Meetings come from Zoho and the team’s Outlook calendars. Who to talk to next is right below.'));
+  mtgTitleBox.append(mtgTitle, el('p', 'cc-b2-insight', 'Priority 1 partners (two-way conversation): how often we have met each. Meetings come from Zoho and the team’s Outlook calendars. Who to talk to next is right above.'));
   mtgHead.append(mtgTitleBox);
   const mtgPath = el('div', 'cc-mt-path');
   const mtgBar = el('ol', 'cc-mt-bar');
@@ -1458,7 +1458,7 @@
     if (drillFrom && drillFrom !== drill && drillFrom.parentElement === root && drillFrom.nextElementSibling !== drill) drillFrom.after(drill);
   };
 
-  root.append(pf, score, p3, na, mtg, plan, pmCard, rw, rb, mailCard, liCard, grid1, drill, nextCard, queueCard, monCard, grid2, sopCard, dqCard, br);
+  root.append(pf, score, p3, na, plan, mtg, pmCard, rw, rb, mailCard, liCard, grid1, drill, nextCard, queueCard, monCard, grid2, sopCard, dqCard, br);
   /* SOP links: an animated playbook page instead of the word. The link keeps its title and aria-label. */
   const SOP_ICON = '<svg class="cc-sop-ico" viewBox="0 0 32 36" aria-hidden="true" focusable="false">'
     + '<g class="cc-sop-spark"><circle cx="27" cy="5" r="1.4"/><circle cx="4" cy="9" r="1"/><circle cx="29" cy="15" r="1"/><path d="M24 2.5v3M22.5 4h3"/></g>'
