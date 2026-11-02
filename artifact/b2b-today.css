@@ -484,7 +484,6 @@ a.cc-b2-sop { display: inline-block; text-decoration: none; }
 .cc-mp-vlink { appearance: none; font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-decoration-color: color-mix(in oklab, currentColor 35%, transparent); text-underline-offset: 3px; }
 .cc-mp-vlink:hover { text-decoration-color: currentColor; }
 .cc-mp-vlink:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; border-radius: 2px; }
-.cc-mp-cap { margin: 4px 0 -4px; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
 .cc-mp-gap { margin: 0; }
 
 /* SOP links as an animated playbook page. */

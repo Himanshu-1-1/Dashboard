@@ -1283,15 +1283,10 @@
   const planTitleBox = el('div');
   const planTitle = el('h2', null, 'Who to talk to next');
   planTitle.id = 'b2-mp-title';
-  planTitleBox.append(planTitle, el('p', 'cc-b2-insight', 'Priority 1 partners, from Zoho, the team’s Outlook calendars, email, LinkedIn and Zoho Sign: what to do first, and where each partner stands, with one next step per person. Select a count to list the people; select it again to close.'));
+  planTitleBox.append(planTitle, el('p', 'cc-b2-insight', 'Priority 1 partners, from Zoho, the team’s Outlook calendars, email, LinkedIn and Zoho Sign: the order to work in, and where each partner stands, with one next step per person. Select a count to list the people; select it again to close.'));
   planHead.append(planTitleBox);
   const planVerdict = el('p', 'cc-mp-verdict');
   planVerdict.hidden = true;
-  const planActsCap = el('p', 'cc-mp-cap', 'Do first');
-  const planActs = el('div', 'cc-mp-tiles cc-mp-acts');
-  planActs.setAttribute('role', 'group');
-  planActs.setAttribute('aria-label', 'Do first');
-  const planTilesCap = el('p', 'cc-mp-cap', 'Where each partner stands');
   const planTiles = el('div', 'cc-mp-tiles');
   planTiles.setAttribute('role', 'group');
   planTiles.setAttribute('aria-label', 'Where each partner stands');
@@ -1301,7 +1296,7 @@
   const planOwners = el('div', 'cc-pm-owners');
   const planGap = el('p', 'cc-b2-insight cc-mp-gap');
   planGap.hidden = true;
-  plan.append(planHead, planOwners, planVerdict, planActsCap, planActs, planTilesCap, planTiles, planList, planGap);
+  plan.append(planHead, planOwners, planVerdict, planTiles, planList, planGap);
   const mtgOwners = el('div', 'cc-pm-owners');
   mtg.append(mtgHead, mtgOwners, mtgPath, mtgGap, mtgGrid, mtgNote);
   const br = el('section', 'cc-card cc-br');
@@ -2861,8 +2856,9 @@
     drawMtg();
   };
 
-  /* Who to talk to next (Priority 1): Do first (actions worked out from email, LinkedIn, Zoho Sign and deals) and
-     where each partner stands (meetings), with one next step per person. */
+  /* Who to talk to next (Priority 1): a verdict line whose counts open action lists worked out from email, LinkedIn,
+     Zoho Sign and deals (ACTS, no tiles of their own), tiles for where each partner stands (meetings), and one next
+     step per person. */
   let planTab = null;
   const REPLY_OWED_DAYS = 30;
   const AGAIN_LONG = 90;
@@ -2884,7 +2880,7 @@
   const agRank = { 'Out for signature': 3, 'Expired, not re-sent': 2, Signed: 4 };
   const drawPlan = () => {
     const st = state(['p1_meet_plan']);
-    if (st !== 'ok') { planOwners.replaceChildren(); planVerdict.hidden = true; planActs.replaceChildren(); planTiles.replaceChildren(); planList.hidden = true; planGap.hidden = true; return; }
+    if (st !== 'ok') { planOwners.replaceChildren(); planVerdict.hidden = true; planTiles.replaceChildren(); planList.hidden = true; planGap.hidden = true; return; }
     const rowsAll = rows('p1_meet_plan');
     mtgOwner = ownerTabs(planOwners, rowsAll, mtgOwner, mtgPick);
     const mail = mailOk() ? new Map(rows('b2b_mail_people').map((r) => [r.id, r])) : null;
@@ -2985,7 +2981,7 @@
       log: 'Meetings on the team’s Outlook calendars that Zoho doesn’t show as Completed on that day. Log each one in Zoho as a meeting linked to the contact with Meeting Status Completed (SOP 7), so the CRM and the deal SOP see it.',
     };
     const ALL = [...ACTS, ...PLAN];
-    const tiles = () => [...planActs.querySelectorAll('.cc-mp-tile'), ...planTiles.querySelectorAll('.cc-mp-tile')];
+    const tiles = () => [...planTiles.querySelectorAll('.cc-mp-tile')];
     const show = (k) => {
       planTab = k;
       tiles().forEach((b) => b.setAttribute('aria-expanded', String(b.dataset.k === k)));
@@ -3023,7 +3019,6 @@
       b.addEventListener('click', () => show(planTab === k ? null : k));
       return b;
     };
-    planActs.replaceChildren(...ACTS.map(tile));
     planTiles.replaceChildren(...PLAN.map(tile));
     /* The verdict: the order to work in, every count opening its list. */
     const vb = (k, text) => { const b = el('button', 'cc-mp-vlink', text); b.type = 'button'; b.addEventListener('click', () => show(k)); return b; };
