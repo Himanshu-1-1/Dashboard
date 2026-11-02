@@ -64,6 +64,19 @@
   const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
   const fmtDate = (d) => (d ? new Date(String(d).slice(0, 10) + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '—');
   const fmtMoney = (v) => (v > 0 ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v) : '—');
+  const ZOHO = 'https://crm.zoho.com/crm/org899412015/tab/';
+  const zLink = (cls, text, module, id, title) => {
+    if (!id) return el(cls === 'h2' ? 'h2' : 'span', cls === 'h2' ? 'cc-pv-name' : null, text);
+    const a = el('a', 'cc-pv-zlink', text);
+    a.href = ZOHO + module + '/' + encodeURIComponent(id);
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.title = title;
+    if (cls !== 'h2') return a;
+    const h = el('h2', 'cc-pv-name');
+    h.append(a);
+    return h;
+  };
   const fmtCents = (v) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 }).format(v || 0);
   const plural = (n, one, many) => `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
 
@@ -176,7 +189,9 @@
     }
     const head = el('header', 'cc-pv-head');
     const who = el('div', 'cc-pv-who');
-    who.append(el('h2', 'cc-pv-name', p.name));
+    who.append(p.contact_id
+      ? zLink('h2', p.name, 'Contacts', p.contact_id, 'Open ' + p.name + ' in Zoho CRM: their record lists the deals they referred')
+      : zLink('h2', p.name, 'Accounts', p.account_id, 'Open ' + p.name + ' in Zoho CRM: the account lists the deals it referred'));
     if (p.firm) who.append(el('p', 'cc-pv-firm', p.firm));
     const agree = el('p', 'cc-pv-agree');
     agree.append(el('span', 'cc-pv-agree-dot'), document.createTextNode(p.signed_on ? 'Referral agreement signed ' + fmtDate(p.signed_on) : 'Referral agreement signed'));
@@ -216,7 +231,9 @@
       const tr = el('tr');
       const stage = el('td');
       stage.append(el('span', 'cc-pv-stage cc-pv-stage-' + d.status, d.stage));
-      tr.append(el('td', 'cc-pv-deal', d.deal), el('td', null, d.client || '—'), el('td', null, d.client_contact || '—'), stage, el('td', null, fmtDate(d.created)), el('td', null, fmtDate(d.modified)), el('td', 'cc-pv-num', fmtMoney(d.amount)), el('td', 'cc-pv-terms', d.commission_terms || '—'), commCell(d));
+      const dealTd = el('td', 'cc-pv-deal');
+      dealTd.append(zLink('a', d.deal, 'Potentials', d.id, 'Open this deal in Zoho CRM'));
+      tr.append(dealTd, el('td', null, d.client || '—'), el('td', null, d.client_contact || '—'), stage, el('td', null, fmtDate(d.created)), el('td', null, fmtDate(d.modified)), el('td', 'cc-pv-num', fmtMoney(d.amount)), el('td', 'cc-pv-terms', d.commission_terms || '—'), commCell(d));
       tb.append(tr);
     });
     table.append(thead, tb);

@@ -59,3 +59,6 @@ html.cc-pv-on, html.cc-pv-on body { overflow: hidden; }
 .cc-pv-comm-list { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: var(--cds-font-size-body); color: var(--color-fg-muted); }
 .cc-pv-comm-list strong { color: var(--color-fg); font-weight: var(--cds-font-weight-medium, 500); }
 .cc-pv-table .cc-pv-terms { color: var(--color-fg-muted); min-width: 120px; }
+.cc-pv-zlink { color: inherit; text-decoration: underline; text-decoration-color: color-mix(in oklab, currentColor 35%, transparent); text-underline-offset: 3px; }
+.cc-pv-zlink:hover { text-decoration-color: currentColor; }
+.cc-pv-zlink:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; border-radius: 2px; }
