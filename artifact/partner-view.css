@@ -52,3 +52,10 @@ html.cc-pv-on, html.cc-pv-on body { overflow: hidden; }
 .cc-pv-stage-won { background: color-mix(in oklab, var(--color-ok) 16%, var(--color-panel)); }
 .cc-pv-stage-lost { background: color-mix(in oklab, var(--color-fg) 8%, var(--color-panel)); color: var(--color-fg-muted); }
 .cc-pv-note { margin: 0; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.cc-pv-comm-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--cds-gap-lg); }
+.cc-pv-comm-total { display: grid; gap: 2px; }
+.cc-pv-comm-v { font-size: 34px; font-weight: var(--cds-font-weight-medium, 500); font-variant-numeric: tabular-nums; line-height: 1.1; color: var(--color-ok); }
+.cc-pv-comm-parts { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); }
+.cc-pv-comm-list { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: var(--cds-font-size-body); color: var(--color-fg-muted); }
+.cc-pv-comm-list strong { color: var(--color-fg); font-weight: var(--cds-font-weight-medium, 500); }
+.cc-pv-table .cc-pv-terms { color: var(--color-fg-muted); min-width: 120px; }

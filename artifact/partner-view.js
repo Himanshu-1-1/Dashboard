@@ -8,12 +8,23 @@
   const LOST = ['Closed Lost', 'Closed Lost to Competition'];
   const slugOf = (s) => String(s || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   const HASH_RE = /^#partner(?:=([a-z0-9-]+))?$/i;
+  const COMM_RE = /^(\d+(?:\.\d+)?)\s*%(?:\s+(?:on|of)\s+(?:the\s+)?(?:revenue|deal(?:\s+value)?|deal\s+amount|amount|contract(?:\s+value)?))?\.?$/i;
+  const commissionOf = (terms, amount, status) => {
+    if (!terms) return { pct: null, value: null, why: 'none' };
+    const m = String(terms).trim().match(COMM_RE);
+    if (!m) return { pct: null, value: null, why: 'terms' };
+    const pct = Number(m[1]);
+    if (!(pct > 0 && pct <= 100)) return { pct: null, value: null, why: 'terms' };
+    if (status === 'lost') return { pct, value: null, why: 'lost' };
+    if (!(amount > 0)) return { pct, value: null, why: 'amount' };
+    return { pct, value: Math.round(amount * pct) / 100, why: null };
+  };
   const statusOf = (stage) => (stage === 'Closed' ? 'won' : LOST.includes(stage) ? 'lost' : 'open');
   const STAGE_LABEL = { won: 'Won', lost: 'Lost' };
 
   dash.calc('pv_partners', {
     title: 'Signed referral partners and the client deals they referred',
-    description: 'One row per party with a signed Referral Partner Agreement (with a URL slug from their name, made unique when two names match) in Zoho Sign (agreements calc: signed once any copy is signed; internal test sends left out), with the client deals they referred (rb_rows: every Deal Type except Reseller/ Referral Partner and Platform Provider Agreement, so their own agreement deal never shows). A deal belongs to a partner when its Referred By Contact is that partner, or when it has no Referred By Contact and its Referred By Account is the partner’s company; for an agreement signed by a company with no contact, every deal whose Referred By Account is that company. Stages: Closed shows as Won, Closed Lost and Closed Lost to Competition as Lost, the rest as in Zoho. Dates are Central time.',
+    description: 'One row per party with a signed Referral Partner Agreement (with a URL slug from their name, made unique when two names match) in Zoho Sign (agreements calc: signed once any copy is signed; internal test sends left out), with the client deals they referred (rb_rows: every Deal Type except Reseller/ Referral Partner and Platform Provider Agreement, so their own agreement deal never shows). A deal belongs to a partner when its Referred By Contact is that partner, or when it has no Referred By Contact and its Referred By Account is the partner’s company; for an agreement signed by a company with no contact, every deal whose Referred By Account is that company. Stages: Closed shows as Won, Closed Lost and Closed Lost to Competition as Lost, the rest as in Zoho. Commission comes from the deal’s Commission Details text in Zoho: when it is a plain percentage of the deal (such as 20%, 10% on Revenue) it is that share of the Amount, earned on won deals and potential on active ones; other terms (on margin, conditional) are shown as written and not totaled; lost deals earn none. Dates are Central time.',
     inputs: ['agreements', 'rb_rows'],
     fn: (agreements, rb_rows) => {
       const seen = new Set();
@@ -28,9 +39,11 @@
             : Boolean(aid) && d.by_account_id === aid);
           const deals = rb_rows.filter(mine).map((d) => {
             const status = statusOf(d.stage);
+            const c = commissionOf(d.commission_terms, d.amount, status);
             return {
               id: d.id, deal: d.deal, client: d.account, client_contact: d.contact, stage: STAGE_LABEL[status] || d.stage || 'No stage',
               status, created: d.created, modified: d.modified || null, amount: d.amount,
+              commission_terms: d.commission_terms || null, commission_pct: c.pct, commission: c.value, commission_why: c.why,
             };
           });
           const firm = a.account && a.account !== '—' && a.account !== a.partner ? a.account : null;
@@ -51,6 +64,7 @@
   const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
   const fmtDate = (d) => (d ? new Date(String(d).slice(0, 10) + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '—');
   const fmtMoney = (v) => (v > 0 ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v) : '—');
+  const fmtCents = (v) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 }).format(v || 0);
   const plural = (n, one, many) => `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
 
   const st = { open: false, key: null, want: null, active: -1, list: [], overlay: null, inerted: [] };
@@ -101,6 +115,39 @@
     ui.input.blur();
   };
 
+  const COMM_WHY = { terms: 'Terms aren’t a plain percentage of the deal', amount: 'No deal amount yet', lost: 'Lost deal, no commission', none: 'No terms recorded' };
+  const commCell = (d) => {
+    const td = el('td', 'cc-pv-num');
+    if (d.commission != null) td.textContent = fmtCents(d.commission);
+    else { td.textContent = '—'; td.title = COMM_WHY[d.commission_why] || ''; }
+    return td;
+  };
+  const commissionCard = (deals) => {
+    const sec = el('section', 'cc-pv-card cc-pv-comm');
+    sec.append(el('h3', 'cc-pv-card-title', 'Commission'));
+    const withTerms = deals.filter((d) => d.commission_terms);
+    if (!withTerms.length) {
+      sec.append(el('p', 'cc-pv-empty', 'No commission terms are recorded in Zoho for these deals yet.'));
+      return sec;
+    }
+    const earned = deals.filter((d) => d.status === 'won' && d.commission != null).reduce((s, d) => s + d.commission, 0);
+    const potential = deals.filter((d) => d.status === 'open' && d.commission != null).reduce((s, d) => s + d.commission, 0);
+    const row = el('div', 'cc-pv-comm-row');
+    const big = el('div', 'cc-pv-comm-total');
+    big.append(el('span', 'cc-pv-comm-v', fmtCents(earned + potential)), el('span', 'cc-pv-stat-l', 'Total commission'));
+    const parts = el('div', 'cc-pv-comm-parts');
+    parts.append(stat(fmtCents(earned), 'Earned on won deals'), stat(fmtCents(potential), 'Potential on active deals'));
+    row.append(big, parts);
+    sec.append(row);
+    const open = withTerms.filter((d) => d.status !== 'lost' && d.commission == null);
+    if (open.length) {
+      const ul = el('ul', 'cc-pv-comm-list');
+      open.forEach((d) => { const li = el('li'); li.append(el('strong', null, d.deal), document.createTextNode(` · ${d.commission_terms} · ${d.commission_why === 'amount' ? 'no deal amount yet' : 'not included in the total'}`)); ul.append(li); });
+      sec.append(el('p', 'cc-pv-note', 'Terms on record that the total can’t include:'), ul);
+    }
+    sec.append(el('p', 'cc-pv-note', 'Commission is the deal’s Commission Details in Zoho applied to its Amount. Lost deals earn none.'));
+    return sec;
+  };
   const stat = (value, label) => { const d = el('div', 'cc-pv-stat'); d.append(el('span', 'cc-pv-stat-v', value), el('span', 'cc-pv-stat-l', label)); return d; };
 
   const renderBody = (ui) => {
@@ -142,8 +189,9 @@
     const open = deals.filter((d) => d.status === 'open').length;
     const lost = deals.filter((d) => d.status === 'lost').length;
     const wonValue = won.reduce((s, d) => s + (d.amount || 0), 0);
+    const totalAmount = deals.reduce((s, d) => s + (d.amount || 0), 0);
     const stats = el('div', 'cc-pv-stats');
-    stats.append(stat(clients.toLocaleString('en-US'), clients === 1 ? 'Client referred' : 'Clients referred'), stat(open.toLocaleString('en-US'), 'In progress'), stat(won.length.toLocaleString('en-US'), 'Won'), stat(lost.toLocaleString('en-US'), 'Lost'));
+    stats.append(stat(clients.toLocaleString('en-US'), clients === 1 ? 'Client referred' : 'Clients referred'), stat(open.toLocaleString('en-US'), 'Active'), stat(won.length.toLocaleString('en-US'), 'Won'), stat(lost.toLocaleString('en-US'), 'Lost'), stat(totalAmount > 0 ? fmtMoney(totalAmount) : '$0', 'Total amount'));
     if (wonValue > 0) stats.append(stat(fmtMoney(wonValue), 'Won value'));
     head.append(stats);
     body.append(head);
@@ -156,24 +204,25 @@
       return;
     }
     deals.sort((a, b) => String(b.modified || b.created || '').localeCompare(String(a.modified || a.created || '')));
+    body.append(commissionCard(deals));
     const wrap = el('div', 'cc-pv-tablewrap');
     const table = el('table', 'cc-pv-table');
     const thead = el('thead');
     const hr = el('tr');
-    [['Deal'], ['Client company'], ['Client contact'], ['Stage'], ['Created'], ['Last updated'], ['Amount', 'num']].forEach(([t, c]) => { const th = el('th', c ? 'cc-pv-' + c : null, t); th.scope = 'col'; hr.append(th); });
+    [['Deal'], ['Client company'], ['Client contact'], ['Stage'], ['Created'], ['Last updated'], ['Amount', 'num'], ['Commission terms'], ['Commission', 'num']].forEach(([t, c]) => { const th = el('th', c ? 'cc-pv-' + c : null, t); th.scope = 'col'; hr.append(th); });
     thead.append(hr);
     const tb = el('tbody');
     deals.forEach((d) => {
       const tr = el('tr');
       const stage = el('td');
       stage.append(el('span', 'cc-pv-stage cc-pv-stage-' + d.status, d.stage));
-      tr.append(el('td', 'cc-pv-deal', d.deal), el('td', null, d.client || '—'), el('td', null, d.client_contact || '—'), stage, el('td', null, fmtDate(d.created)), el('td', null, fmtDate(d.modified)), el('td', 'cc-pv-num', fmtMoney(d.amount)));
+      tr.append(el('td', 'cc-pv-deal', d.deal), el('td', null, d.client || '—'), el('td', null, d.client_contact || '—'), stage, el('td', null, fmtDate(d.created)), el('td', null, fmtDate(d.modified)), el('td', 'cc-pv-num', fmtMoney(d.amount)), el('td', 'cc-pv-terms', d.commission_terms || '—'), commCell(d));
       tb.append(tr);
     });
     table.append(thead, tb);
     wrap.append(table);
     card.append(wrap);
-    card.append(el('p', 'cc-pv-note', 'Amounts show where one is set. Dates are Central time. Updated daily.'));
+    card.append(el('p', 'cc-pv-note', 'Amounts and commission terms show where Zoho has them. Dates are Central time. Updated daily.'));
     body.append(card);
   };
 

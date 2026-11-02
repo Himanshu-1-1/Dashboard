@@ -918,7 +918,7 @@
   const rbStatus = (stage) => (stage === 'Closed' ? 'won' : RB_LOST.includes(stage) ? 'lost' : 'open');
   dash.calc('rb_rows', {
     title: 'Client deals and who referred them',
-    description: 'One row per client deal (every Deal Type except Reseller/ Referral Partner and Platform Provider Agreement): name, type, stage, status (open = any stage but Closed, Closed Lost or Closed Lost to Competition; won = Closed; lost = Closed Lost or Closed Lost to Competition), amount where set, the dates Zoho created it and last changed it (Central time), account, contact, the Referred By Contact and Referred By Account from the deal’s Commission Details, whether the referrer is Founder Network (the referring contact’s Relationship Type), and whether a referrer is recorded at all.',
+    description: 'One row per client deal (every Deal Type except Reseller/ Referral Partner and Platform Provider Agreement): name, type, stage, status (open = any stage but Closed, Closed Lost or Closed Lost to Competition; won = Closed; lost = Closed Lost or Closed Lost to Competition), amount where set, the dates Zoho created it and last changed it (Central time), the deal’s Commission Details text, account, contact, the Referred By Contact and Referred By Account from the deal’s Commission Details, whether the referrer is Founder Network (the referring contact’s Relationship Type), and whether a referrer is recorded at all.',
     inputs: ['rb_deals'],
     fn: (rb_deals) => rb_deals.map((d) => {
       const by = d.Referred_By_Contact || null;
@@ -926,7 +926,7 @@
       const rel = String(d['Referred_By_Contact.Relationship_Type'] || '');
       return {
         id: String(d.id), deal: d.Deal_Name || 'Deal', type: d.Deal_Type || 'No Deal Type', stage: d.Stage || null, status: rbStatus(d.Stage),
-        amount: Number(d.Amount) > 0 ? Number(d.Amount) : null, created: d.Created_Time ? ctDate(d.Created_Time) : null, modified: d.Modified_Time ? ctDate(d.Modified_Time) : null,
+        amount: Number(d.Amount) > 0 ? Number(d.Amount) : null, created: d.Created_Time ? ctDate(d.Created_Time) : null, modified: d.Modified_Time ? ctDate(d.Modified_Time) : null, commission_terms: String(d.Commission_Details || '').trim() || null,
         account: d.Account_Name || null, account_id: d.Account_Name_id ? String(d.Account_Name_id) : null,
         contact: d.Contact_Name || null, contact_id: d.Contact_Name_id ? String(d.Contact_Name_id) : null,
         by, by_id: d.Referred_By_Contact_id ? String(d.Referred_By_Contact_id) : null,
