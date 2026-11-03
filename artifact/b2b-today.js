@@ -1203,7 +1203,7 @@
   mt3Title.id = 'b2-mt3-title';
   const mt3Asof = el('span');
   const mt3Sub = el('p', 'cc-b2-insight');
-  mt3Sub.append(document.createTextNode('Meetings with B2B prospects at Priority 1 or 99, one per prospect per day. Held: a Fireflies recording, a past Outlook event on info@, mack@, hemang@ or shruti@ that wasn’t cancelled, or a Zoho Meeting marked Completed. Scheduled: a future Outlook event or Zoho Meeting. Select any number to list its meetings. '), mt3Asof);
+  mt3Sub.append(document.createTextNode('Meetings with B2B prospects at Priority 1 or 99, one per prospect per day. '), mt3Asof);
   mt3TitleBox.append(mt3Title, mt3Sub);
   mt3Head.append(mt3TitleBox);
   const mt3Body = el('div', 'cc-mt3-body');
@@ -2948,10 +2948,9 @@
     const st = state(['mt3_meetings']);
     if (st !== 'ok') { mt3Body.replaceChildren(el('p', st === 'error' ? 'cc-b2-bad' : 'cc-b2-insight', st === 'error' ? 'The calendar meetings didn’t load. Reload, or check the source in the dashboard menu.' : 'Loading the calendar meetings…')); mt3Asof.textContent = ''; return; }
     const cal = rows('b2b_cal');
-    const asOf = cal.reduce((mx, r) => (r.as_of && (!mx || r.as_of > mx) ? r.as_of : mx), null);
     const ffN = state(['b2b_ff']) === 'ok' ? rows('b2b_ff').length : 0;
     const miss = [cal.length ? null : 'Outlook calendars', ffN ? null : 'Fireflies'].filter(Boolean);
-    mt3Asof.textContent = (asOf ? `Outlook read ${whenF(asOf)}; Zoho is live. ` : '') + (miss.length ? `Not in this build: ${miss.join(' and ')}, so counts are floors.` : '');
+    mt3Asof.textContent = (miss.length ? `Not in this build: ${miss.join(' and ')}, so counts are floors.` : '');
     const all = rows('mt3_meetings');
     const live = all.filter((m) => m.status === 'held' || m.status === 'scheduled');
     const today = todayCT();
