@@ -478,12 +478,6 @@
 .cc-mp-warn { --pm-c: var(--color-warn); border-color: color-mix(in oklab, var(--pm-c) 50%, var(--color-border-line)); background: color-mix(in oklab, var(--pm-c) 10%, var(--color-panel)); }
 .cc-mp-tile .cc-pm-sub { color: var(--color-fg-muted); }
 .cc-mp-list .cc-b2-sop { margin: 0 0 6px; }
-a.cc-b2-sop { display: inline-block; text-decoration: none; }
-.cc-mp-verdict { margin: 0; max-width: 92ch; font-size: var(--cds-font-size-body); line-height: 1.55; color: var(--color-fg); }
-.cc-mp-verdict b { font-weight: var(--cds-font-weight-medium, 500); }
-.cc-mp-vlink { appearance: none; font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-decoration-color: color-mix(in oklab, currentColor 35%, transparent); text-underline-offset: 3px; }
-.cc-mp-vlink:hover { text-decoration-color: currentColor; }
-.cc-mp-vlink:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; border-radius: 2px; }
 .cc-mp-gap { margin: 0; }
 
 /* SOP links as an animated playbook page. */
