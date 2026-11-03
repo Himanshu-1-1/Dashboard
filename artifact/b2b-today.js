@@ -2930,8 +2930,65 @@
     drawMtg();
   };
 
+  /* Shared by Who to talk to next and the Partner meetings panel: one next step per Priority 1 prospect, worked out from
+     email, LinkedIn, Zoho Sign, deals and meeting briefs (each used only when loaded). */
+  const planEnricher = () => {
+    const mail = mailOk() ? new Map(rows('b2b_mail_people').map((r) => [r.id, r])) : null;
+    const li = liHas() && state(['b2b_li_people']) === 'ok' ? new Map(rows('b2b_li_people').filter((x) => x.in_export).map((x) => [x.id, x])) : null;
+    const brief = state(['b2b_briefs']) === 'ok' ? new Map(rows('b2b_briefs').map((b) => [String(b.zoho_id), b])) : null;
+    const pdeal = state(['b2b_partner_deals']) === 'ok' ? new Map(rows('b2b_partner_deals').map((d) => [String(d.id), d])) : null;
+    let agC = null; let agA = null;
+    if (state(['agreements']) === 'ok') {
+      agC = new Map(); agA = new Map();
+      const keep = (m, k, a) => { if (!k) return; const prev = m.get(k); if (!prev || (agRank[a.state] || 1) > (agRank[prev.state] || 1)) m.set(k, a); };
+      rows('agreements').filter((a) => a.kind !== 'MNDA').forEach((a) => { if (a.contact_id) keep(agC, String(a.contact_id), a); else keep(agA, String(a.account_id || ''), a); });
+    }
+    const LI_TWO = new Set(['talking', 'they_wrote', 'said_yes']);
+    const t0 = dayMs(todayCT());
+    const ago = (iso) => Math.round((t0 - dayMs(ctDay(iso))) / 864e5);
+    const enrich = (r) => {
+      const m = mail ? mail.get(r.id) : null;
+      const l = li ? li.get(r.id) : null;
+      const b = brief ? brief.get(r.id) : null;
+      const d = pdeal ? pdeal.get(r.id) : null;
+      const a = agC ? agC.get(r.id) || (r.account_id ? agA.get(String(r.account_id)) : null) || null : null;
+      const after = (iso) => !r.last || ctDay(iso) > r.last;
+      const waits = [];
+      if (m && m.status === 'They wrote last' && m.last_in && ago(m.last_in) <= REPLY_OWED_DAYS && after(m.last_in)) waits.push({ ch: 'email', at: m.last_in });
+      if (l && liWaiting(l) && after(l.last_in)) waits.push({ ch: 'LinkedIn message', at: l.last_in });
+      waits.sort((x, y) => String(y.at).localeCompare(String(x.at)));
+      const reply = !r.next && waits.length ? waits[0] : null;
+      const proof = r.n > 0 || (m && m.n_in > 0) || (l && l.theirs > 0 && LI_TWO.has(l.status));
+      const known = Boolean(mail && li);
+      const liPending = r.li === 'Connected' && l && l.actual === 'pending';
+      const ag = a ? a.state : null;
+      const rp = d ? (d.deals || []) : [];
+      const dealGap = Boolean(r.n > 0 && d && !rp.length && !d.other && ag !== 'Signed');
+      const check = r.group === 'ask' && (liPending || (known && !proof));
+      const ask = b && Array.isArray(b.ask_next) && b.ask_next.length ? clip(b.ask_next[0], 110) : '';
+      let step;
+      if (reply) step = `Reply to their ${reply.ch} of ${dayF(ctDay(reply.at))}`;
+      else if (ag === 'Out for signature') step = `Chase the signature on the referral agreement${a.sent ? ` sent ${dayF(a.sent)}` : ''}`;
+      else if (r.next) step = `Prepare for ${whenF(r.next)}${b ? '; read their brief' : ''}${ag === 'Expired, not re-sent' ? '; re-send the expired agreement after it' : ''}`;
+      else if (ag === 'Expired, not re-sent') step = 'Re-send the referral agreement; the last copy expired';
+      else if (dealGap) step = 'Create their Referral Partner deal (SOP 002)';
+      else if (r.group === 'ask') step = liPending ? 'LinkedIn request still pending: set LI Connect to Requested, or move back to Priority 3'
+        : check ? 'No reply on record: confirm the conversation, or move back to Priority 3' : 'Ask for a first meeting (SOP 4)';
+      else if (r.group === 'again') step = `Suggest a follow-up call${ask ? ': ' + ask : ''}`;
+      else step = `Follow up on the last meeting${ask ? ': ' + ask : ''}`;
+      const why = [r.n ? `${intF(r.n)} ${r.n === 1 ? 'meeting' : 'meetings'}, last ${dayF(r.last)}` : 'Never met',
+        m && m.last_in ? `they emailed ${dayF(ctDay(m.last_in))}` : null,
+        l && l.status !== 'none' ? `LinkedIn: ${String(l.label || '').toLowerCase()}` : null,
+        ag ? `agreement ${ag.toLowerCase()}` : null,
+        rp.length ? `deal at ${rp.map((x) => x.stage).join(', ')}` : null].filter(Boolean).join('; ');
+      return { ...r, m, l, a, ag, rp, reply, proof, liPending, dealGap, check, step, why, hasBrief: Boolean(b) };
+    };
+    return { mail, li, brief, pdeal, agC, enrich };
+  };
+
   /* Partner meetings, 3 a weekday. */
   let mt3Open = null;
+  let mt3HistOpen = false;
   const mt3Add = (d, n) => { const x = new Date(d + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
   const mt3Wk = (d) => { const w = new Date(d + 'T00:00:00Z').getUTCDay(); return w !== 0 && w !== 6; };
   const mt3Mon = (d) => { const w = new Date(d + 'T00:00:00Z').getUTCDay(); return mt3Add(d, -((w + 6) % 7)); };
@@ -2995,69 +3052,169 @@
       mt3List.append(list.length ? el('div', 'cc-b2-wrap') : el('p', 'cc-b2-insight', 'No meetings on the team calendars.'));
       if (list.length) mt3List.lastChild.append(tbl(list));
     };
-    const pill = (s) => el('span', 'cc-mt3-pill cc-mt3-' + s, MT3_STATE[s]);
     const openBtn = (node, key, title, list, note) => { node.type = 'button'; node.dataset.mt3 = key; node.setAttribute('aria-controls', 'b2-mt3-list'); node.addEventListener('click', () => showList(key, title, list, note)); return node; };
-    /* Cards: today, this week, this month. */
-    const dayAll = all.filter((m) => m.day === today);
-    const tH = held(onDay(today)); const tS = sched(onDay(today));
-    const tState = stateOf(today);
-    const card1 = openBtn(el('button', 'cc-mt3-card cc-mt3-c-' + tState), 'today', `Today, ${mt3WeekF(today)}`, dayAll);
-    const slots = el('span', 'cc-mt3-slots');
-    for (let i = 0; i < Math.max(MT3_TARGET, tH + tS); i += 1) slots.append(el('span', 'cc-mt3-slot ' + (i < tH ? 'is-held' : i < tH + tS ? 'is-sched' : 'is-empty')));
-    card1.append(el('span', 'cc-mt3-lab', `Today, ${mt3WeekF(today)}`), el('span', 'cc-mt3-big', `${intF(tH)}`), el('span', 'cc-mt3-of', mt3Wk(today) ? `of ${MT3_TARGET} held; ${intF(tS)} still scheduled today` : `held; no target on weekends; ${intF(tS)} scheduled`), slots, mt3Wk(today) ? pill(tState) : pill('off'));
-    const wFrom = mt3Mon(today); const wTo = mt3Add(wFrom, 4);
-    const wList = inRange(wFrom, wTo); const wTarget = mt3Target(mt3Days(wFrom, wTo));
+    /* Focus week: this week on a weekday, next week at the weekend. */
+    const wFrom = mt3Wk(today) ? mt3Mon(today) : mt3Mon(mt3Step(today, 1));
+    const wTo = mt3Add(wFrom, 4);
+    const wDays = mt3Days(wFrom, wTo);
+    const wList = inRange(wFrom, wTo);
+    const wTarget = mt3Target(wDays);
     const wH = held(wList); const wS = sched(wList);
-    const wLeft = mt3Days(today, wTo).filter((d) => mt3Wk(d)).length;
-    const wNeed = Math.max(0, wTarget - wH - wS);
-    const card2 = openBtn(el('button', 'cc-mt3-card cc-mt3-c-' + (wH >= wTarget ? 'met' : wTo < today ? 'missed' : 'now')), 'week', `This week, ${mt3WeekF(wFrom)} to ${mt3WeekF(wTo)}`, wList.concat(all.filter((m) => (m.status === 'cancelled' || m.status === 'unconfirmed') && m.day >= wFrom && m.day <= wTo)).sort((a, b) => a.at.localeCompare(b.at)));
-    card2.append(el('span', 'cc-mt3-lab', `This week, ${dayF(wFrom)} to ${dayF(wTo)}`), el('span', 'cc-mt3-big', intF(wH)), el('span', 'cc-mt3-of', `of ${intF(wTarget)} held; ${intF(wS)} scheduled`),
-      el('span', 'cc-mt3-sub', wNeed ? `${intF(wNeed)} more to book${wLeft ? `, about ${intF(Math.ceil(wNeed / wLeft))} a weekday` : ''}` : wH >= wTarget ? 'Weekly target met' : 'Booked to the target if every meeting happens'));
+    const wGap = Math.max(0, wTarget - wH - wS);
+    const tone = !wTarget ? 'off' : wH >= wTarget ? 'met' : wGap ? 'bad' : 'ok';
+    const thisWeek = wFrom <= today;
+    const fri = mt3WeekF(wTo);
+    const weekName = thisWeek ? 'this week' : `the week of ${dayF(wFrom)}`;
+    mt3.classList.remove('cc-mt3-t-met', 'cc-mt3-t-ok', 'cc-mt3-t-bad', 'cc-mt3-t-off');
+    mt3.classList.add('cc-mt3-t-' + tone);
+    /* Verdict: one line that says where the week stands and what turns it green. */
+    const verdict = openBtn(el('button', 'cc-mt3-verdict'), 'week', `Meetings ${weekName}, ${mt3WeekF(wFrom)} to ${fri}`,
+      all.filter((m) => m.day >= wFrom && m.day <= wTo).sort((a, b) => a.at.localeCompare(b.at)));
+    const vPill = el('span', 'cc-mt3-vpill', { met: 'Target met', ok: 'On course', bad: 'Behind', off: 'No target' }[tone]);
+    const vText = el('span', 'cc-mt3-vtext');
+    if (tone === 'met') vText.textContent = `${intF(wH)} of ${intF(wTarget)} held ${weekName}. Weekly target met.`;
+    else if (tone === 'ok') vText.textContent = `${intF(wH)} held and ${intF(wS)} booked ${weekName}: enough for ${intF(wTarget)} if every meeting happens.`;
+    else if (tone === 'bad') vText.textContent = `${intF(wH)} of ${intF(wTarget)} held ${weekName}, ${intF(wS)} booked. Book ${intF(wGap)} more by ${fri} to turn this green.`;
+    else vText.textContent = 'No weekday target this week.';
+    verdict.append(vPill, vText);
+    /* This week, one cell a weekday. */
+    const strip = el('div', 'cc-mt3-week');
+    strip.setAttribute('role', 'group'); strip.setAttribute('aria-label', `Meetings ${weekName}, ${MT3_TARGET} a weekday`);
+    wDays.forEach((d) => {
+      const l = onDay(d); const h = held(l); const sc = sched(l); const s = stateOf(d);
+      const left = Math.max(0, MT3_TARGET - h - sc);
+      const num = d < today ? h : d === today ? h : sc;
+      const sub = s === 'off' ? 'no target' : s === 'met' ? 'met' : s === 'missed' ? 'missed' : s === 'booked' ? 'fully booked'
+        : d === today ? (left ? `${sc ? `${sc} booked, ` : ''}${left} to book` : `${sc} still to come`) : `${left} to book`;
+      const b = openBtn(el('button', 'cc-mt3-day cc-mt3-' + s + (d === today ? ' is-today' : '')), 'day-' + d, `Meetings on ${mt3WeekF(d)}`, all.filter((m) => m.day === d));
+      b.setAttribute('aria-label', `${mt3WeekF(d)}${d === today ? ', today' : ''}: ${h} held, ${sc} booked. ${MT3_STATE[s]}.`);
+      b.append(el('span', 'cc-mt3-dd', d === today ? `Today, ${dayF(d)}` : mt3WeekF(d).replace(/,.*/, '') + ' ' + dayF(d).replace(/^\S+\s/, '')),
+        el('span', 'cc-mt3-dn', `${num}/${MT3_TARGET}`), el('span', 'cc-mt3-dl', sub));
+      strip.append(b);
+    });
+    /* Yesterday and tomorrow, by name. */
+    const names = (l) => { const n = l.map((m) => `${m.people.map((p) => p.name).join(' & ')} (${mt3Time(m.at)})`); return n.length > 3 ? `${n.slice(0, 3).join(', ')} and ${n.length - 3} more` : n.join(', '); };
+    const yd = mt3Step(today, -1); const td = mt3Step(today, 1);
+    const ydL = onDay(yd).filter((m) => m.status === 'held'); const tdL = onDay(td);
+    const around = el('p', 'cc-mt3-around');
+    around.append(el('b', null, `${mt3Add(today, -1) === yd ? 'Yesterday' : 'Last weekday'}: `), document.createTextNode(ydL.length ? names(ydL) : 'no meetings held'), document.createTextNode('. '),
+      el('b', null, `${mt3Add(today, 1) === td ? 'Tomorrow' : 'Next weekday'}: `), document.createTextNode(tdL.length ? names(tdL) : 'nothing booked'), document.createTextNode('.'));
+    /* What to do: who to book, and meetings to confirm. Aimed at next week once this week is covered. */
+    const aFrom = tone === 'bad' || !thisWeek ? wFrom : mt3Add(wFrom, 7);
+    const aTo = mt3Add(aFrom, 4);
+    const aList = inRange(aFrom, aTo);
+    const aGap = Math.max(0, mt3Target(mt3Days(aFrom, aTo)) - held(aList) - sched(aList));
+    const act = el('div', 'cc-mt3-act');
+    const steps = el('ol', 'cc-mt3-steps');
+    if (aGap) {
+      const open = mt3Days(aFrom, aTo).filter((d) => d >= today && mt3Wk(d) && d >= MT3_START)
+        .map((d) => ({ d, n: Math.max(0, MT3_TARGET - held(onDay(d)) - sched(onDay(d))) })).filter((x) => x.n);
+      const openN = open.reduce((s, x) => s + x.n, 0);
+      const makeUp = Math.max(0, aGap - openN);
+      const slots = open.map((x) => `${x.d === today ? 'today' : mt3WeekF(x.d).replace(/,.*/, '')} ${x.n}`).join(', ');
+      const li1 = el('li');
+      li1.append(el('b', null, `Book ${intF(aGap)} ${aGap === 1 ? 'meeting' : 'meetings'} by ${mt3WeekF(aTo)}`),
+        document.createTextNode(`${aFrom === wFrom ? '' : ' (this week is covered; this is next week)'}: ${slots}${makeUp ? `${slots ? ', plus ' : ''}${makeUp} to make up for days already missed` : ''}.`));
+      steps.append(li1);
+    } else {
+      const li1 = el('li'); li1.append(el('b', null, 'Nothing left to book'), document.createTextNode(` for ${aFrom === wFrom ? weekName : 'next week'}. Keep each meeting, and confirm it in Zoho once held.`)); steps.append(li1);
+    }
+    let cands = null;
+    if (aGap && state(['p1_meet_plan']) === 'ok') {
+      const { enrich } = planEnricher();
+      const rank = (r) => (r.reply ? 0 : r.group === 'again' ? 1 : r.group === 'ask' ? 2 : 3);
+      cands = rows('p1_meet_plan').filter((r) => !r.next && r.group !== 'booked').map(enrich).filter((r) => r.reply || !(r.check || r.liPending))
+        .sort((a, b) => rank(a) - rank(b) || (rank(a) === 0 ? String(b.reply.at).localeCompare(String(a.reply.at)) : rank(a) === 1 ? (a.since || 0) - (b.since || 0) : 0) || (b.li === 'Connected' ? 1 : 0) - (a.li === 'Connected' ? 1 : 0) || String(a.name).localeCompare(String(b.name)));
+      const whyNow = (r) => (r.reply ? `Waiting on our reply to their ${r.reply.ch} of ${dayF(ctDay(r.reply.at))}`
+        : r.group === 'again' ? `Last met ${dayF(r.last)}, ${intF(r.since)} days ago`
+          : r.group === 'ask' ? (r.li === 'Connected' ? 'Connected on LinkedIn, never met' : 'Never met')
+            : `Met ${dayF(r.last)}; nothing booked`);
+      const askOf = (r) => (r.reply ? `Reply to their ${r.reply.ch} and offer two times`
+        : r.group === 'ask' ? 'Ask for a first meeting (SOP 4)' : r.group === 'again' ? 'Suggest a catch-up call' : 'Suggest the next call');
+      const ctbl = (list) => {
+        const t = el('table', 'cc-tbl');
+        const th = el('thead'); const hr = el('tr');
+        ['Partner', 'Company', 'Why now', 'Ask', 'Owner (Assigned)'].forEach((x) => { const c = el('th', null, x); c.scope = 'col'; hr.append(c); });
+        th.append(hr); t.append(th);
+        const tb = el('tbody');
+        list.forEach((r) => {
+          const tr = rowOpens(el('tr'), r.id);
+          const n = el('td'); n.append(link('Contacts', r.id, r.name));
+          const c = el('td'); c.append(r.account_id ? link('Accounts', r.account_id, r.account) : document.createTextNode(r.account || 'No company'));
+          tr.append(n, c, el('td', null, whyNow(r)), el('td', null, askOf(r)), el('td', null, r.assigned || 'Not assigned'));
+          tb.append(tr);
+        });
+        t.append(tb);
+        return t;
+      };
+      const li2 = el('li');
+      li2.append(el('b', null, 'Ask these Priority 1 partners first'), document.createTextNode(': replies we owe, then partners last met 30+ days ago (most recent first, since they book most easily), then those connected but never met.'));
+      if (cands.length) {
+        const w = el('div', 'cc-b2-wrap'); w.append(ctbl(cands.slice(0, 5))); li2.append(w);
+        if (cands.length > 5) {
+          const more = el('button', 'cc-mt3-more', `All ${intF(cands.length)} Priority 1 partners with nothing booked`);
+          more.type = 'button'; more.dataset.mt3 = 'cands'; more.setAttribute('aria-controls', 'b2-mt3-list');
+          more.addEventListener('click', () => {
+            mt3Body.querySelectorAll('[data-mt3]').forEach((x) => x.setAttribute('aria-expanded', String(x.dataset.mt3 === 'cands' && mt3Open !== 'cands')));
+            if (mt3Open === 'cands') { mt3Open = null; mt3List.hidden = true; mt3List.replaceChildren(); return; }
+            mt3Open = 'cands'; mt3List.hidden = false;
+            const w2 = el('div', 'cc-b2-wrap'); w2.append(ctbl(cands));
+            mt3List.replaceChildren(el('p', 'cc-na-cap', `Priority 1 partners with nothing booked (${intF(cands.length)})`), w2);
+          });
+          li2.append(more);
+        }
+      } else li2.append(el('p', 'cc-b2-insight', 'No Priority 1 partner is ready to ask: everyone has a meeting booked or needs a check first (see Who to talk to next).'));
+      steps.append(li2);
+    }
+    const unconf = all.filter((m) => m.status === 'unconfirmed' && m.day >= mt3Add(today, -30));
+    if (unconf.length) {
+      const li3 = el('li');
+      const b = openBtn(el('button', 'cc-mt3-more'), 'unconf', 'Past Zoho Meetings not marked Completed (last 30 days)', unconf.slice().sort((a, b2) => b2.at.localeCompare(a.at)));
+      b.textContent = `See the ${intF(unconf.length)}`;
+      li3.append(el('b', null, `Confirm ${intF(unconf.length)} past Zoho ${unconf.length === 1 ? 'meeting' : 'meetings'}`), document.createTextNode(': set Meeting Status to Completed if it happened. They don’t count until then. '), b);
+      steps.append(li3);
+    }
+    act.append(el('p', 'cc-mt3-ct', tone === 'bad' ? 'To turn this green' : 'Next'), steps);
+    /* History, collapsed: daily grid, weekly and monthly columns. */
+    const hist = el('details', 'cc-mt3-hist');
+    hist.open = mt3HistOpen;
+    hist.addEventListener('toggle', () => { mt3HistOpen = hist.open; });
     const mFrom = today.slice(0, 8) + '01';
     const mEnd = new Date(mFrom + 'T00:00:00Z'); mEnd.setUTCMonth(mEnd.getUTCMonth() + 1); mEnd.setUTCDate(0);
     const mTo = mEnd.toISOString().slice(0, 10);
-    const mList = inRange(mFrom, mTo); const mTarget = mt3Target(mt3Days(mFrom, mTo));
-    const mH = held(mList); const mS = sched(mList);
-    const mExp = mt3Target(mt3Days(mFrom, mt3Add(today, -1)));
-    const card3 = openBtn(el('button', 'cc-mt3-card cc-mt3-c-' + (mH >= mExp ? 'met' : 'now')), 'month', `This month, ${mt3MonthF(today)}`, mList);
-    card3.append(el('span', 'cc-mt3-lab', `This month, ${mt3MonthF(today)}`), el('span', 'cc-mt3-big', intF(mH)), el('span', 'cc-mt3-of', `of ${intF(mTarget)} held; ${intF(mS)} scheduled`),
-      el('span', 'cc-mt3-sub', `${mH >= mExp ? 'On pace' : 'Behind pace'}: ${intF(mExp)} should be held by the end of yesterday`));
-    const cards = el('div', 'cc-mt3-cards'); cards.append(card1, card2, card3);
-    /* Daily trajectory: weekdays from the week tracking began (last 8 weeks at most) through next week. */
+    const mList = inRange(mFrom, mTo);
+    const mH = held(mList); const mExp = mt3Target(mt3Days(mFrom, mt3Add(today, -1)));
+    const lastW = [3, 2, 1].map((i) => { const a = mt3Add(mt3Mon(today), -7 * i); return held(inRange(a, mt3Add(a, 4))); });
+    hist.append(el('summary', null, `History: ${mt3MonthF(today).replace(/ \d{4}$/, '')} ${intF(mH)} of ${intF(mt3Target(mt3Days(mFrom, mTo)))} held, ${mH >= mExp ? 'on pace' : `behind pace (${intF(mExp)} by now)`}; the last three weeks held ${lastW.join(', ')} of ${MT3_TARGET * 5}.`));
     const lastMon = mt3Add(mt3Mon(today), 7);
     const firstMon = [mt3Mon(MT3_START), mt3Add(lastMon, -7 * 7)].sort().pop();
     const grid = el('div', 'cc-mt3-grid');
     grid.setAttribute('role', 'group'); grid.setAttribute('aria-label', 'Meetings by weekday');
     ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].forEach((d) => grid.append(el('span', 'cc-mt3-dh', d)));
-    let missedN = 0; let metN = 0;
     for (let w = firstMon; w <= lastMon; w = mt3Add(w, 7)) {
       for (let i = 0; i < 5; i += 1) {
         const d = mt3Add(w, i);
-        const s = stateOf(d); if (s === 'missed') missedN += 1; if (s === 'met' && d < today) metN += 1;
+        const s = stateOf(d);
         const l = onDay(d); const h = held(l); const sc = sched(l);
-        const b = openBtn(el('button', 'cc-mt3-day cc-mt3-' + s + (d === today ? ' is-today' : '')), 'day-' + d, `Meetings on ${mt3WeekF(d)}`, all.filter((m) => m.day === d));
-        b.setAttribute('aria-label', `${mt3WeekF(d)}: ${h} held, ${sc} scheduled. ${MT3_STATE[s]}.`);
-        b.append(el('span', 'cc-mt3-dd', dayF(d)), el('span', 'cc-mt3-dn', d > today ? `${sc}` : d === today ? `${h}+${sc}` : `${h}`), el('span', 'cc-mt3-dl', d > today ? 'booked' : d === today ? 'held + booked' : 'held'));
+        const b = openBtn(el('button', 'cc-mt3-day cc-mt3-sm cc-mt3-' + s + (d === today ? ' is-today' : '')), 'hday-' + d, `Meetings on ${mt3WeekF(d)}`, all.filter((m) => m.day === d));
+        b.setAttribute('aria-label', `${mt3WeekF(d)}: ${h} held, ${sc} booked. ${MT3_STATE[s]}.`);
+        b.append(el('span', 'cc-mt3-dd', dayF(d)), el('span', 'cc-mt3-dn', d > today ? `${sc}` : `${h}`));
         grid.append(b);
       }
     }
-    const legend = el('p', 'cc-b2-insight cc-mt3-legend');
-    legend.append(document.createTextNode(`Green: ${MT3_TARGET} or more held. Red: a weekday since ${dayF(MT3_START)} that ended with fewer; it stays red. Amber: today, until it ends. Outlined: days ahead, by meetings booked (green once ${MT3_TARGET} are booked). So far ${intF(metN)} met and ${intF(missedN)} missed.`));
-    /* Weekly and monthly trajectory. */
     const bars = (title, periods) => {
       const max = Math.max(1, ...periods.map((p) => Math.max(p.h + p.s, p.target || 0)));
       const box = el('div', 'cc-mt3-chart');
       box.append(el('p', 'cc-mt3-ct', title));
       const row = el('div', 'cc-mt3-bars');
       periods.forEach((p) => {
-        const tone = !p.target ? 'off' : p.done ? (p.h >= p.target ? 'met' : 'missed') : 'now';
-        const b = openBtn(el('button', 'cc-mt3-col cc-mt3-' + tone), p.key, p.title, p.list);
-        b.setAttribute('aria-label', `${p.title}: ${p.h} held${p.s ? `, ${p.s} scheduled` : ''}${p.target ? ` of ${p.target}` : ''}.`);
+        const pt = !p.target ? 'off' : p.done ? (p.h >= p.target ? 'met' : 'missed') : 'now';
+        const b = openBtn(el('button', 'cc-mt3-col cc-mt3-' + pt), p.key, p.title, p.list);
+        b.setAttribute('aria-label', `${p.title}: ${p.h} held${p.s ? `, ${p.s} booked` : ''}${p.target ? ` of ${p.target}` : ''}.`);
         const track = el('span', 'cc-mt3-track');
         if (p.target) { const tl = el('span', 'cc-mt3-tline'); tl.style.bottom = `${(p.target / max) * 100}%`; track.append(tl); }
         const hb = el('span', 'cc-mt3-bh'); hb.style.height = `${(p.h / max) * 100}%`;
-        const sb = el('span', 'cc-mt3-bs'); sb.style.height = `${(p.s / max) * 100}%`;
-        if (p.s) track.append(sb);
+        if (p.s) { const sb = el('span', 'cc-mt3-bs'); sb.style.height = `${(p.s / max) * 100}%`; track.append(sb); }
         track.append(hb);
         b.append(el('span', 'cc-mt3-bv', p.s ? `${p.h}+${p.s}` : `${p.h}`), track, el('span', 'cc-mt3-bl', p.label));
         row.append(b);
@@ -3079,29 +3236,18 @@
       const l = inRange(a, z);
       months.push({ key: 'mo-' + a, title: mt3MonthF(a), label: d.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short' }), h: held(l), s: sched(l), target: mt3Target(mt3Days(a, z)), done: z < today, list: l });
     }
-    const charts = el('div', 'cc-mt3-charts');
-    charts.append(bars(`Weekly, target ${MT3_TARGET * 5} a week`, weeks), bars('Monthly, target 3 each weekday', months));
+    const dayBox = el('div', 'cc-mt3-chart');
+    dayBox.append(el('p', 'cc-mt3-ct', `Each weekday since ${dayF(MT3_START)}: held, or booked for days ahead. Red days missed ${MT3_TARGET} and stay red.`), grid);
     const traj = el('div', 'cc-mt3-traj');
-    const dayBox = el('div', 'cc-mt3-chart'); dayBox.append(el('p', 'cc-mt3-ct', `Daily, target ${MT3_TARGET} each weekday`), grid, legend);
-    traj.append(dayBox, charts);
-    /* Yesterday and tomorrow (the weekday before and after today). */
-    const side = (dir) => {
-      const d = mt3Step(today, dir);
-      const lit = mt3Add(today, dir) === d;
-      const label = dir < 0 ? (lit ? 'Yesterday' : 'Last weekday') : (lit ? 'Tomorrow' : 'Next weekday');
-      const l = all.filter((m) => m.day === d);
-      const s = stateOf(d);
-      const box = el('div', 'cc-mt3-side');
-      const head = el('div', 'cc-mt3-sidehead');
-      const h = held(l); const sc = sched(l);
-      head.append(el('h3', null, `${label}, ${mt3WeekF(d)}`), el('span', 'cc-mt3-sidecount', dir < 0 ? `${intF(h)} of ${MT3_TARGET} held` : `${intF(sc)} of ${MT3_TARGET} booked`), pill(s));
-      box.append(head, l.length ? (() => { const w = el('div', 'cc-b2-wrap'); w.append(tbl(l)); return w; })() : el('p', 'cc-b2-insight', dir < 0 ? 'No meetings were held.' : 'Nothing booked yet.'));
-      return box;
-    };
-    const sides = el('div', 'cc-mt3-sides'); sides.append(side(-1), side(1));
-    mt3Body.replaceChildren(cards, traj, sides);
+    traj.append(dayBox, bars(`Weekly, target ${MT3_TARGET * 5}`, weeks), bars(`Monthly, target ${MT3_TARGET} each weekday`, months));
+    hist.append(traj);
+    mt3Body.replaceChildren(verdict, strip, around, act, hist);
     mt3Body.append(mt3List);
-    if (mt3Open) { const k = mt3Open; mt3Open = null; const btn = mt3Body.querySelector(`[data-mt3="${k}"]`); if (btn) btn.click(); else mt3List.hidden = true; } else mt3List.hidden = true;
+    if (mt3Open) {
+      const k = mt3Open; mt3Open = null;
+      const btn = mt3Body.querySelector(`[data-mt3="${k}"]`);
+      if (btn) btn.click(); else mt3List.hidden = true;
+    } else mt3List.hidden = true;
   };
 
   /* Who to talk to next (Priority 1): tiles for where each partner stands (meetings), and one next step per person
@@ -3123,56 +3269,7 @@
     if (st !== 'ok') { planOwners.replaceChildren(); planTiles.replaceChildren(); planList.hidden = true; planGap.hidden = true; return; }
     const rowsAll = rows('p1_meet_plan');
     mtgOwner = ownerTabs(planOwners, rowsAll, mtgOwner, mtgPick);
-    const mail = mailOk() ? new Map(rows('b2b_mail_people').map((r) => [r.id, r])) : null;
-    const li = liHas() && state(['b2b_li_people']) === 'ok' ? new Map(rows('b2b_li_people').filter((x) => x.in_export).map((x) => [x.id, x])) : null;
-    const brief = state(['b2b_briefs']) === 'ok' ? new Map(rows('b2b_briefs').map((b) => [String(b.zoho_id), b])) : null;
-    const pdeal = state(['b2b_partner_deals']) === 'ok' ? new Map(rows('b2b_partner_deals').map((d) => [String(d.id), d])) : null;
-    let agC = null; let agA = null;
-    if (state(['agreements']) === 'ok') {
-      agC = new Map(); agA = new Map();
-      const keep = (m, k, a) => { if (!k) return; const prev = m.get(k); if (!prev || (agRank[a.state] || 1) > (agRank[prev.state] || 1)) m.set(k, a); };
-      rows('agreements').filter((a) => a.kind !== 'MNDA').forEach((a) => { if (a.contact_id) keep(agC, String(a.contact_id), a); else keep(agA, String(a.account_id || ''), a); });
-    }
-    const LI_TWO = new Set(['talking', 'they_wrote', 'said_yes']);
-    const t0 = dayMs(todayCT());
-    const ago = (iso) => Math.round((t0 - dayMs(ctDay(iso))) / 864e5);
-    const enrich = (r) => {
-      const m = mail ? mail.get(r.id) : null;
-      const l = li ? li.get(r.id) : null;
-      const b = brief ? brief.get(r.id) : null;
-      const d = pdeal ? pdeal.get(r.id) : null;
-      const a = agC ? agC.get(r.id) || (r.account_id ? agA.get(String(r.account_id)) : null) || null : null;
-      const after = (iso) => !r.last || ctDay(iso) > r.last;
-      const waits = [];
-      if (m && m.status === 'They wrote last' && m.last_in && ago(m.last_in) <= REPLY_OWED_DAYS && after(m.last_in)) waits.push({ ch: 'email', at: m.last_in });
-      if (l && liWaiting(l) && after(l.last_in)) waits.push({ ch: 'LinkedIn message', at: l.last_in });
-      waits.sort((x, y) => String(y.at).localeCompare(String(x.at)));
-      const reply = !r.next && waits.length ? waits[0] : null;
-      const proof = r.n > 0 || (m && m.n_in > 0) || (l && l.theirs > 0 && LI_TWO.has(l.status));
-      const known = Boolean(mail && li);
-      const liPending = r.li === 'Connected' && l && l.actual === 'pending';
-      const ag = a ? a.state : null;
-      const rp = d ? (d.deals || []) : [];
-      const dealGap = Boolean(r.n > 0 && d && !rp.length && !d.other && ag !== 'Signed');
-      const check = r.group === 'ask' && (liPending || (known && !proof));
-      const ask = b && Array.isArray(b.ask_next) && b.ask_next.length ? clip(b.ask_next[0], 110) : '';
-      let step;
-      if (reply) step = `Reply to their ${reply.ch} of ${dayF(ctDay(reply.at))}`;
-      else if (ag === 'Out for signature') step = `Chase the signature on the referral agreement${a.sent ? ` sent ${dayF(a.sent)}` : ''}`;
-      else if (r.next) step = `Prepare for ${whenF(r.next)}${b ? '; read their brief' : ''}${ag === 'Expired, not re-sent' ? '; re-send the expired agreement after it' : ''}`;
-      else if (ag === 'Expired, not re-sent') step = 'Re-send the referral agreement; the last copy expired';
-      else if (dealGap) step = 'Create their Referral Partner deal (SOP 002)';
-      else if (r.group === 'ask') step = liPending ? 'LinkedIn request still pending: set LI Connect to Requested, or move back to Priority 3'
-        : check ? 'No reply on record: confirm the conversation, or move back to Priority 3' : 'Ask for a first meeting (SOP 4)';
-      else if (r.group === 'again') step = `Suggest a follow-up call${ask ? ': ' + ask : ''}`;
-      else step = `Follow up on the last meeting${ask ? ': ' + ask : ''}`;
-      const why = [r.n ? `${intF(r.n)} ${r.n === 1 ? 'meeting' : 'meetings'}, last ${dayF(r.last)}` : 'Never met',
-        m && m.last_in ? `they emailed ${dayF(ctDay(m.last_in))}` : null,
-        l && l.status !== 'none' ? `LinkedIn: ${String(l.label || '').toLowerCase()}` : null,
-        ag ? `agreement ${ag.toLowerCase()}` : null,
-        rp.length ? `deal at ${rp.map((x) => x.stage).join(', ')}` : null].filter(Boolean).join('; ');
-      return { ...r, m, l, a, ag, rp, reply, proof, liPending, dealGap, check, step, why, hasBrief: Boolean(b) };
-    };
+    const { mail, li, brief, pdeal, agC, enrich } = planEnricher();
     const rowsE = (mtgOwner === 'All' ? rowsAll : rowsAll.filter((r) => ownerOf(r) === mtgOwner)).map(enrich);
     const byName = (a, b) => String(a.name).localeCompare(String(b.name));
     const lists = {
