@@ -2988,7 +2988,7 @@
 
   /* Partner meetings, 3 a weekday. */
   let mt3Open = null;
-  let mt3HistOpen = false;
+  let mt3InfoOpen = false;
   const mt3Add = (d, n) => { const x = new Date(d + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
   const mt3Wk = (d) => { const w = new Date(d + 'T00:00:00Z').getUTCDay(); return w !== 0 && w !== 6; };
   const mt3Mon = (d) => { const w = new Date(d + 'T00:00:00Z').getUTCDay(); return mt3Add(d, -((w + 6) % 7)); };
@@ -3042,12 +3042,32 @@
       t.append(tb);
       return t;
     };
+    const closeList = () => {
+      mt3Open = null; mt3List.hidden = true; mt3List.replaceChildren();
+      mt3Body.querySelectorAll('[data-mt3]').forEach((b) => b.setAttribute('aria-expanded', 'false'));
+    };
+    const listHead = (title) => {
+      const h = el('div', 'cc-mt3-lhead');
+      const c = el('button', 'cc-go', 'Close'); c.type = 'button';
+      c.setAttribute('aria-label', `Close the list: ${title}`);
+      c.addEventListener('click', closeList);
+      h.append(el('p', 'cc-na-cap', title), c);
+      return h;
+    };
+    /* A list opens next to what opened it: under the week strip, or inside the details. */
+    const placeList = (key) => {
+      const src = mt3Body.querySelector(`[data-mt3="${key}"]`);
+      const box = src && src.closest('.cc-mt3-infobody');
+      if (box) box.insertBefore(mt3List, box.querySelector('.cc-mt3-inforow'));
+      else { const a = mt3Body.querySelector('.cc-mt3-around'); if (a) a.after(mt3List); }
+    };
     const showList = (key, title, list, note) => {
       mt3Body.querySelectorAll('[data-mt3]').forEach((b) => b.setAttribute('aria-expanded', String(b.dataset.mt3 === key && mt3Open !== key)));
-      if (mt3Open === key) { mt3Open = null; mt3List.hidden = true; mt3List.replaceChildren(); return; }
+      if (mt3Open === key) { closeList(); return; }
       mt3Open = key;
+      placeList(key);
       mt3List.hidden = false;
-      mt3List.replaceChildren(el('p', 'cc-na-cap', `${title} (${intF(list.length)})`));
+      mt3List.replaceChildren(listHead(`${title} (${intF(list.length)})`));
       if (note) mt3List.append(el('p', 'cc-b2-insight', note));
       mt3List.append(list.length ? el('div', 'cc-b2-wrap') : el('p', 'cc-b2-insight', 'No meetings on the team calendars.'));
       if (list.length) mt3List.lastChild.append(tbl(list));
@@ -3156,10 +3176,10 @@
           more.type = 'button'; more.dataset.mt3 = 'cands'; more.setAttribute('aria-controls', 'b2-mt3-list');
           more.addEventListener('click', () => {
             mt3Body.querySelectorAll('[data-mt3]').forEach((x) => x.setAttribute('aria-expanded', String(x.dataset.mt3 === 'cands' && mt3Open !== 'cands')));
-            if (mt3Open === 'cands') { mt3Open = null; mt3List.hidden = true; mt3List.replaceChildren(); return; }
-            mt3Open = 'cands'; mt3List.hidden = false;
+            if (mt3Open === 'cands') { closeList(); return; }
+            mt3Open = 'cands'; placeList('cands'); mt3List.hidden = false;
             const w2 = el('div', 'cc-b2-wrap'); w2.append(ctbl(cands));
-            mt3List.replaceChildren(el('p', 'cc-na-cap', `Priority 1 partners with nothing booked (${intF(cands.length)})`), w2);
+            mt3List.replaceChildren(listHead(`Priority 1 partners with nothing booked (${intF(cands.length)})`), w2);
           });
           li2.append(more);
         }
@@ -3176,16 +3196,14 @@
     }
     act.append(el('p', 'cc-mt3-ct', tone === 'bad' ? 'To turn this green' : 'Next'), steps);
     /* History, collapsed: daily grid, weekly and monthly columns. */
-    const hist = el('details', 'cc-mt3-hist');
-    hist.open = mt3HistOpen;
-    hist.addEventListener('toggle', () => { mt3HistOpen = hist.open; });
+    const hist = el('div', 'cc-mt3-hist');
     const mFrom = today.slice(0, 8) + '01';
     const mEnd = new Date(mFrom + 'T00:00:00Z'); mEnd.setUTCMonth(mEnd.getUTCMonth() + 1); mEnd.setUTCDate(0);
     const mTo = mEnd.toISOString().slice(0, 10);
     const mList = inRange(mFrom, mTo);
     const mH = held(mList); const mExp = mt3Target(mt3Days(mFrom, mt3Add(today, -1)));
     const lastW = [3, 2, 1].map((i) => { const a = mt3Add(mt3Mon(today), -7 * i); return held(inRange(a, mt3Add(a, 4))); });
-    hist.append(el('summary', null, `History: ${mt3MonthF(today).replace(/ \d{4}$/, '')} ${intF(mH)} of ${intF(mt3Target(mt3Days(mFrom, mTo)))} held, ${mH >= mExp ? 'on pace' : `behind pace (${intF(mExp)} by now)`}; the last three weeks held ${lastW.join(', ')} of ${MT3_TARGET * 5}.`));
+    hist.append(el('p', 'cc-mt3-ct', `History: ${mt3MonthF(today).replace(/ \d{4}$/, '')} ${intF(mH)} of ${intF(mt3Target(mt3Days(mFrom, mTo)))} held, ${mH >= mExp ? 'on pace' : `behind pace (${intF(mExp)} by now)`}; the last three weeks held ${lastW.join(', ')} of ${MT3_TARGET * 5}.`));
     const lastMon = mt3Add(mt3Mon(today), 7);
     const firstMon = [mt3Mon(MT3_START), mt3Add(lastMon, -7 * 7)].sort().pop();
     const grid = el('div', 'cc-mt3-grid');
@@ -3241,8 +3259,22 @@
     const traj = el('div', 'cc-mt3-traj');
     traj.append(dayBox, bars(`Weekly, target ${MT3_TARGET * 5}`, weeks), bars(`Monthly, target ${MT3_TARGET} each weekday`, months));
     hist.append(traj);
-    mt3Body.replaceChildren(verdict, strip, around, act, hist);
-    mt3Body.append(mt3List);
+    /* What to do and the history sit in one collapsed drop-down, with its own Close button. */
+    const info = el('details', 'cc-mt3-info');
+    info.open = mt3InfoOpen;
+    info.addEventListener('toggle', () => { mt3InfoOpen = info.open; if (!info.open && mt3List.closest('.cc-mt3-info')) closeList(); });
+    const infoSum = el('summary', null, tone === 'bad' ? 'What to do to turn this green, and the history' : 'What to do next, and the history');
+    /* Record the choice on click too: a redraw while sources load can replace the element before its toggle event fires. */
+    infoSum.addEventListener('click', () => { mt3InfoOpen = !info.open; });
+    info.append(infoSum);
+    const infoBody = el('div', 'cc-mt3-infobody');
+    const infoRow = el('div', 'cc-mt3-inforow');
+    const infoClose = el('button', 'cc-go', 'Close'); infoClose.type = 'button';
+    infoClose.addEventListener('click', () => { mt3InfoOpen = false; info.open = false; infoSum.focus(); });
+    infoRow.append(infoClose);
+    infoBody.append(act, hist, infoRow);
+    info.append(infoBody);
+    mt3Body.replaceChildren(verdict, strip, around, mt3List, info);
     if (mt3Open) {
       const k = mt3Open; mt3Open = null;
       const btn = mt3Body.querySelector(`[data-mt3="${k}"]`);
