@@ -861,42 +861,61 @@
     },
   });
 
-  /* Partner meetings, 3 a weekday (Hemang, Nov 3, 2026): every meeting on the team's Outlook calendars with a B2B
-     prospect at Priority 1 or 99 (dataset b2b_cal), one row per meeting. A weekday from MT3_START that ends with fewer
-     than MT3_TARGET held meetings is missed and stays red. */
+  /* Partner meetings, 3 a weekday (Hemang, Nov 3, 2026): meetings with B2B prospects at Priority 1 or 99 from three
+     sources, one row per prospect per Central-time day. Held: a Fireflies recording marked held, a past uncancelled
+     event on a team Outlook calendar, or a past Zoho Meeting marked Completed. Scheduled: a future uncancelled Outlook
+     event or a future Zoho Meeting. A weekday from MT3_START that ends with fewer than MT3_TARGET held is missed and
+     stays red. */
   const MT3_TARGET = 3;
   const MT3_START = '2026-11-01';
+  const MT3_PRIORITIES = ['1', '99'];
   dash.calc('mt3_meetings', {
-    title: 'Partner meetings on the team calendars',
-    description: `One row per meeting on the info@, mack@, hemang@ or shruti@ Outlook calendar with a B2B prospect at Priority 1 or 99. Copies on several calendars, and several prospects in one event, count once (same start time and calendars). Status: held (start time passed, not cancelled), scheduled (still to come) or cancelled (every copy cancelled; never counted). Day is the Central-time date. Target ${MT3_TARGET} held a weekday from ${MT3_START}.`,
-    inputs: ['b2b_cal', 'b2b_people', 'b2b_added'],
-    fn: (b2b_cal, b2b_people, b2b_added) => {
+    title: 'Partner meetings from Fireflies, Outlook and Zoho',
+    description: `One row per B2B prospect at Priority ${MT3_PRIORITIES.join(' or ')} per Central-time day with a meeting in any source. Held: a Fireflies recording marked held, a past uncancelled event on the info@, mack@, hemang@ or shruti@ Outlook calendar, or a past Zoho Meeting with Meeting Status Completed. Scheduled: a future uncancelled Outlook event or a future Zoho Meeting. Cancelled: only cancelled Outlook copies that day. Not confirmed: a past Zoho Meeting still Scheduled or blank that nothing else confirms. Only held and scheduled count toward the target of ${MT3_TARGET} a weekday from ${MT3_START}.`,
+    inputs: ['b2b_people', 'b2b_added', 'b2b_cal', 'b2b_meetings', 'b2b_ff'],
+    fn: (b2b_people, b2b_added, b2b_cal, b2b_meetings, b2b_ff) => {
       const now = Date.now();
-      const ppl = new Map(b2b_people.map((p) => [String(p.id), p]));
+      const ppl = new Map(b2b_people.filter((p) => MT3_PRIORITIES.includes(String(p.priority))).map((p) => [String(p.id), p]));
       const own = new Map(b2b_added.map((r) => [String(r.id), r.Assigned || null]));
-      const by = new Map();
+      const days = new Map();
+      const add = (id, t, kind, extra) => {
+        id = String(id || '');
+        if (!ppl.has(id) || !Number.isFinite(t)) return;
+        const day = ctDate(t);
+        const k = id + '|' + day;
+        if (!days.has(k)) days.set(k, { id, day, held: [], sched: [], off: [], unconf: [], cals: new Set(), src: new Set() });
+        const d = days.get(k);
+        d[kind].push(t);
+        if (kind === 'held' || kind === 'sched') d.src.add(extra.src);
+        if (extra.cals) extra.cals.split(',').filter(Boolean).forEach((c) => d.cals.add(c));
+      };
+      (b2b_ff || []).forEach((r) => { if (r.held === true || r.held === 'true') add(r.Zoho_Id, Date.parse(r.at), 'held', { src: 'Fireflies' }); });
       (b2b_cal || []).forEach((r) => {
         const t = Date.parse(r.at);
         if (!r.at || !Number.isFinite(t)) return;
-        const cals = String(r.cals || '').split(',').filter(Boolean).sort().join(',');
-        const key = new Date(t).toISOString() + '|' + cals;
-        const off = r.cancelled === true || r.cancelled === 'true';
-        if (!by.has(key)) by.set(key, { key, t, cals, cancelled: true, ids: [] });
-        const m = by.get(key);
-        m.cancelled = m.cancelled && off;
-        const id = String(r.Zoho_Id);
-        if (!m.ids.includes(id)) m.ids.push(id);
+        if (r.cancelled === true || r.cancelled === 'true') add(r.Zoho_Id, t, 'off', { cals: r.cals });
+        else add(r.Zoho_Id, t, t <= now ? 'held' : 'sched', { src: 'Outlook', cals: r.cals });
       });
-      return [...by.values()].sort((a, b) => a.t - b.t).map((m) => {
-        const people = m.ids.map((id) => {
-          const p = ppl.get(id) || {};
-          return { id, name: p.name || 'Not in the B2B campaign now', account: p.account || null, account_id: p.account_id || null, priority: p.priority || null, assigned: own.get(id) || null };
-        });
+      (b2b_meetings || []).forEach((m) => {
+        const t = Date.parse(m.Start_DateTime);
+        if (!m.Who_Id_id || !Number.isFinite(t)) return;
+        if (t > now) add(m.Who_Id_id, t, 'sched', { src: 'Zoho' });
+        else if (m.Meeting_Status === 'Completed') add(m.Who_Id_id, t, 'held', { src: 'Zoho' });
+        else add(m.Who_Id_id, t, 'unconf', {});
+      });
+      const first = (a) => Math.min(...a);
+      return [...days.values()].map((d) => {
+        const status = d.held.length ? 'held' : d.sched.length ? 'scheduled' : d.off.length ? 'cancelled' : 'unconfirmed';
+        const t = status === 'held' ? first(d.held) : status === 'scheduled' ? first(d.sched) : status === 'cancelled' ? first(d.off) : first(d.unconf);
+        const p = ppl.get(d.id);
+        const order = ['Outlook', 'Zoho', 'Fireflies'];
         return {
-          key: m.key, at: new Date(m.t).toISOString(), day: ctDate(m.t), cals: m.cals,
-          status: m.cancelled ? 'cancelled' : m.t <= now ? 'held' : 'scheduled', people,
+          key: d.id + '|' + d.day, at: new Date(t).toISOString(), day: d.day, status,
+          seen: [...d.src].sort((a, b) => order.indexOf(a) - order.indexOf(b)).join(', ') || (status === 'cancelled' ? 'Outlook (cancelled)' : status === 'unconfirmed' ? 'Zoho, not marked Completed' : ''),
+          cals: [...d.cals].sort().join(','),
+          people: [{ id: d.id, name: p.name, account: p.account || null, account_id: p.account_id || null, priority: p.priority || null, assigned: own.get(d.id) || null }],
         };
-      });
+      }).sort((a, b) => a.at.localeCompare(b.at));
     },
   });
 
@@ -1184,7 +1203,7 @@
   mt3Title.id = 'b2-mt3-title';
   const mt3Asof = el('span');
   const mt3Sub = el('p', 'cc-b2-insight');
-  mt3Sub.append(document.createTextNode('External meetings with B2B prospects at Priority 1 or 99 on the team’s Outlook calendars (info@, mack@, hemang@, shruti@). Held means the start time has passed and it wasn’t cancelled; select any number to list its meetings. '), mt3Asof);
+  mt3Sub.append(document.createTextNode('Meetings with B2B prospects at Priority 1 or 99, one per prospect per day. Held: a Fireflies recording, a past Outlook event on info@, mack@, hemang@ or shruti@ that wasn’t cancelled, or a Zoho Meeting marked Completed. Scheduled: a future Outlook event or Zoho Meeting. Select any number to list its meetings. '), mt3Asof);
   mt3TitleBox.append(mt3Title, mt3Sub);
   mt3Head.append(mt3TitleBox);
   const mt3Body = el('div', 'cc-mt3-body');
@@ -2930,10 +2949,11 @@
     if (st !== 'ok') { mt3Body.replaceChildren(el('p', st === 'error' ? 'cc-b2-bad' : 'cc-b2-insight', st === 'error' ? 'The calendar meetings didn’t load. Reload, or check the source in the dashboard menu.' : 'Loading the calendar meetings…')); mt3Asof.textContent = ''; return; }
     const cal = rows('b2b_cal');
     const asOf = cal.reduce((mx, r) => (r.as_of && (!mx || r.as_of > mx) ? r.as_of : mx), null);
-    mt3Asof.textContent = asOf ? `Calendars read ${whenF(asOf)}.` : '';
-    if (!cal.length) { mt3Body.replaceChildren(el('p', 'cc-b2-insight', 'The team calendars aren’t in this build yet, so there is nothing to count.')); return; }
+    const ffN = state(['b2b_ff']) === 'ok' ? rows('b2b_ff').length : 0;
+    const miss = [cal.length ? null : 'Outlook calendars', ffN ? null : 'Fireflies'].filter(Boolean);
+    mt3Asof.textContent = (asOf ? `Outlook read ${whenF(asOf)}; Zoho is live. ` : '') + (miss.length ? `Not in this build: ${miss.join(' and ')}, so counts are floors.` : '');
     const all = rows('mt3_meetings');
-    const live = all.filter((m) => m.status !== 'cancelled');
+    const live = all.filter((m) => m.status === 'held' || m.status === 'scheduled');
     const today = todayCT();
     const onDay = (d) => live.filter((m) => m.day === d);
     const held = (list) => list.filter((m) => m.status === 'held').length;
@@ -2949,18 +2969,18 @@
     const tbl = (list) => {
       const t = el('table', 'cc-tbl');
       const th = el('thead'); const hr = el('tr');
-      ['When (CT)', 'Partner', 'Company', 'Priority', 'Owner (Assigned)', 'Calendars', 'Status'].forEach((x) => { const c = el('th', null, x); c.scope = 'col'; hr.append(c); });
+      ['When (CT)', 'Partner', 'Company', 'Priority', 'Owner (Assigned)', 'Seen in', 'Status'].forEach((x) => { const c = el('th', null, x); c.scope = 'col'; hr.append(c); });
       th.append(hr); t.append(th);
       const tb = el('tbody');
       list.forEach((m) => {
         const tr = el('tr');
         const who = el('td'); m.people.forEach((p, i) => { if (i) who.append(document.createTextNode(', ')); who.append(p.id && p.name !== 'Not in the B2B campaign now' ? link('Contacts', p.id, p.name) : document.createTextNode(p.name)); });
         const co = el('td'); m.people.forEach((p, i) => { if (i) co.append(document.createTextNode(', ')); co.append(p.account_id ? link('Accounts', p.account_id, p.account) : document.createTextNode(p.account || 'No company')); });
-        const stx = m.status === 'held' ? 'Held' : m.status === 'scheduled' ? 'Scheduled' : 'Cancelled (not counted)';
+        const stx = m.status === 'held' ? 'Held' : m.status === 'scheduled' ? 'Scheduled' : m.status === 'cancelled' ? 'Cancelled (not counted)' : 'Not confirmed (not counted)';
         tr.append(el('td', null, `${mt3WeekF(m.day)}, ${mt3Time(m.at)}`), who, co,
           el('td', null, [...new Set(m.people.map((p) => (p.priority ? 'P' + p.priority : '—')))].join(', ')),
           el('td', null, [...new Set(m.people.map((p) => p.assigned || 'Not assigned'))].join(', ')),
-          el('td', null, calsF(m.cals) || '—'), el('td', 'cc-mt3-st-' + m.status, stx));
+          el('td', null, [m.seen, m.cals ? calsF(m.cals) : ''].filter(Boolean).join('; ') || '—'), el('td', 'cc-mt3-st-' + m.status, stx));
         tb.append(tr);
       });
       t.append(tb);
@@ -2991,7 +3011,7 @@
     const wH = held(wList); const wS = sched(wList);
     const wLeft = mt3Days(today, wTo).filter((d) => mt3Wk(d)).length;
     const wNeed = Math.max(0, wTarget - wH - wS);
-    const card2 = openBtn(el('button', 'cc-mt3-card cc-mt3-c-' + (wH >= wTarget ? 'met' : wTo < today ? 'missed' : 'now')), 'week', `This week, ${mt3WeekF(wFrom)} to ${mt3WeekF(wTo)}`, wList.concat(all.filter((m) => m.status === 'cancelled' && m.day >= wFrom && m.day <= wTo)).sort((a, b) => a.at.localeCompare(b.at)));
+    const card2 = openBtn(el('button', 'cc-mt3-card cc-mt3-c-' + (wH >= wTarget ? 'met' : wTo < today ? 'missed' : 'now')), 'week', `This week, ${mt3WeekF(wFrom)} to ${mt3WeekF(wTo)}`, wList.concat(all.filter((m) => (m.status === 'cancelled' || m.status === 'unconfirmed') && m.day >= wFrom && m.day <= wTo)).sort((a, b) => a.at.localeCompare(b.at)));
     card2.append(el('span', 'cc-mt3-lab', `This week, ${dayF(wFrom)} to ${dayF(wTo)}`), el('span', 'cc-mt3-big', intF(wH)), el('span', 'cc-mt3-of', `of ${intF(wTarget)} held; ${intF(wS)} scheduled`),
       el('span', 'cc-mt3-sub', wNeed ? `${intF(wNeed)} more to book${wLeft ? `, about ${intF(Math.ceil(wNeed / wLeft))} a weekday` : ''}` : wH >= wTarget ? 'Weekly target met' : 'Booked to the target if every meeting happens'));
     const mFrom = today.slice(0, 8) + '01';
@@ -3074,7 +3094,7 @@
       const s = stateOf(d);
       const box = el('div', 'cc-mt3-side');
       const head = el('div', 'cc-mt3-sidehead');
-      const h = held(l.filter((m) => m.status !== 'cancelled')); const sc = sched(l.filter((m) => m.status !== 'cancelled'));
+      const h = held(l); const sc = sched(l);
       head.append(el('h3', null, `${label}, ${mt3WeekF(d)}`), el('span', 'cc-mt3-sidecount', dir < 0 ? `${intF(h)} of ${MT3_TARGET} held` : `${intF(sc)} of ${MT3_TARGET} booked`), pill(s));
       box.append(head, l.length ? (() => { const w = el('div', 'cc-b2-wrap'); w.append(tbl(l)); return w; })() : el('p', 'cc-b2-insight', dir < 0 ? 'No meetings were held.' : 'Nothing booked yet.'));
       return box;

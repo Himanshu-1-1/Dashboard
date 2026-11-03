@@ -797,4 +797,4 @@ tr.cc-days-row > td { padding: 0 12px 12px; background: color-mix(in oklab, var(
 .cc-mt3-sidecount { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
 .cc-mt3-sidehead .cc-mt3-pill { margin: 0; }
 .cc-mt3-list { display: grid; gap: 6px; min-width: 0; }
-.cc-mt3-st-held { color: var(--mt3-ok); } .cc-mt3-st-cancelled { color: var(--color-fg-muted); text-decoration: line-through; }
+.cc-mt3-st-held { color: var(--mt3-ok); } .cc-mt3-st-cancelled { color: var(--color-fg-muted); text-decoration: line-through; } .cc-mt3-st-unconfirmed { color: var(--color-fg-muted); }
