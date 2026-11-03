@@ -2943,6 +2943,8 @@
       const keep = (m, k, a) => { if (!k) return; const prev = m.get(k); if (!prev || (agRank[a.state] || 1) > (agRank[prev.state] || 1)) m.set(k, a); };
       rows('agreements').filter((a) => a.kind !== 'MNDA').forEach((a) => { if (a.contact_id) keep(agC, String(a.contact_id), a); else keep(agA, String(a.account_id || ''), a); });
     }
+    /* Chief of Staff bot: the latest work conversation with this person (Telegram, WhatsApp, email, calls), one concise line. */
+    const cos = state(['cos_digest']) === 'ok' && rows('cos_digest').length ? new Map(rows('cos_digest').map((c) => [String(c.zoho_id), c])) : null;
     const LI_TWO = new Set(['talking', 'they_wrote', 'said_yes']);
     const t0 = dayMs(todayCT());
     const ago = (iso) => Math.round((t0 - dayMs(ctDay(iso))) / 864e5);
@@ -2981,9 +2983,10 @@
         l && l.status !== 'none' ? `LinkedIn: ${String(l.label || '').toLowerCase()}` : null,
         ag ? `agreement ${ag.toLowerCase()}` : null,
         rp.length ? `deal at ${rp.map((x) => x.stage).join(', ')}` : null].filter(Boolean).join('; ');
-      return { ...r, m, l, a, ag, rp, reply, proof, liPending, dealGap, check, step, why, hasBrief: Boolean(b) };
+      const cx = cos ? cos.get(String(r.id)) : null;
+      return { ...r, m, l, a, ag, rp, reply, proof, liPending, dealGap, check, step, why, hasBrief: Boolean(b), ctx: cx && cx.line ? cx.line : '' };
     };
-    return { mail, li, brief, pdeal, agC, enrich };
+    return { mail, li, brief, pdeal, agC, cos, enrich };
   };
 
   /* Partner meetings, 3 a weekday. */
@@ -3141,7 +3144,7 @@
     }
     let cands = null;
     if (aGap && state(['p1_meet_plan']) === 'ok') {
-      const { enrich } = planEnricher();
+      const { enrich, cos } = planEnricher();
       const rank = (r) => (r.reply ? 0 : r.group === 'again' ? 1 : r.group === 'ask' ? 2 : 3);
       cands = rows('p1_meet_plan').filter((r) => !r.next && r.group !== 'booked').map(enrich).filter((r) => r.reply || !(r.check || r.liPending))
         .sort((a, b) => rank(a) - rank(b) || (rank(a) === 0 ? String(b.reply.at).localeCompare(String(a.reply.at)) : rank(a) === 1 ? (a.since || 0) - (b.since || 0) : 0) || (b.li === 'Connected' ? 1 : 0) - (a.li === 'Connected' ? 1 : 0) || String(a.name).localeCompare(String(b.name)));
@@ -3154,7 +3157,7 @@
       const ctbl = (list) => {
         const t = el('table', 'cc-tbl');
         const th = el('thead'); const hr = el('tr');
-        ['Partner', 'Company', 'Why now', 'Ask', 'Owner (Assigned)'].forEach((x) => { const c = el('th', null, x); c.scope = 'col'; hr.append(c); });
+        ['Partner', 'Company', 'Why now', 'Ask', 'Owner (Assigned)', ...(cos ? ['Latest conversation'] : [])].forEach((x) => { const c = el('th', null, x); c.scope = 'col'; hr.append(c); });
         th.append(hr); t.append(th);
         const tb = el('tbody');
         list.forEach((r) => {
@@ -3162,6 +3165,7 @@
           const n = el('td'); n.append(link('Contacts', r.id, r.name));
           const c = el('td'); c.append(r.account_id ? link('Accounts', r.account_id, r.account) : document.createTextNode(r.account || 'No company'));
           tr.append(n, c, el('td', null, whyNow(r)), el('td', null, askOf(r)), el('td', null, r.assigned || 'Not assigned'));
+          if (cos) { const cx = el('td'); cx.append(el('span', 'cc-b2-ctx', r.ctx || '—')); tr.append(cx); }
           tb.append(tr);
         });
         t.append(tb);
@@ -3301,7 +3305,7 @@
     if (st !== 'ok') { planOwners.replaceChildren(); planTiles.replaceChildren(); planList.hidden = true; planGap.hidden = true; return; }
     const rowsAll = rows('p1_meet_plan');
     mtgOwner = ownerTabs(planOwners, rowsAll, mtgOwner, mtgPick);
-    const { mail, li, brief, pdeal, agC, enrich } = planEnricher();
+    const { mail, li, brief, pdeal, agC, cos, enrich } = planEnricher();
     const rowsE = (mtgOwner === 'All' ? rowsAll : rowsAll.filter((r) => ownerOf(r) === mtgOwner)).map(enrich);
     const byName = (a, b) => String(a.name).localeCompare(String(b.name));
     const lists = {
@@ -3318,11 +3322,12 @@
     const stepC = ['Next step', (r) => r.step];
     const lastC = ['Last met', (r) => (r.last ? fullDayF(r.last) : 'Not yet')];
     const mailC = mail ? [['Email', (r) => { const m = r.m; if (!m) return '—'; return m.status + (m.last_in ? `; they wrote ${dayF(ctDay(m.last_in))}` : '') + (m.last_out ? `; we wrote ${dayF(ctDay(m.last_out))}` : ''); }]] : [];
+    const ctxC = cos ? [['Latest conversation', (r) => (r.ctx ? el('span', 'cc-b2-ctx', r.ctx) : '—')]] : [];
     const COLS = {
-      ask: [nameC, coC, ['LinkedIn', (r) => r.li || 'Not set'], ...mailC, stepC, ownC],
-      booked: [nameC, coC, ['Next meeting', (r) => whenF(r.next)], ['Meetings so far', (r) => intF(r.n)], lastC, stepC, ownC],
-      again: [nameC, coC, lastC, ['Days since', (r) => intF(r.since)], ['Meetings', (r) => intF(r.n)], stepC, ownC],
-      recent: [nameC, coC, lastC, ['Days since', (r) => intF(r.since)], ['Meetings', (r) => intF(r.n)], ['Source', srcF], stepC, ownC],
+      ask: [nameC, coC, ['LinkedIn', (r) => r.li || 'Not set'], ...mailC, stepC, ownC, ...ctxC],
+      booked: [nameC, coC, ['Next meeting', (r) => whenF(r.next)], ['Meetings so far', (r) => intF(r.n)], lastC, stepC, ownC, ...ctxC],
+      again: [nameC, coC, lastC, ['Days since', (r) => intF(r.since)], ['Meetings', (r) => intF(r.n)], stepC, ownC, ...ctxC],
+      recent: [nameC, coC, lastC, ['Days since', (r) => intF(r.since)], ['Meetings', (r) => intF(r.n)], ['Source', srcF], stepC, ownC, ...ctxC],
       log: [nameC, coC, ['Meetings to log (CT)', (r) => r.to_log.map((x) => fullDayF(x.day)).join(', ')], ['Calendars', (r) => calsF([...new Set(r.to_log.flatMap((x) => x.cals.split(',')))].join(','))], ownC],
     };
     const NOTE = {

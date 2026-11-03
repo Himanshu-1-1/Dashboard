@@ -798,3 +798,6 @@ tr.cc-days-row > td { padding: 0 12px 12px; background: color-mix(in oklab, var(
 .cc-mt3-bl { font-size: 10px; color: var(--color-fg-muted); white-space: nowrap; }
 .cc-mt3-list { display: grid; gap: 6px; min-width: 0; }
 .cc-mt3-st-held { color: var(--mt3-ok); } .cc-mt3-st-cancelled { color: var(--color-fg-muted); text-decoration: line-through; } .cc-mt3-st-unconfirmed { color: var(--color-fg-muted); }
+
+/* Chief of Staff context line in the people lists */
+.cc-b2-ctx { display: block; min-width: 14rem; max-width: 30rem; color: var(--color-fg-muted); line-height: 1.4; }

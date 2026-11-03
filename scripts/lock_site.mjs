@@ -7,7 +7,10 @@
 // site/linksync.js and site/p3.js (each sets one window.__NAME__ = {...}), plus any site/*.sealed.json written by scripts/seal.mjs (opened with the MAIL_KEY
 // secret, the RSA private key, and served to the page as window.__SEALED__.datasets), encrypts them together with
 // AES-256-GCM under a key derived from the passcode (PBKDF2-SHA256), writes site/data.lock.json, deletes the readable files and removes their <script> tags from
-// site/index.html. The page decrypts in the browser after the passcode is entered. Node standard library only.
+// site/index.html. The page decrypts in the browser after the passcode is entered. A sealed file may also carry `lazy` parts
+// (name -> base64 gzip of JSON, for example the Chief of Staff feed): each is written as its own <name>.lock.json under the same
+// passcode key, listed in the bundle as window.__LAZY__, and fetched by the page only when a tab asks for it (CC_LAZY).
+// Node standard library only.
 import { constants, createCipheriv, createDecipheriv, createPrivateKey, pbkdf2Sync, privateDecrypt, randomBytes } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -28,6 +31,7 @@ if (!passcode) fail('DASH_PASSCODE is not set. Add it as a GitHub Actions secret
 if ([...passcode].length < MIN_LENGTH) fail(`DASH_PASSCODE must be at least ${MIN_LENGTH} characters.`);
 
 const bundle = {};
+let lazyParts = {};
 for (const name of FILES) {
   const path = join(dir, name);
   if (!existsSync(path)) {
@@ -57,6 +61,7 @@ if (sealedFiles.length) {
       fail(`MAIL_KEY is not a valid private key: ${err.message}`);
     }
     const sealed = {};
+    const lazy = {};
     for (const f of sealedFiles) {
       try {
         const box = JSON.parse(readFileSync(join(dir, f), 'utf8'));
@@ -70,16 +75,34 @@ if (sealedFiles.length) {
           if (sealed[name]) fail(`dataset ${name} appears in more than one sealed file`);
           sealed[name] = rows;
         }
-        console.log(`Opened ${f}: ${Object.keys(opened.datasets || {}).join(', ')} (sealed ${opened.sealed_at || 'at an unknown time'}).`);
+        for (const [name, b64] of Object.entries(opened.lazy || {})) {
+          if (!/^[a-z][a-z0-9_]{1,40}$/.test(name)) fail(`lazy part name ${JSON.stringify(name)} in ${f} is not allowed`);
+          if (lazy[name]) fail(`lazy part ${name} appears in more than one sealed file`);
+          lazy[name] = Buffer.from(String(b64), 'base64');
+        }
+        console.log(`Opened ${f}: ${[...Object.keys(opened.datasets || {}), ...Object.keys(opened.lazy || {}).map((n) => n + ' (lazy)')].join(', ')} (sealed ${opened.sealed_at || 'at an unknown time'}).`);
       } catch (err) {
         console.log(`::warning::${f} could not be opened (${err.message}); the site goes out without it.`);
       }
     }
     if (Object.keys(sealed).length) bundle.__SEALED__ = { datasets: sealed };
+    lazyParts = lazy;
   }
 }
 
 const key = pbkdf2Sync(Buffer.from(passcode, 'utf8'), Buffer.from(KDF.salt, 'utf8'), KDF.iterations, 32, 'sha256');
+/* Lazy parts: gzip bytes encrypted under the passcode key, one file each; the page fetches, decrypts and gunzips on demand. */
+const lazyFiles = {};
+for (const [name, gz] of Object.entries(lazyParts)) {
+  const liv = randomBytes(12);
+  const lc = createCipheriv('aes-256-gcm', key, liv);
+  const enc = Buffer.concat([lc.update(gz), lc.final(), lc.getAuthTag()]);
+  const file = `${name}.lock.json`;
+  writeFileSync(join(dir, file), JSON.stringify({ v: 1, enc: 'gzip-json', iv: liv.toString('base64'), data: enc.toString('base64') }));
+  lazyFiles[name] = file;
+  console.log(`Locked lazy part ${name} into ${file} (${enc.length} bytes).`);
+}
+if (Object.keys(lazyFiles).length) bundle.__LAZY__ = lazyFiles;
 const iv = randomBytes(12);
 const cipher = createCipheriv('aes-256-gcm', key, iv);
 const body = Buffer.concat([cipher.update(JSON.stringify(bundle), 'utf8'), cipher.final(), cipher.getAuthTag()]);

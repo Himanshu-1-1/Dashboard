@@ -24,3 +24,7 @@ site/network.css
 site/p3.js
 site/partner-view.js
 site/partner-view.css
+site/*.lock.json
+site/*.json.gz
+site/cos.js
+site/cos.css

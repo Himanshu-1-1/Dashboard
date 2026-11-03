@@ -1,0 +1,97 @@
+/* Chief of Staff tab. Uses the page's tokens. */
+.cc-cos-root { display: grid; gap: var(--cds-gap-md); --cos-tg: var(--s1, #3987e5); --cos-wa: var(--s3, #199e70); --cos-mail: var(--s7, #9085e9); --cos-call: var(--s2, #d95926); --cos-zoho: var(--s4, #c98500); }
+.cc-cos-root h2 { margin: 0; font-size: 20px; font-weight: var(--cds-font-weight-medium); }
+.cc-cos-root h3 { margin: 0; font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); }
+.cc-cos-head { gap: var(--cds-gap-sm); }
+.cc-cos-lede { margin: 0; max-width: 80ch; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); line-height: 1.5; }
+.cc-cos-asof { margin: 0; color: var(--color-fg-muted); font-size: 12px; line-height: 1.45; max-width: 90ch; }
+.cc-cos-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.cc-cos-stats:empty { display: none; }
+.cc-cos-stat { appearance: none; font: inherit; color: inherit; text-align: left; cursor: pointer; display: grid; gap: 2px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--color-border-line); background: var(--color-bg); }
+.cc-cos-stat:hover { border-color: var(--color-fg-muted); }
+.cc-cos-stat:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+.cc-cos-stat b { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: 32px; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.cc-cos-stat span { font-size: 12.5px; color: var(--color-fg-muted); }
+
+.cc-cos-views { display: flex; flex-wrap: wrap; gap: 6px; }
+.cc-cos-viewtab { appearance: none; font: inherit; font-size: 14px; cursor: pointer; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--color-border-line); background: var(--color-panel); color: var(--color-fg); }
+.cc-cos-viewtab:hover { background: color-mix(in oklab, var(--color-fg) 4%, var(--color-panel)); }
+.cc-cos-viewtab[aria-selected="true"] { background: var(--color-fg); border-color: var(--color-fg); color: var(--color-bg); font-weight: var(--cds-font-weight-medium); }
+.cc-cos-viewtab:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+
+.cc-cos-body { gap: var(--cds-gap-sm); }
+.cc-cos-tools { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.cc-cos-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.cc-cos-cap { margin: 0; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); line-height: 1.45; max-width: 90ch; }
+.cc-cos-bad { margin: 0; color: var(--color-bad); font-size: var(--cds-font-size-caption); }
+.cc-cos-empty { margin: 0; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); font-style: italic; }
+.cc-cos-sub { margin: 10px 0 0; font-size: 14px; font-weight: var(--cds-font-weight-medium); }
+.cc-cos-more { justify-self: start; }
+.cc-cos-back { justify-self: start; }
+.cc-cos-wrap { overflow-x: auto; max-width: 100%; }
+.cc-cos-tbl td { line-height: 1.4; }
+.cc-cos-gistcell { min-width: 16rem; max-width: 34rem; color: var(--color-fg-muted); }
+.cc-cos-notecell { min-width: 18rem; max-width: 40rem; white-space: pre-line; }
+.cc-cos-late { color: var(--color-bad); white-space: nowrap; }
+.cc-cos-pcell { display: inline-flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+
+/* Names and chats open their views */
+.cc-cos-name, .cc-cos-chat, .cc-cos-link { appearance: none; font: inherit; background: none; border: 0; padding: 0; color: var(--color-fg); cursor: pointer; text-align: left; text-decoration: underline; text-decoration-color: color-mix(in oklab, var(--color-fg) 35%, transparent); text-underline-offset: 2px; }
+.cc-cos-name:hover, .cc-cos-chat:hover, .cc-cos-link:hover { text-decoration-color: currentColor; }
+.cc-cos-name:focus-visible, .cc-cos-chat:focus-visible, .cc-cos-link:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; border-radius: 2px; }
+.cc-cos-chat { color: var(--color-fg-muted); }
+.cc-cos-link { font-size: 12.5px; color: var(--color-fg-muted); }
+.cc-cos-zoho { font-size: 12px; color: var(--color-fg-muted); }
+.cc-cos-self { font-weight: var(--cds-font-weight-medium); }
+
+/* Person and chat detail */
+.cc-cos-ptitle { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
+.cc-cos-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 16px; margin: 0; font-size: var(--cds-font-size-caption); }
+.cc-cos-facts dt { color: var(--color-fg-muted); }
+.cc-cos-facts dd { margin: 0; overflow-wrap: anywhere; }
+.cc-cos-who { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); line-height: 1.6; }
+.cc-cos-mem { border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: 8px 12px; background: var(--color-bg); }
+.cc-cos-mem summary { cursor: pointer; font-size: 13.5px; font-weight: var(--cds-font-weight-medium); }
+.cc-cos-mem .cc-cos-text { margin-top: 8px; max-height: 28rem; overflow: auto; }
+
+/* Conversation items */
+.cc-cos-items { display: grid; gap: 10px; }
+.cc-cos-item { --k: var(--color-border-line); display: grid; gap: 6px; padding: 10px 14px; border: 1px solid var(--color-border-line); border-left: 3px solid var(--k); border-radius: var(--cds-radius); background: var(--color-bg); min-width: 0; }
+.cc-cos-item[data-src="telegram"] { --k: var(--cos-tg); }
+.cc-cos-item[data-src="whatsapp"] { --k: var(--cos-wa); }
+.cc-cos-item[data-src="m365_mail"] { --k: var(--cos-mail); }
+.cc-cos-item[data-src="fireflies"], .cc-cos-item[data-src="recording"] { --k: var(--cos-call); }
+.cc-cos-item[data-src="zoho_activity"] { --k: var(--cos-zoho); }
+.cc-cos-ihead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 12.5px; }
+.cc-cos-src { display: inline-block; font-size: 11px; font-weight: var(--cds-font-weight-medium); padding: 1px 8px; border-radius: 999px; color: var(--k, var(--color-fg)); background: color-mix(in oklab, var(--k, var(--color-fg)) 12%, transparent); }
+.cc-cos-src-telegram { --k: var(--cos-tg); }
+.cc-cos-src-whatsapp { --k: var(--cos-wa); }
+.cc-cos-src-m365_mail { --k: var(--cos-mail); }
+.cc-cos-src-fireflies, .cc-cos-src-recording { --k: var(--cos-call); }
+.cc-cos-src-zoho_activity { --k: var(--cos-zoho); }
+.cc-cos-when { color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
+.cc-cos-from { font-weight: var(--cds-font-weight-medium); }
+.cc-cos-to { color: var(--color-fg-muted); }
+.cc-cos-title { margin: 0; font-size: 13.5px; font-weight: var(--cds-font-weight-medium); overflow-wrap: anywhere; }
+.cc-cos-blocks { display: grid; gap: 8px; min-width: 0; }
+.cc-cos-blocks.cc-cos-clamp { max-height: 11.5em; overflow: hidden; -webkit-mask-image: linear-gradient(to bottom, #000 70%, transparent); mask-image: linear-gradient(to bottom, #000 70%, transparent); }
+.cc-cos-text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13.5px; line-height: 1.5; max-width: 90ch; }
+.cc-cos-lab { display: block; font-size: 11.5px; color: var(--color-fg-muted); margin-bottom: 2px; }
+.cc-cos-sum, .cc-cos-img { padding: 8px 10px; border-radius: 8px; background: color-mix(in oklab, var(--k) 7%, var(--color-panel)); }
+.cc-cos-sum p { margin: 0; font-size: 13.5px; line-height: 1.5; max-width: 90ch; }
+.cc-cos-dec { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.45; }
+.cc-cos-ifoot { display: flex; flex-wrap: wrap; gap: 14px; }
+
+/* Commitments */
+.cc-cos-what { display: grid; gap: 3px; min-width: 18rem; max-width: 40rem; }
+.cc-cos-quote { color: var(--color-fg-muted); font-size: 12px; }
+.cc-cos-why { color: var(--color-fg-muted); }
+
+@media (max-width: 720px) {
+  .cc-cos-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cc-cos-stat b { font-size: 26px; }
+  .cc-cos-item { padding: 8px 10px; }
+}
+@media (prefers-reduced-motion: reduce) { .cc-cos-root * { scroll-behavior: auto; } }
+
+.cc-cos-views[hidden] { display: none; }

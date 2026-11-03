@@ -179,7 +179,40 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
     const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(lock.iv) }, key, b64(lock.data));
     return JSON.parse(new TextDecoder().decode(plain));
   };
-  const unlocked = (bundle) => {
+  /* Lazy parts (window.__LAZY__, written by lock_site.mjs): big files a tab fetches only when opened, under the same passcode key.
+     Run locally without the lock, CC_LAZY reads <name>.json.gz next to the page instead (gitignored, never deployed). */
+  let lazyKey = null;
+  const lazyCache = {};
+  const gunzipJson = async (bytes) => {
+    if (typeof DecompressionStream !== 'function') throw new Error('This browser can’t unpack the file (it needs DecompressionStream).');
+    const text = await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+    return JSON.parse(text);
+  };
+  window.CC_LAZY = (name) => {
+    if (!lazyCache[name]) {
+      lazyCache[name] = (async () => {
+        const files = window.__LAZY__ || {};
+        if (files[name]) {
+          if (!lazyKey) throw new Error('The data is locked.');
+          const res = await fetch(files[name], { cache: 'no-store' });
+          if (!res.ok) throw new Error(`${files[name]} didn’t load (HTTP ${res.status}).`);
+          const box = await res.json();
+          const key = await crypto.subtle.importKey('raw', lazyKey, 'AES-GCM', false, ['decrypt']);
+          const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(box.iv) }, key, b64(box.data));
+          return gunzipJson(new Uint8Array(plain));
+        }
+        if (window.__DASH_DATA__ && location.protocol !== 'https:') {
+          const res = await fetch(`${name}.json.gz`, { cache: 'no-store' });
+          if (res.ok) return gunzipJson(new Uint8Array(await res.arrayBuffer()));
+        }
+        return null;
+      })();
+      lazyCache[name].catch(() => { delete lazyCache[name]; });
+    }
+    return lazyCache[name];
+  };
+  const unlocked = (bundle, raw32) => {
+    lazyKey = raw32 || null;
     Object.entries(bundle).forEach(([name, value]) => { if (/^__[A-Z0-9_]+__$/.test(name)) window[name] = value; });
     document.body.classList.remove('cc-locked');
     const gate = document.getElementById('cc-gate');
@@ -210,7 +243,7 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
         else store.clear();
         input.value = '';
         msg.textContent = '';
-        unlocked(bundle);
+        unlocked(bundle, raw32);
       } catch (err) {
         msg.textContent = 'That passcode didn’t unlock the data. Check it and try again.';
         input.select();
@@ -237,7 +270,7 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
     }
     const saved = store.get();
     if (saved && saved.key && saved.salt === lock.salt && saved.iterations === lock.iterations) {
-      try { unlocked(await openLock(b64(saved.key), lock)); return; } catch (err) { store.clear(); }
+      try { const k = b64(saved.key); unlocked(await openLock(k, lock), k); return; } catch (err) { store.clear(); }
     }
     showGate(lock);
   };
@@ -245,7 +278,7 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
     const json = window.__DASH_DATA__;
     const extras = [window.__BOXBYTE__, window.__COURIER__, window.__RESEARCH__, window.__MAIL__, window.__CAL__, window.__FF__, window.__LINKSYNC__, window.__P3__, window.__SEALED__].filter((x) => x && x.datasets);
     if (json && json.datasets) {
-      raw = { ...json, datasets: Object.assign({ wi_research: [], wi_mack: [], li_sync: [], b2b_cal: [], b2b_ff: [], p3_log: [], li_dm: [], li_outreach: [] }, json.datasets, ...extras.map((x) => x.datasets)) };
+      raw = { ...json, datasets: Object.assign({ wi_research: [], wi_mack: [], li_sync: [], b2b_cal: [], b2b_ff: [], p3_log: [], li_dm: [], li_outreach: [], cos_digest: [] }, json.datasets, ...extras.map((x) => x.datasets)) };
       cache = {};
       runAll();
       stamp('Data from Zoho CRM as of ' + when(json.generated_at) + '.');
@@ -741,6 +774,7 @@ body.cc-locked .cc { display: none; }
     <button type="button" class="cc-tab" role="tab" id="tab-today" data-tab="today" aria-controls="today"><i class="cc-dot" data-hue="rp"></i>B2B Today</button>
     <button type="button" class="cc-tab" role="tab" id="tab-qa" data-tab="qa" aria-controls="qa">Quality Assurance</button>
     <button type="button" class="cc-tab" role="tab" id="tab-mn" data-tab="mn" aria-controls="mn">Mack’s Network</button>
+    <button type="button" class="cc-tab" role="tab" id="tab-cos" data-tab="cos" aria-controls="cos">Chief of Staff</button>
     <button type="button" class="cc-tab" role="tab" id="tab-ref" data-tab="ref" aria-controls="ref"><i class="cc-dot" data-hue="rp"></i>Referrals</button>
     <button type="button" class="cc-tab" role="tab" id="tab-icp" data-tab="icp" aria-controls="icp"><i class="cc-dot" data-hue="icp"></i>ICP Prospecting</button>
     <button type="button" class="cc-tab" role="tab" id="tab-fn" data-tab="fn" aria-controls="fn"><i class="cc-dot" data-hue="fn"></i>Founder Network</button>
@@ -1465,6 +1499,7 @@ body.cc-locked .cc { display: none; }
   </section>
   <section class="cc-page" id="qa" role="tabpanel" aria-labelledby="tab-qa" hidden><link rel="stylesheet" href="qa.css"><div class="cc-qa-root" id="qa-root"></div></section>
   <section class="cc-page" id="mn" role="tabpanel" aria-labelledby="tab-mn" hidden><link rel="stylesheet" href="network.css"><div class="cc-mn-root" id="mn-root"></div></section>
+  <section class="cc-page" id="cos" role="tabpanel" aria-labelledby="tab-cos" hidden><link rel="stylesheet" href="cos.css"><div class="cc-cos-root" id="cos-root"></div></section>
 </div>
 
 <script>
@@ -6635,6 +6670,7 @@ dash.calc('attention', {
 <script src="network.js"></script>
 <script src="fn-engine.js"></script>
 <script src="fn.js"></script>
+<script src="cos.js"></script>
 </main>
 </body>
 </html>
