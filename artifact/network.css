@@ -121,3 +121,15 @@
 .cc-mn-numbtn { appearance: none; font: inherit; font-weight: var(--cds-font-weight-medium); color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
 .cc-mn-numbtn:hover { text-decoration-style: solid; }
 .cc-mn-numbtn:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; border-radius: 3px; }
+/* Whose network: Mack, Shruti, together (Hemang, Nov 3, 2026). */
+.cc-mn-views { display: flex; flex-wrap: wrap; gap: 6px; }
+.cc-mn-viewtab { appearance: none; font: inherit; font-size: 14px; cursor: pointer; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--color-border-line); background: var(--color-panel); color: var(--color-fg); }
+.cc-mn-viewtab:hover { background: color-mix(in oklab, var(--color-fg) 4%, var(--color-panel)); }
+.cc-mn-viewtab[aria-selected="true"] { background: var(--mn-new); border-color: var(--mn-new); color: #fff; font-weight: var(--cds-font-weight-medium); }
+.cc-mn-viewtab:focus-visible { outline: 2px solid var(--mn-new); outline-offset: 2px; }
+.cc-mn-net, .cc-mn-together { display: grid; gap: var(--cds-gap-md); min-width: 0; }
+.cc-mn-net[hidden], .cc-mn-together[hidden] { display: none; }
+.cc-mn-dm { font-size: 11.5px; padding: 1px 8px; border-radius: 999px; white-space: nowrap; color: var(--color-fg-muted); background: color-mix(in oklab, var(--color-fg) 6%, transparent); }
+.cc-mn-dm-talking, .cc-mn-dm-said_yes, .cc-mn-dm-they_wrote { color: var(--color-ok); background: color-mix(in oklab, var(--color-ok) 12%, transparent); }
+.cc-mn-dm-declined { color: var(--color-bad); background: color-mix(in oklab, var(--color-bad) 10%, transparent); }
+.cc-mn-respond { color: var(--color-fg); }
