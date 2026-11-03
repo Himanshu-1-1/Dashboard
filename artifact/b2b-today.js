@@ -861,6 +861,45 @@
     },
   });
 
+  /* Partner meetings, 3 a weekday (Hemang, Nov 3, 2026): every meeting on the team's Outlook calendars with a B2B
+     prospect at Priority 1 or 99 (dataset b2b_cal), one row per meeting. A weekday from MT3_START that ends with fewer
+     than MT3_TARGET held meetings is missed and stays red. */
+  const MT3_TARGET = 3;
+  const MT3_START = '2026-11-01';
+  dash.calc('mt3_meetings', {
+    title: 'Partner meetings on the team calendars',
+    description: `One row per meeting on the info@, mack@, hemang@ or shruti@ Outlook calendar with a B2B prospect at Priority 1 or 99. Copies on several calendars, and several prospects in one event, count once (same start time and calendars). Status: held (start time passed, not cancelled), scheduled (still to come) or cancelled (every copy cancelled; never counted). Day is the Central-time date. Target ${MT3_TARGET} held a weekday from ${MT3_START}.`,
+    inputs: ['b2b_cal', 'b2b_people', 'b2b_added'],
+    fn: (b2b_cal, b2b_people, b2b_added) => {
+      const now = Date.now();
+      const ppl = new Map(b2b_people.map((p) => [String(p.id), p]));
+      const own = new Map(b2b_added.map((r) => [String(r.id), r.Assigned || null]));
+      const by = new Map();
+      (b2b_cal || []).forEach((r) => {
+        const t = Date.parse(r.at);
+        if (!r.at || !Number.isFinite(t)) return;
+        const cals = String(r.cals || '').split(',').filter(Boolean).sort().join(',');
+        const key = new Date(t).toISOString() + '|' + cals;
+        const off = r.cancelled === true || r.cancelled === 'true';
+        if (!by.has(key)) by.set(key, { key, t, cals, cancelled: true, ids: [] });
+        const m = by.get(key);
+        m.cancelled = m.cancelled && off;
+        const id = String(r.Zoho_Id);
+        if (!m.ids.includes(id)) m.ids.push(id);
+      });
+      return [...by.values()].sort((a, b) => a.t - b.t).map((m) => {
+        const people = m.ids.map((id) => {
+          const p = ppl.get(id) || {};
+          return { id, name: p.name || 'Not in the B2B campaign now', account: p.account || null, account_id: p.account_id || null, priority: p.priority || null, assigned: own.get(id) || null };
+        });
+        return {
+          key: m.key, at: new Date(m.t).toISOString(), day: ctDate(m.t), cals: m.cals,
+          status: m.cancelled ? 'cancelled' : m.t <= now ? 'held' : 'scheduled', people,
+        };
+      });
+    },
+  });
+
   /* Who to talk to next, Priority 1 only: ask for a first meeting, already booked, talk to again (last meeting
      AGAIN_DAYS+ ago and nothing booked), met recently, and Outlook meetings to log in Zoho. */
   const AGAIN_DAYS = 30;
@@ -1136,6 +1175,23 @@
 
   /* Static structure, built once. */
   root.replaceChildren();
+  const mt3 = el('section', 'cc-card cc-mt3');
+  mt3.id = 'b2-mt3';
+  mt3.setAttribute('aria-labelledby', 'b2-mt3-title');
+  const mt3Head = el('div', 'cc-b2-scorehead');
+  const mt3TitleBox = el('div');
+  const mt3Title = el('h2', null, 'Partner meetings: 3 a weekday');
+  mt3Title.id = 'b2-mt3-title';
+  const mt3Asof = el('span');
+  const mt3Sub = el('p', 'cc-b2-insight');
+  mt3Sub.append(document.createTextNode('External meetings with B2B prospects at Priority 1 or 99 on the team’s Outlook calendars (info@, mack@, hemang@, shruti@). Held means the start time has passed and it wasn’t cancelled; select any number to list its meetings. '), mt3Asof);
+  mt3TitleBox.append(mt3Title, mt3Sub);
+  mt3Head.append(mt3TitleBox);
+  const mt3Body = el('div', 'cc-mt3-body');
+  const mt3List = el('div', 'cc-mt3-list');
+  mt3List.id = 'b2-mt3-list';
+  mt3List.hidden = true;
+  mt3.append(mt3Head, mt3Body);
   const pf = el('section', 'cc-card cc-pf');
   pf.id = 'b2-pf';
   pf.setAttribute('aria-labelledby', 'b2-pf-title');
@@ -1460,7 +1516,7 @@
     if (drillFrom && drillFrom !== drill && drillFrom.parentElement === root && drillFrom.nextElementSibling !== drill) drillFrom.after(drill);
   };
 
-  root.append(pf, score, p3, na, plan, mtg, pmCard, rw, rb, mailCard, liCard, grid1, drill, nextCard, queueCard, monCard, grid2, sopCard, dqCard, br);
+  root.append(mt3, pf, score, p3, na, plan, mtg, pmCard, rw, rb, mailCard, liCard, grid1, drill, nextCard, queueCard, monCard, grid2, sopCard, dqCard, br);
   /* SOP links: an animated playbook page instead of the word. The link keeps its title and aria-label. */
   const SOP_ICON = '<svg class="cc-sop-ico" viewBox="0 0 32 36" aria-hidden="true" focusable="false">'
     + '<g class="cc-sop-spark"><circle cx="27" cy="5" r="1.4"/><circle cx="4" cy="9" r="1"/><circle cx="29" cy="15" r="1"/><path d="M24 2.5v3M22.5 4h3"/></g>'
@@ -1667,6 +1723,7 @@
   };
 
   const draw = () => {
+    try { drawMt3(); } catch (e) { mt3Body.replaceChildren(el('p', 'cc-b2-bad', 'The meetings panel couldn’t be drawn: ' + e.message)); }
     drawPf();
     drawScore();
     drawP3();
@@ -2852,6 +2909,180 @@
     mtgReopen = mtgOpenKey && !drill.hidden && drillTitle() === mtgOpenTitle ? mtgOpenKey : null;
     mtgOwner = o;
     drawMtg();
+  };
+
+  /* Partner meetings, 3 a weekday. */
+  let mt3Open = null;
+  const mt3Add = (d, n) => { const x = new Date(d + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+  const mt3Wk = (d) => { const w = new Date(d + 'T00:00:00Z').getUTCDay(); return w !== 0 && w !== 6; };
+  const mt3Mon = (d) => { const w = new Date(d + 'T00:00:00Z').getUTCDay(); return mt3Add(d, -((w + 6) % 7)); };
+  const mt3Step = (d, dir) => { let x = mt3Add(d, dir); while (!mt3Wk(x)) x = mt3Add(x, dir); return x; };
+  const mt3Days = (from, to) => { const out = []; for (let d = from; d <= to; d = mt3Add(d, 1)) out.push(d); return out; };
+  const mt3Target = (days) => days.filter((d) => mt3Wk(d) && d >= MT3_START).length * MT3_TARGET;
+  const mt3Time = (iso) => new Date(iso).toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' });
+  const mt3MonthF = (d) => new Date(d.slice(0, 7) + '-01T00:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', month: 'long', year: 'numeric' });
+  const mt3WeekF = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric' });
+  const MT3_STATE = {
+    met: 'Target met', missed: 'Missed', now: 'On course', short: 'Short today', booked: 'Fully booked', open: 'Not fully booked', off: 'No target',
+  };
+  const drawMt3 = () => {
+    const st = state(['mt3_meetings']);
+    if (st !== 'ok') { mt3Body.replaceChildren(el('p', st === 'error' ? 'cc-b2-bad' : 'cc-b2-insight', st === 'error' ? 'The calendar meetings didn’t load. Reload, or check the source in the dashboard menu.' : 'Loading the calendar meetings…')); mt3Asof.textContent = ''; return; }
+    const cal = rows('b2b_cal');
+    const asOf = cal.reduce((mx, r) => (r.as_of && (!mx || r.as_of > mx) ? r.as_of : mx), null);
+    mt3Asof.textContent = asOf ? `Calendars read ${whenF(asOf)}.` : '';
+    if (!cal.length) { mt3Body.replaceChildren(el('p', 'cc-b2-insight', 'The team calendars aren’t in this build yet, so there is nothing to count.')); return; }
+    const all = rows('mt3_meetings');
+    const live = all.filter((m) => m.status !== 'cancelled');
+    const today = todayCT();
+    const onDay = (d) => live.filter((m) => m.day === d);
+    const held = (list) => list.filter((m) => m.status === 'held').length;
+    const sched = (list) => list.filter((m) => m.status === 'scheduled').length;
+    const inRange = (a, b) => live.filter((m) => m.day >= a && m.day <= b);
+    const stateOf = (d) => {
+      const l = onDay(d); const h = held(l); const s = sched(l);
+      if (!mt3Wk(d) || d < MT3_START) return 'off';
+      if (d < today) return h >= MT3_TARGET ? 'met' : 'missed';
+      if (d === today) return h >= MT3_TARGET ? 'met' : h + s >= MT3_TARGET ? 'now' : 'short';
+      return s >= MT3_TARGET ? 'booked' : 'open';
+    };
+    const tbl = (list) => {
+      const t = el('table', 'cc-tbl');
+      const th = el('thead'); const hr = el('tr');
+      ['When (CT)', 'Partner', 'Company', 'Priority', 'Owner (Assigned)', 'Calendars', 'Status'].forEach((x) => { const c = el('th', null, x); c.scope = 'col'; hr.append(c); });
+      th.append(hr); t.append(th);
+      const tb = el('tbody');
+      list.forEach((m) => {
+        const tr = el('tr');
+        const who = el('td'); m.people.forEach((p, i) => { if (i) who.append(document.createTextNode(', ')); who.append(p.id && p.name !== 'Not in the B2B campaign now' ? link('Contacts', p.id, p.name) : document.createTextNode(p.name)); });
+        const co = el('td'); m.people.forEach((p, i) => { if (i) co.append(document.createTextNode(', ')); co.append(p.account_id ? link('Accounts', p.account_id, p.account) : document.createTextNode(p.account || 'No company')); });
+        const stx = m.status === 'held' ? 'Held' : m.status === 'scheduled' ? 'Scheduled' : 'Cancelled (not counted)';
+        tr.append(el('td', null, `${mt3WeekF(m.day)}, ${mt3Time(m.at)}`), who, co,
+          el('td', null, [...new Set(m.people.map((p) => (p.priority ? 'P' + p.priority : '—')))].join(', ')),
+          el('td', null, [...new Set(m.people.map((p) => p.assigned || 'Not assigned'))].join(', ')),
+          el('td', null, calsF(m.cals) || '—'), el('td', 'cc-mt3-st-' + m.status, stx));
+        tb.append(tr);
+      });
+      t.append(tb);
+      return t;
+    };
+    const showList = (key, title, list, note) => {
+      mt3Body.querySelectorAll('[data-mt3]').forEach((b) => b.setAttribute('aria-expanded', String(b.dataset.mt3 === key && mt3Open !== key)));
+      if (mt3Open === key) { mt3Open = null; mt3List.hidden = true; mt3List.replaceChildren(); return; }
+      mt3Open = key;
+      mt3List.hidden = false;
+      mt3List.replaceChildren(el('p', 'cc-na-cap', `${title} (${intF(list.length)})`));
+      if (note) mt3List.append(el('p', 'cc-b2-insight', note));
+      mt3List.append(list.length ? el('div', 'cc-b2-wrap') : el('p', 'cc-b2-insight', 'No meetings on the team calendars.'));
+      if (list.length) mt3List.lastChild.append(tbl(list));
+    };
+    const pill = (s) => el('span', 'cc-mt3-pill cc-mt3-' + s, MT3_STATE[s]);
+    const openBtn = (node, key, title, list, note) => { node.type = 'button'; node.dataset.mt3 = key; node.setAttribute('aria-controls', 'b2-mt3-list'); node.addEventListener('click', () => showList(key, title, list, note)); return node; };
+    /* Cards: today, this week, this month. */
+    const dayAll = all.filter((m) => m.day === today);
+    const tH = held(onDay(today)); const tS = sched(onDay(today));
+    const tState = stateOf(today);
+    const card1 = openBtn(el('button', 'cc-mt3-card cc-mt3-c-' + tState), 'today', `Today, ${mt3WeekF(today)}`, dayAll);
+    const slots = el('span', 'cc-mt3-slots');
+    for (let i = 0; i < Math.max(MT3_TARGET, tH + tS); i += 1) slots.append(el('span', 'cc-mt3-slot ' + (i < tH ? 'is-held' : i < tH + tS ? 'is-sched' : 'is-empty')));
+    card1.append(el('span', 'cc-mt3-lab', `Today, ${mt3WeekF(today)}`), el('span', 'cc-mt3-big', `${intF(tH)}`), el('span', 'cc-mt3-of', mt3Wk(today) ? `of ${MT3_TARGET} held; ${intF(tS)} still scheduled today` : `held; no target on weekends; ${intF(tS)} scheduled`), slots, mt3Wk(today) ? pill(tState) : pill('off'));
+    const wFrom = mt3Mon(today); const wTo = mt3Add(wFrom, 4);
+    const wList = inRange(wFrom, wTo); const wTarget = mt3Target(mt3Days(wFrom, wTo));
+    const wH = held(wList); const wS = sched(wList);
+    const wLeft = mt3Days(today, wTo).filter((d) => mt3Wk(d)).length;
+    const wNeed = Math.max(0, wTarget - wH - wS);
+    const card2 = openBtn(el('button', 'cc-mt3-card cc-mt3-c-' + (wH >= wTarget ? 'met' : wTo < today ? 'missed' : 'now')), 'week', `This week, ${mt3WeekF(wFrom)} to ${mt3WeekF(wTo)}`, wList.concat(all.filter((m) => m.status === 'cancelled' && m.day >= wFrom && m.day <= wTo)).sort((a, b) => a.at.localeCompare(b.at)));
+    card2.append(el('span', 'cc-mt3-lab', `This week, ${dayF(wFrom)} to ${dayF(wTo)}`), el('span', 'cc-mt3-big', intF(wH)), el('span', 'cc-mt3-of', `of ${intF(wTarget)} held; ${intF(wS)} scheduled`),
+      el('span', 'cc-mt3-sub', wNeed ? `${intF(wNeed)} more to book${wLeft ? `, about ${intF(Math.ceil(wNeed / wLeft))} a weekday` : ''}` : wH >= wTarget ? 'Weekly target met' : 'Booked to the target if every meeting happens'));
+    const mFrom = today.slice(0, 8) + '01';
+    const mEnd = new Date(mFrom + 'T00:00:00Z'); mEnd.setUTCMonth(mEnd.getUTCMonth() + 1); mEnd.setUTCDate(0);
+    const mTo = mEnd.toISOString().slice(0, 10);
+    const mList = inRange(mFrom, mTo); const mTarget = mt3Target(mt3Days(mFrom, mTo));
+    const mH = held(mList); const mS = sched(mList);
+    const mExp = mt3Target(mt3Days(mFrom, mt3Add(today, -1)));
+    const card3 = openBtn(el('button', 'cc-mt3-card cc-mt3-c-' + (mH >= mExp ? 'met' : 'now')), 'month', `This month, ${mt3MonthF(today)}`, mList);
+    card3.append(el('span', 'cc-mt3-lab', `This month, ${mt3MonthF(today)}`), el('span', 'cc-mt3-big', intF(mH)), el('span', 'cc-mt3-of', `of ${intF(mTarget)} held; ${intF(mS)} scheduled`),
+      el('span', 'cc-mt3-sub', `${mH >= mExp ? 'On pace' : 'Behind pace'}: ${intF(mExp)} should be held by the end of yesterday`));
+    const cards = el('div', 'cc-mt3-cards'); cards.append(card1, card2, card3);
+    /* Daily trajectory: weekdays from the week tracking began (last 8 weeks at most) through next week. */
+    const lastMon = mt3Add(mt3Mon(today), 7);
+    const firstMon = [mt3Mon(MT3_START), mt3Add(lastMon, -7 * 7)].sort().pop();
+    const grid = el('div', 'cc-mt3-grid');
+    grid.setAttribute('role', 'group'); grid.setAttribute('aria-label', 'Meetings by weekday');
+    ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].forEach((d) => grid.append(el('span', 'cc-mt3-dh', d)));
+    let missedN = 0; let metN = 0;
+    for (let w = firstMon; w <= lastMon; w = mt3Add(w, 7)) {
+      for (let i = 0; i < 5; i += 1) {
+        const d = mt3Add(w, i);
+        const s = stateOf(d); if (s === 'missed') missedN += 1; if (s === 'met' && d < today) metN += 1;
+        const l = onDay(d); const h = held(l); const sc = sched(l);
+        const b = openBtn(el('button', 'cc-mt3-day cc-mt3-' + s + (d === today ? ' is-today' : '')), 'day-' + d, `Meetings on ${mt3WeekF(d)}`, all.filter((m) => m.day === d));
+        b.setAttribute('aria-label', `${mt3WeekF(d)}: ${h} held, ${sc} scheduled. ${MT3_STATE[s]}.`);
+        b.append(el('span', 'cc-mt3-dd', dayF(d)), el('span', 'cc-mt3-dn', d > today ? `${sc}` : d === today ? `${h}+${sc}` : `${h}`), el('span', 'cc-mt3-dl', d > today ? 'booked' : d === today ? 'held + booked' : 'held'));
+        grid.append(b);
+      }
+    }
+    const legend = el('p', 'cc-b2-insight cc-mt3-legend');
+    legend.append(document.createTextNode(`Green: ${MT3_TARGET} or more held. Red: a weekday since ${dayF(MT3_START)} that ended with fewer; it stays red. Amber: today, until it ends. Outlined: days ahead, by meetings booked (green once ${MT3_TARGET} are booked). So far ${intF(metN)} met and ${intF(missedN)} missed.`));
+    /* Weekly and monthly trajectory. */
+    const bars = (title, periods) => {
+      const max = Math.max(1, ...periods.map((p) => Math.max(p.h + p.s, p.target || 0)));
+      const box = el('div', 'cc-mt3-chart');
+      box.append(el('p', 'cc-mt3-ct', title));
+      const row = el('div', 'cc-mt3-bars');
+      periods.forEach((p) => {
+        const tone = !p.target ? 'off' : p.done ? (p.h >= p.target ? 'met' : 'missed') : 'now';
+        const b = openBtn(el('button', 'cc-mt3-col cc-mt3-' + tone), p.key, p.title, p.list);
+        b.setAttribute('aria-label', `${p.title}: ${p.h} held${p.s ? `, ${p.s} scheduled` : ''}${p.target ? ` of ${p.target}` : ''}.`);
+        const track = el('span', 'cc-mt3-track');
+        if (p.target) { const tl = el('span', 'cc-mt3-tline'); tl.style.bottom = `${(p.target / max) * 100}%`; track.append(tl); }
+        const hb = el('span', 'cc-mt3-bh'); hb.style.height = `${(p.h / max) * 100}%`;
+        const sb = el('span', 'cc-mt3-bs'); sb.style.height = `${(p.s / max) * 100}%`;
+        if (p.s) track.append(sb);
+        track.append(hb);
+        b.append(el('span', 'cc-mt3-bv', p.s ? `${p.h}+${p.s}` : `${p.h}`), track, el('span', 'cc-mt3-bl', p.label));
+        row.append(b);
+      });
+      box.append(row);
+      return box;
+    };
+    const weeks = [];
+    for (let i = 7; i >= 0; i -= 1) {
+      const a = mt3Add(mt3Mon(today), -7 * i); const z = mt3Add(a, 4);
+      const l = inRange(a, z);
+      weeks.push({ key: 'wk-' + a, title: `Week of ${mt3WeekF(a)}`, label: dayF(a), h: held(l), s: sched(l), target: mt3Target(mt3Days(a, z)), done: z < today, list: l });
+    }
+    const months = [];
+    for (let i = 5; i >= 0; i -= 1) {
+      const d = new Date(today.slice(0, 7) + '-01T00:00:00Z'); d.setUTCMonth(d.getUTCMonth() - i);
+      const a = d.toISOString().slice(0, 10); const e = new Date(d); e.setUTCMonth(e.getUTCMonth() + 1); e.setUTCDate(0);
+      const z = e.toISOString().slice(0, 10);
+      const l = inRange(a, z);
+      months.push({ key: 'mo-' + a, title: mt3MonthF(a), label: d.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short' }), h: held(l), s: sched(l), target: mt3Target(mt3Days(a, z)), done: z < today, list: l });
+    }
+    const charts = el('div', 'cc-mt3-charts');
+    charts.append(bars(`Weekly, target ${MT3_TARGET * 5} a week`, weeks), bars('Monthly, target 3 each weekday', months));
+    const traj = el('div', 'cc-mt3-traj');
+    const dayBox = el('div', 'cc-mt3-chart'); dayBox.append(el('p', 'cc-mt3-ct', `Daily, target ${MT3_TARGET} each weekday`), grid, legend);
+    traj.append(dayBox, charts);
+    /* Yesterday and tomorrow (the weekday before and after today). */
+    const side = (dir) => {
+      const d = mt3Step(today, dir);
+      const lit = mt3Add(today, dir) === d;
+      const label = dir < 0 ? (lit ? 'Yesterday' : 'Last weekday') : (lit ? 'Tomorrow' : 'Next weekday');
+      const l = all.filter((m) => m.day === d);
+      const s = stateOf(d);
+      const box = el('div', 'cc-mt3-side');
+      const head = el('div', 'cc-mt3-sidehead');
+      const h = held(l.filter((m) => m.status !== 'cancelled')); const sc = sched(l.filter((m) => m.status !== 'cancelled'));
+      head.append(el('h3', null, `${label}, ${mt3WeekF(d)}`), el('span', 'cc-mt3-sidecount', dir < 0 ? `${intF(h)} of ${MT3_TARGET} held` : `${intF(sc)} of ${MT3_TARGET} booked`), pill(s));
+      box.append(head, l.length ? (() => { const w = el('div', 'cc-b2-wrap'); w.append(tbl(l)); return w; })() : el('p', 'cc-b2-insight', dir < 0 ? 'No meetings were held.' : 'Nothing booked yet.'));
+      return box;
+    };
+    const sides = el('div', 'cc-mt3-sides'); sides.append(side(-1), side(1));
+    mt3Body.replaceChildren(cards, traj, sides);
+    mt3Body.append(mt3List);
+    if (mt3Open) { const k = mt3Open; mt3Open = null; const btn = mt3Body.querySelector(`[data-mt3="${k}"]`); if (btn) btn.click(); else mt3List.hidden = true; } else mt3List.hidden = true;
   };
 
   /* Who to talk to next (Priority 1): tiles for where each partner stands (meetings), and one next step per person
