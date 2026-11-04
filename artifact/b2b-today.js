@@ -1535,7 +1535,8 @@
     if (drillFrom && drillFrom !== drill && drillFrom.parentElement === root && drillFrom.nextElementSibling !== drill) drillFrom.after(drill);
   };
 
-  root.append(mt3, pf, score, p3, na, plan, mtg, pmCard, rw, rb, mailCard, liCard, grid1, drill, nextCard, queueCard, monCard, grid2, sopCard, dqCard, br);
+  /* Partner meetings sits right above the SOP library (Hemang, Nov 4, 2026). */
+  root.append(pf, score, p3, na, plan, mtg, pmCard, rw, rb, mailCard, liCard, grid1, drill, nextCard, queueCard, monCard, grid2, mt3, sopCard, dqCard, br);
   /* SOP links: an animated playbook page instead of the word. The link keeps its title and aria-label. */
   const SOP_ICON = '<svg class="cc-sop-ico" viewBox="0 0 32 36" aria-hidden="true" focusable="false">'
     + '<g class="cc-sop-spark"><circle cx="27" cy="5" r="1.4"/><circle cx="4" cy="9" r="1"/><circle cx="29" cy="15" r="1"/><path d="M24 2.5v3M22.5 4h3"/></g>'
