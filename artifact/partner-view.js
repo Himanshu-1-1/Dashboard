@@ -66,7 +66,7 @@
      pv_partners, so the Partner view still works wherever this dataset isn't in the build. */
   dash.calc('pv_intros', {
     title: 'People each partner introduced',
-    description: 'Every Zoho contact whose Introduced By (Contact) is set, grouped by the person who introduced them: name, company, title, relationship type and the date the contact was created in Zoho. Names and dates only, no email or phone.',
+    description: 'Every Zoho contact whose Introduced By (Contact) is set, grouped by the person who introduced them: name, company, title, email, phone, relationship type and the date the contact was created in Zoho.',
     inputs: ['introductions'],
     fn: (introductions) => {
       const by = new Map();
@@ -77,6 +77,7 @@
         by.get(id).push({
           id: String(r.id), name: r.Full_Name || '—', account: r.Account_Name || null,
           account_id: r.Account_Name_id ? String(r.Account_Name_id) : null, title: r.Title || null,
+          email: r.Email || null, phone: r.Phone || null,
           rel: r.Relationship_Type || null, added: r.Created_Time ? String(r.Created_Time).slice(0, 10) : null,
         });
       });
@@ -204,7 +205,7 @@
     const table = el('table', 'cc-pv-table');
     const thead = el('thead');
     const hr = el('tr');
-    ['Person', 'Company', 'Title', 'Relationship', 'Added to Zoho'].forEach((t) => { const th = el('th', null, t); th.scope = 'col'; hr.append(th); });
+    ['Person', 'Company', 'Title', 'Email', 'Phone', 'Relationship', 'Added to Zoho'].forEach((t) => { const th = el('th', null, t); th.scope = 'col'; hr.append(th); });
     thead.append(hr);
     const tb = el('tbody');
     people.forEach((x) => {
@@ -214,13 +215,17 @@
       const co = el('td');
       if (x.account && x.account_id) co.append(zLink('a', x.account, 'Accounts', x.account_id, 'Open ' + x.account + ' in Zoho CRM'));
       else co.textContent = x.account || '—';
-      tr.append(who, co, el('td', null, x.title || '—'), el('td', null, x.rel || '—'), el('td', null, fmtDate(x.added)));
+      const mail = el('td', 'cc-pv-contactcell');
+      if (x.email) { const a = el('a', 'cc-pv-mail', x.email); a.href = 'mailto:' + x.email; mail.append(a); } else mail.textContent = '—';
+      const tel = el('td', 'cc-pv-contactcell');
+      if (x.phone) { const a = el('a', 'cc-pv-mail', x.phone); a.href = 'tel:' + String(x.phone).replace(/[^+0-9]/g, ''); tel.append(a); } else tel.textContent = '—';
+      tr.append(who, co, el('td', null, x.title || '—'), mail, tel, el('td', null, x.rel || '—'), el('td', null, fmtDate(x.added)));
       tb.append(tr);
     });
     table.append(thead, tb);
     wrap.append(table);
     card.append(wrap);
-    card.append(el('p', 'cc-pv-note', 'From the Introduced By (Contact) field in Zoho. Added to Zoho is the date the contact record was created, since Zoho records no date for the introduction itself.'));
+    card.append(el('p', 'cc-pv-note', 'From the Introduced By (Contact) field in Zoho; email and phone are theirs as Zoho holds them. Added to Zoho is the date the contact record was created, since Zoho records no date for the introduction itself.'));
     return card;
   };
 

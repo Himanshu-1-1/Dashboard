@@ -39,6 +39,10 @@ html.cc-pv-on, html.cc-pv-on body { overflow: hidden; }
 .cc-pv-floor { margin: var(--cds-gap-xs) 0 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
 .cc-pv-stat { display: grid; gap: 2px; align-content: start; min-width: 120px; padding: var(--cds-pad-sm) var(--cds-pad-md); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-panel); }
 /* The group's amount, under a hairline so it reads as a second fact about the same step rather than another count. */
+/* Email and phone: long values wrap rather than stretching the table. */
+.cc-pv-contactcell { overflow-wrap: anywhere; max-width: 18rem; }
+.cc-pv-mail { color: inherit; text-decoration: underline; text-decoration-color: color-mix(in oklab, currentColor 35%, transparent); text-underline-offset: 2px; }
+.cc-pv-mail:hover { text-decoration-color: currentColor; }
 .cc-pv-stat-a { margin-top: 5px; padding-top: 5px; border-top: 1px solid var(--color-border-line); font-size: 15px; font-weight: var(--cds-font-weight-medium, 500); font-variant-numeric: tabular-nums; color: var(--color-fg-muted); }
 .cc-pv-stat-v { font-size: 22px; font-weight: var(--cds-font-weight-medium, 500); font-variant-numeric: tabular-nums; line-height: 1.2; }
 .cc-pv-stat-l { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
