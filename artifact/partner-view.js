@@ -61,6 +61,32 @@
     },
   });
 
+  /* Who each partner introduced us to (Hemang, Nov 7, 2026): the Contacts field "Introduced By (Contact)" read the
+     other way round, so a partner's page lists the people they put in front of us. Its own calc, not an input to
+     pv_partners, so the Partner view still works wherever this dataset isn't in the build. */
+  dash.calc('pv_intros', {
+    title: 'People each partner introduced',
+    description: 'Every Zoho contact whose Introduced By (Contact) is set, grouped by the person who introduced them: name, company, title, relationship type and the date the contact was created in Zoho. Names and dates only, no email or phone.',
+    inputs: ['introductions'],
+    fn: (introductions) => {
+      const by = new Map();
+      introductions.forEach((r) => {
+        const id = r.Introduced_By_Contact_id ? String(r.Introduced_By_Contact_id) : null;
+        if (!id) return;
+        if (!by.has(id)) by.set(id, []);
+        by.get(id).push({
+          id: String(r.id), name: r.Full_Name || '—', account: r.Account_Name || null,
+          account_id: r.Account_Name_id ? String(r.Account_Name_id) : null, title: r.Title || null,
+          rel: r.Relationship_Type || null, added: r.Created_Time ? String(r.Created_Time).slice(0, 10) : null,
+        });
+      });
+      return [...by.entries()].map(([id, people]) => ({
+        introducer_id: id,
+        people: people.sort((a, b) => String(b.added || '').localeCompare(String(a.added || ''))),
+      }));
+    },
+  });
+
   const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
   const fmtDate = (d) => (d ? new Date(String(d).slice(0, 10) + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '—');
   const fmtMoney = (v) => (v > 0 ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v) : '—');
@@ -161,6 +187,43 @@
     sec.append(el('p', 'cc-pv-note', 'Commission is the deal’s Commission Details in Zoho applied to its Amount. Lost deals earn none.'));
     return sec;
   };
+  /* The Introduced By section: who this partner put in front of us. Null when the dataset isn't in the build, so the
+     rest of the view is unaffected. */
+  const introCard = (p) => {
+    const d = dash.data('pv_intros');
+    if (d.status !== 'ok') return null;
+    const row = (d.data || []).find((x) => p.contact_id && x.introducer_id === String(p.contact_id));
+    const people = row ? row.people : [];
+    const card = el('section', 'cc-pv-card');
+    card.append(el('h3', 'cc-pv-card-title', people.length ? `Introduced by ${p.name}: ${plural(people.length, 'person', 'people')}` : 'Introduced By'));
+    if (!people.length) {
+      card.append(el('p', 'cc-pv-empty', `No one in Zoho is recorded as introduced by ${p.name} yet. The Introduced By (Contact) field on a contact is what puts them here.`));
+      return card;
+    }
+    const wrap = el('div', 'cc-pv-tablewrap');
+    const table = el('table', 'cc-pv-table');
+    const thead = el('thead');
+    const hr = el('tr');
+    ['Person', 'Company', 'Title', 'Relationship', 'Added to Zoho'].forEach((t) => { const th = el('th', null, t); th.scope = 'col'; hr.append(th); });
+    thead.append(hr);
+    const tb = el('tbody');
+    people.forEach((x) => {
+      const tr = el('tr');
+      const who = el('td', 'cc-pv-deal');
+      who.append(zLink('a', x.name, 'Contacts', x.id, 'Open ' + x.name + ' in Zoho CRM'));
+      const co = el('td');
+      if (x.account && x.account_id) co.append(zLink('a', x.account, 'Accounts', x.account_id, 'Open ' + x.account + ' in Zoho CRM'));
+      else co.textContent = x.account || '—';
+      tr.append(who, co, el('td', null, x.title || '—'), el('td', null, x.rel || '—'), el('td', null, fmtDate(x.added)));
+      tb.append(tr);
+    });
+    table.append(thead, tb);
+    wrap.append(table);
+    card.append(wrap);
+    card.append(el('p', 'cc-pv-note', 'From the Introduced By (Contact) field in Zoho. Added to Zoho is the date the contact record was created, since Zoho records no date for the introduction itself.'));
+    return card;
+  };
+
   const stat = (value, label) => { const d = el('div', 'cc-pv-stat'); d.append(el('span', 'cc-pv-stat-v', value), el('span', 'cc-pv-stat-l', label)); return d; };
 
   const renderBody = (ui) => {
@@ -219,9 +282,11 @@
 
     const card = el('section', 'cc-pv-card');
     card.append(el('h3', 'cc-pv-card-title', deals.length ? `${plural(deals.length, 'deal', 'deals')} referred` : 'Deals referred'));
+    const intro = introCard(p);
     if (!deals.length) {
       card.append(el('p', 'cc-pv-empty', 'No client deals are recorded as referred by this partner yet.'));
       body.append(card);
+      if (intro) body.append(intro);
       return;
     }
     deals.sort((a, b) => String(b.modified || b.created || '').localeCompare(String(a.modified || a.created || '')));
@@ -247,6 +312,7 @@
     card.append(wrap);
     card.append(el('p', 'cc-pv-note', 'Amounts and commission terms show where Zoho has them. Dates are Central time. Updated daily.'));
     body.append(card);
+    if (intro) body.append(intro);
   };
 
   const build = () => {
