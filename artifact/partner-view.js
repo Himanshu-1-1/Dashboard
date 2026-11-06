@@ -224,7 +224,13 @@
     return card;
   };
 
-  const stat = (value, label) => { const d = el('div', 'cc-pv-stat'); d.append(el('span', 'cc-pv-stat-v', value), el('span', 'cc-pv-stat-l', label)); return d; };
+  /* One card per step: the count, what it counts, and the amount of that group under a hairline (Hemang, Nov 7, 2026). */
+  const stat = (value, label, amount) => {
+    const d = el('div', 'cc-pv-stat');
+    d.append(el('span', 'cc-pv-stat-v', value), el('span', 'cc-pv-stat-l', label));
+    if (amount != null) d.append(el('span', 'cc-pv-stat-a', amount));
+    return d;
+  };
 
   const renderBody = (ui) => {
     const body = ui.body;
@@ -261,8 +267,8 @@
     who.append(agree);
     head.append(who);
 
-    /* Each step carries its own amount (Hemang, Nov 6, 2026): deals and their amount, then active, won and lost with
-       theirs. The old standalone Total amount and Won value cards are gone, because the first and third pairs say it. */
+    /* One card per step, each carrying its own amount (Hemang, Nov 6, 2026; one card rather than two, Nov 7): deals,
+       active, won and lost. The old standalone Total amount and Won value cards are gone, because Deals and Won say it. */
     const deals = p.deals.slice();
     const sum = (list) => list.reduce((t, d) => t + (d.amount || 0), 0);
     const open = deals.filter((d) => d.status === 'open');
@@ -270,9 +276,7 @@
     const lost = deals.filter((d) => d.status === 'lost');
     const stats = el('div', 'cc-pv-stats');
     [[deals, deals.length === 1 ? 'Deal' : 'Deals'], [open, 'Active'], [won, 'Won'], [lost, 'Lost']].forEach(([list, label]) => {
-      const pair = el('div', 'cc-pv-pair');
-      pair.append(stat(list.length.toLocaleString('en-US'), label), stat(sum(list) > 0 ? fmtMoney(sum(list)) : '$0', 'Amount'));
-      stats.append(pair);
+      stats.append(stat(list.length.toLocaleString('en-US'), label, sum(list) > 0 ? fmtMoney(sum(list)) : '$0'));
     });
     head.append(stats);
     /* Zoho doesn't always carry an Amount, so say when a total is a floor rather than letting it read as the full value. */
