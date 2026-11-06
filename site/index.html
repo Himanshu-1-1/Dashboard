@@ -768,6 +768,9 @@ body.cc-locked .cc { display: none; }
     <p class="cc-meta"><span id="cc-refreshed">Loading today’s data from Zoho CRM…</span> Refreshed daily at 6:00 PM IST. Dates are Central time. Targets come from the 2026 campaign tracking sheets; the pace line assumes the campaigns run Aug 17 to Dec 18, 2026.</p>
   </header>
 
+  <link rel="stylesheet" href="search.css">
+  <div class="cc-find" id="cc-find"></div>
+
   <nav class="cc-tabs" role="tablist" aria-label="Campaigns">
     <button type="button" class="cc-tab" role="tab" id="tab-overview" data-tab="overview" aria-controls="overview">Overview</button>
     <button type="button" class="cc-tab" role="tab" id="tab-rp" data-tab="rp" aria-controls="rp"><i class="cc-dot" data-hue="rp"></i>B2B Campaign</button>
@@ -6671,6 +6674,7 @@ dash.calc('attention', {
 <script src="fn-engine.js"></script>
 <script src="fn.js"></script>
 <script src="cos.js"></script>
+<script src="search.js"></script>
 </main>
 </body>
 </html>

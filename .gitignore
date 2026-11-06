@@ -28,3 +28,5 @@ site/*.lock.json
 site/*.json.gz
 site/cos.js
 site/cos.css
+site/search.js
+site/search.css
