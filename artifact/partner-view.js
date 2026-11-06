@@ -198,16 +198,23 @@
     who.append(agree);
     head.append(who);
 
+    /* Each step carries its own amount (Hemang, Nov 6, 2026): deals and their amount, then active, won and lost with
+       theirs. The old standalone Total amount and Won value cards are gone, because the first and third pairs say it. */
     const deals = p.deals.slice();
+    const sum = (list) => list.reduce((t, d) => t + (d.amount || 0), 0);
+    const open = deals.filter((d) => d.status === 'open');
     const won = deals.filter((d) => d.status === 'won');
-    const open = deals.filter((d) => d.status === 'open').length;
-    const lost = deals.filter((d) => d.status === 'lost').length;
-    const wonValue = won.reduce((s, d) => s + (d.amount || 0), 0);
-    const totalAmount = deals.reduce((s, d) => s + (d.amount || 0), 0);
+    const lost = deals.filter((d) => d.status === 'lost');
     const stats = el('div', 'cc-pv-stats');
-    stats.append(stat(deals.length.toLocaleString('en-US'), deals.length === 1 ? 'Deal' : 'Deals'), stat(open.toLocaleString('en-US'), 'Active'), stat(won.length.toLocaleString('en-US'), 'Won'), stat(lost.toLocaleString('en-US'), 'Lost'), stat(totalAmount > 0 ? fmtMoney(totalAmount) : '$0', 'Total amount'));
-    if (wonValue > 0) stats.append(stat(fmtMoney(wonValue), 'Won value'));
+    [[deals, deals.length === 1 ? 'Deal' : 'Deals'], [open, 'Active'], [won, 'Won'], [lost, 'Lost']].forEach(([list, label]) => {
+      const pair = el('div', 'cc-pv-pair');
+      pair.append(stat(list.length.toLocaleString('en-US'), label), stat(sum(list) > 0 ? fmtMoney(sum(list)) : '$0', 'Amount'));
+      stats.append(pair);
+    });
     head.append(stats);
+    /* Zoho doesn't always carry an Amount, so say when a total is a floor rather than letting it read as the full value. */
+    const noAmount = deals.filter((d) => !d.amount).length;
+    if (noAmount) head.append(el('p', 'cc-pv-floor', `${noAmount === 1 ? 'One deal has' : noAmount + ' deals have'} no amount in Zoho, so the amounts above are a floor.`));
     body.append(head);
 
     const card = el('section', 'cc-pv-card');
