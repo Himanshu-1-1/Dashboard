@@ -64,6 +64,29 @@
   /* Who each partner introduced us to (Hemang, Nov 7, 2026): the Contacts field "Introduced By (Contact)" read the
      other way round, so a partner's page lists the people they put in front of us. Its own calc, not an input to
      pv_partners, so the Partner view still works wherever this dataset isn't in the build. */
+  /* The Introduced By section's own dataset. Registered here rather than in the page script so both copies of the
+     dashboard pick it up from this one file (Hemang, Nov 7, 2026); a copy whose data has no introductions dataset
+     simply never fills it, and pv_intros then has no rows. */
+  dash.loader('introductions', {
+    description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text.',
+    fn: ({ answer }) => {
+      const a = typeof answer === 'string' ? (answer.trim() ? JSON.parse(answer) : {}) : (answer || {});
+      if (a.status === 'error' || (a.code && !a.data)) throw new Error(a.message || a.code || 'Zoho CRM refused the query');
+      const body = a.data && !Array.isArray(a.data) ? a.data : a;
+      const list = Array.isArray(body.data) ? body.data : [];
+      const rows = list.map((r) => {
+        const o = {};
+        for (const [k, v] of Object.entries(r)) {
+          if (Array.isArray(v)) o[k] = v.map((x) => (x && typeof x === 'object' ? x.name : x)).filter((x) => x != null && x !== '').join(', ');
+          else if (v && typeof v === 'object') { o[k] = v.name ?? null; o[k + '_id'] = v.id ?? null; }
+          else o[k] = v;
+        }
+        return o;
+      });
+      return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
+    },
+  });
+
   dash.calc('pv_intros', {
     title: 'People each partner introduced',
     description: 'Every Zoho contact whose Introduced By (Contact) is set, grouped by the person who introduced them: name, company, title, email, phone, relationship type and the date the contact was created in Zoho.',
