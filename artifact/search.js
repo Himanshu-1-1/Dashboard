@@ -359,8 +359,14 @@
   const pop = el('div', 'cc-fd-pop');
   pop.hidden = true;
   pop.append(hits, note);
+  /* The magnifier is an element, not a background image, so it follows the theme's text color. */
+  const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  icon.setAttribute('class', 'cc-fd-icon');
+  icon.setAttribute('viewBox', '0 0 24 24');
+  icon.setAttribute('aria-hidden', 'true');
+  icon.innerHTML = '<circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M20 20l-4.4-4.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
   const row = el('div', 'cc-fd-row');
-  row.append(input, hint, pop);
+  row.append(icon, input, hint, pop);
   form.append(row);
   form.addEventListener('submit', (e) => { e.preventDefault(); if (shown[cursor]) open(shown[cursor].id); });
   host.replaceChildren(form);

@@ -2,16 +2,19 @@
 .cc-find { display: block; }
 .cc-fd-form { display: grid; max-width: 42rem; }
 .cc-fd-row { position: relative; display: flex; align-items: center; }
+/* The search sits on the page's own background, so it needs a real edge and a little lift to read as a control. */
+.cc-fd-icon { position: absolute; left: 14px; width: 17px; height: 17px; pointer-events: none; color: var(--color-fg-muted); }
 .cc-fd-input {
   appearance: none; width: 100%; font: inherit; font-size: 15px; color: var(--color-fg);
-  padding: 10px 44px 10px 38px; border: 1px solid var(--color-border-line); border-radius: 999px; background: var(--color-panel);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23777' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-4.2-4.2'/%3E%3C/svg%3E");
-  background-repeat: no-repeat; background-position: 12px center; background-size: 17px 17px;
+  padding: 11px 44px 11px 40px; border-radius: 999px; background: var(--color-panel);
+  border: 1px solid color-mix(in oklab, var(--color-fg) 26%, transparent);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .05), 0 3px 12px rgba(0, 0, 0, .04);
 }
 .cc-fd-input::-webkit-search-cancel-button { cursor: pointer; }
 .cc-fd-input::placeholder { color: var(--color-fg-muted); }
-.cc-fd-input:hover { border-color: var(--color-fg-muted); }
-.cc-fd-input:focus { outline: 2px solid var(--color-fg); outline-offset: -1px; border-color: transparent; }
+.cc-fd-input:hover { border-color: color-mix(in oklab, var(--color-fg) 45%, transparent); }
+.cc-fd-input:focus { outline: 2px solid var(--color-fg); outline-offset: -1px; border-color: transparent; box-shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 4px 16px rgba(0, 0, 0, .07); }
+.cc-fd-row:focus-within .cc-fd-icon { color: var(--color-fg); }
 .cc-fd-kbd {
   position: absolute; right: 14px; top: 50%; transform: translateY(-50%); pointer-events: none;
   font-family: var(--font-anthropic-sans); font-size: 11px; line-height: 1; color: var(--color-fg-muted);
