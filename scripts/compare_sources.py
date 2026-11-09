@@ -12,7 +12,8 @@ rules agreed with the Chief of Staff side:
            checked for them" (cal_checked) and would otherwise report every prospect without a meeting as
            never searched.
   b2b_ff   directional the same way, now that the bot carries an attended flag per participant: it must find
-           every held prospect-day the old source found, and extras are listed for review.
+           every held prospect-day the old source found, and extras are listed for review. There are no coverage
+           rows in this dataset, so the coverage check is not reported for it.
   b2b_mail equality, per prospect, on n_in, n_out, last_in, last_out and bounced. Valid only at the same
            mailbox scope: widening from four mailboxes to twelve makes equality meaningless.
 
@@ -99,14 +100,17 @@ def report_days(old, new, label):
     n_pairs = {(z, d) for z, ds in n_days.items() for d in ds}
     missing = sorted(o_pairs - n_pairs)
     extra = sorted(n_pairs - o_pairs)
-    lost_coverage = sorted(o_present - n_present)
+    # Only b2b_cal carries coverage rows (at = null), so only b2b_cal can lose coverage. b2b_ff has a row only where
+    # there was a call, and a prospect with no row has always meant "no recorded call", never "never searched".
+    lost_coverage = sorted(o_present - n_present) if label == 'b2b_cal' else []
 
     print(f'{label}: {len(o_pairs)} prospect-days in OLD, {len(n_pairs)} in NEW')
     print(f'  agreed                     {len(o_pairs & n_pairs)}')
     print(f'  in OLD, not in NEW         {len(missing)}' + ('   <-- each one is a miss' if missing else ''))
     print(f'  in NEW, not in OLD         {len(extra)}' + ('   (expected; spot-check before trusting)' if extra else ''))
-    print(f'  prospects with no row in NEW that OLD had   {len(lost_coverage)}'
-          + ('   <-- breaks cal_checked' if lost_coverage else ''))
+    if label == 'b2b_cal':
+        print(f'  prospects with no row in NEW that OLD had   {len(lost_coverage)}'
+              + ('   <-- breaks cal_checked' if lost_coverage else ''))
 
     for z, d in missing[:40]:
         print(f'    MISSING  {z}  {d}')
