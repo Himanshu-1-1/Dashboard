@@ -356,3 +356,23 @@
 .cc-fx-numbtn:hover { text-decoration-style: solid; }
 .cc-fx-numbtn:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; border-radius: 3px; }
 .cc-fx-colnum { font-family: var(--font-anthropic-serif); font-size: 1.5em; line-height: 1.1; text-decoration-thickness: 1px; }
+
+/* ---------- Who to reconnect with, and Client or partner (Nov 9, 2026) ---------- */
+.cc-fx-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 2px 0 14px; }
+.cc-fx-kpi { --k: var(--fx-t-gray); --surf: var(--fx-t-gray-bg); display: grid; gap: 3px; align-content: start;
+  padding: 13px 16px 14px; border-radius: var(--fx-radius); border: 1px solid var(--fx-t-border); border-top: 3px solid var(--k); background: var(--surf); }
+.cc-fx-kpi.cc-fx-ok { --k: var(--fx-t-green); --surf: var(--fx-t-green-bg); }
+.cc-fx-kpi.cc-fx-warn { --k: var(--fx-t-amber); --surf: var(--fx-t-amber-bg); }
+.cc-fx-kpi.cc-fx-bad { --k: var(--fx-t-crit); --surf: var(--fx-t-crit-bg); }
+.cc-fx-kpi strong { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: 34px; line-height: 1.1; letter-spacing: -0.01em; color: var(--k); }
+.cc-fx-kpi span { font-size: 13px; font-weight: var(--cds-font-weight-medium); color: var(--fx-ink); }
+.cc-fx-kpi small { font-size: 12px; line-height: 1.4; color: var(--color-fg-muted); }
+h4.cc-fx-sub { margin: 18px 0 8px; font-size: 13px; font-weight: var(--cds-font-weight-medium); color: var(--fx-ink); }
+.cc-fx-touch { line-height: 1.4; }
+.cc-fx-touch strong { display: block; font-weight: var(--cds-font-weight-medium); }
+.cc-fx-touch strong.cc-fx-muted { color: var(--color-fg-muted); font-weight: 400; }
+.cc-fx-touch small { display: block; font-size: 12px; color: var(--color-fg-muted); }
+.cc-fx-touch .cc-fx-src { margin-top: 4px; }
+td.cc-fx-why { font-size: 12px; line-height: 1.45; color: var(--color-fg-muted); max-width: 34ch; }
+p.cc-fx-note { margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--color-fg-muted); max-width: 86ch; }
+@media (max-width: 900px) { .cc-fx-kpis { grid-template-columns: 1fr; } }

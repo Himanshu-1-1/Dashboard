@@ -13,7 +13,7 @@
   const PAGE = 25;
   const CONTACT_IDS = ['qa_contacts', 'qa_contacts_2', 'qa_contacts_3', 'qa_contacts_4'];
   const LIVE = ['fn_events', 'fn_tasks', 'deals', 'sign_docs'];
-  const FILES = ['fn_reach', 'fn_tg_people', 'fn_tg_photos', 'fn_tg_log', 'fn_ff_meetings', 'fn_ff_links', 'fn_outlook', 'mack_network', 'fn_sources'];
+  const FILES = ['fn_reach', 'fn_tg_people', 'fn_tg_photos', 'fn_tg_log', 'fn_ff_meetings', 'fn_ff_links', 'fn_outlook', 'mack_network', 'shruti_network', 'fn_sources'];
 
   /* ---------- loaders for the two Founder Network queries (same shape as the page's other Zoho queries) ---------- */
   const coql = ({ answer }) => {
@@ -68,7 +68,13 @@
       tasks: d.fn_tasks || [],
       deals: d.deals || [],
       agreements: agreementsFrom(d.sign_docs),
-      linkedin: (d.mack_network || []).map((c) => ({ first: c.first, last: c.last, url: c.url, position: c.position, company: c.company, connected: c.connected, ties: parse(c.ties, []) })),
+      /* Both exports, Mack's first so his grade wins on the 111 people who appear in each. The hand-graded
+         fields (fit, type, why, refer, client) ride along for `commercial`; emails were dropped at import. */
+      linkedin: [['Mack', d.mack_network], ['Shruti', d.shruti_network]].flatMap(([net, rows]) => (rows || []).map((c) => ({
+        first: c.first, last: c.last, url: c.url, position: c.position, company: c.company, connected: c.connected,
+        ties: parse(c.ties, []), fit: c.fit || null, type: c.type || null, why: c.why || '', refer: c.refer || '',
+        client: c.client === true || c.client === 'true', net,
+      }))),
       tgPeople: (d.fn_tg_people || []).map((t) => Object.assign({}, t, { relationship: parse(t.relationship, []), actions: parse(t.actions, []), mentions: parse(t.mentions, []), needs_name: t.needs_name === true || t.needs_name === 'true' })),
       ffMeetings: d.fn_ff_meetings || [],
       ffLinks: d.fn_ff_links || [],
@@ -82,7 +88,7 @@
   const flatAction = (a) => ({ key: a.key, founder: a.founder, name: a.name, category: a.category, kind: a.kind, text: a.text, owner: a.owner, due: a.due, status: a.status, status_label: a.statusLabel, next: a.next });
 
   /* The calcs readers can open in Sources. Every input is listed, so a source that fails shows there. */
-  const INPUTS = [...CONTACT_IDS, 'fn_events', 'fn_tasks', 'deals', 'sign_docs', 'mack_network', 'fn_tg_people', 'fn_ff_meetings', 'fn_ff_links', 'fn_outlook'];
+  const INPUTS = [...CONTACT_IDS, 'fn_events', 'fn_tasks', 'deals', 'sign_docs', 'mack_network', 'shruti_network', 'fn_tg_people', 'fn_ff_meetings', 'fn_ff_links', 'fn_outlook'];
   const calcModel = (args) => { const d = {}; INPUTS.forEach((id, i) => { d[id] = args[i]; }); return E.run(buildSrc(d, new Date())); };
   dash.calc('fn_founders', {
     title: 'Founder Network founders', description: 'One row per founder: priority band and score, pipeline stage, identity check, last interaction, next meeting and next action, from Zoho, Telegram, Fireflies, Outlook and LinkedIn by the rules in fn-engine.js.',
@@ -137,6 +143,8 @@
     const s = el('input', 'cc-fx-search'); s.type = 'search'; s.placeholder = placeholder; s.value = value || ''; s.setAttribute('aria-label', placeholder);
     let timer; s.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => fn(s.value), 180); }); return s;
   };
+  /* A person cell: their name opens the profile drawer, company underneath. Shared by every table. */
+  const nameCell = (f) => { const td = el('td'); td.append(btn('cc-fx-name', f.name, () => openProfile(f.id))); if (f.company) td.append(el('small', null, f.company)); return td; };
   const has = (q, ...parts) => !q || parts.join(' ').toLowerCase().includes(q.trim().toLowerCase());
   const csv = (rows, cols, name) => {
     const esc = (v) => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
@@ -162,11 +170,15 @@
   drawer.addEventListener('click', (e) => { if (e.target === drawer) drawer.close(); });
 
   const VIEWS = [
+    /* Mack's reminder list lands first (Hemang, Nov 9, 2026); the commercial read sits beside it. */
+    ['reconnect', 'Who to reconnect with'], ['commercial', 'Client or partner'],
     ['overview', 'Overview'], ['actions', 'Action Center'], ['founders', 'Founders'], ['pipeline', 'Pipeline'],
     ['timeline', 'Activity'], ['quality', 'Data quality'], ['sources', 'Sources'], ['rules', 'Targets and rules'],
   ];
   const st = {
-    view: 'overview',
+    view: 'reconnect',
+    reconnect: { hideB2B: true, oldest: true, q: '' },
+    commercial: { side: '', q: '' },
     actions: { status: null, urgent: false, category: '', owner: '', kind: '', q: '', done: false, sort: 'urgency', page: 0 },
     founders: { band: null, stage: '', ver: '', source: '', soon: false, q: '', sort: 'score', page: 0, ids: null, idsLabel: '' },
     timeline: { source: '', q: '', page: 0 },
@@ -241,7 +253,6 @@
     const hd = el('div', 'cc-fx-cardhead');
     hd.append(el('h3', null, `${t.label}: ${intF(t.rows.length)}`), btn('cc-chip', 'Close', () => { st.overview.target = null; render(); const again = root.querySelector(`.cc-fx-target[data-tid="${t.id}"]`); if (again) again.focus({ preventScroll: true }); }));
     box.append(hd);
-    const nameCell = (f) => { const td = el('td'); td.append(btn('cc-fx-name', f.name, () => openProfile(f.id))); if (f.company) td.append(el('small', null, f.company)); return td; };
     const zLink = (ref, text) => { const td = el('td'); if (ref) td.append(link(zohoHref(ref), text)); return td; };
     let t2;
     if (t.id === 'members') {
@@ -325,6 +336,131 @@
     }
     return sec2;
   };
+  /* ---------- Who to reconnect with (Mack, Nov 6, 2026) ----------
+     The tab lands here. Mack's test for it: "It should remind me of the person that I have forgotten." So it
+     leads with how many he has moved into B2B, then one section per Priority, oldest contact first, with the
+     order reversible — down the list to find who went cold, up it to push what is live to closure. */
+  const touchCell = (r, today) => {
+    const td = el('td', 'cc-fx-touch');
+    if (r.touch) {
+      td.append(el('strong', null, ago(r.touch.day, today)));
+      td.append(el('small', null, `${r.touch.what} · ${dayF(r.touch.day)}`));
+      td.append(srcChip(r.touch.source));
+    } else {
+      td.append(el('strong', 'cc-fx-muted', 'no contact on record'));
+      if (r.signal) td.append(el('small', null, `${r.signal.what} ${ago(r.signal.day, today)}`));
+    }
+    return td;
+  };
+  const drawReconnect = (m) => {
+    const s = st.reconnect; const today = m.today;
+    const R = E.reconnect(m);
+    const wrap = el('section', 'cc-fx-card');
+
+    /* First on the tab, because Mack asked for it first: how many of the network he has handed to B2B. */
+    const top = el('div', 'cc-fx-kpis');
+    const moved = R.b2bTagged;
+    const kpi = (n, label, note, tone) => {
+      const d = el('div', 'cc-fx-kpi cc-fx-' + (tone || 'muted'));
+      d.append(el('strong', null, intF(n)), el('span', null, label), el('small', null, note));
+      return d;
+    };
+    top.append(
+      kpi(moved, 'moved into B2B', 'carry the B2B tag, so Shruti tracks them there — hidden below', 'ok'),
+      kpi(R.total, 'in the network here', moved ? 'the B2B ones already taken out' : 'nobody carries the B2B tag', 'muted'),
+      kpi(R.never, 'never contacted', 'no meeting, call or email on record', R.never ? 'warn' : 'ok'),
+    );
+    wrap.append(cardHead('Who to reconnect with', `${intF(R.contacted)} with contact on record`), top);
+
+    const note = el('p', 'cc-fx-note');
+    note.textContent = s.hideB2B
+      ? `${moved === 1 ? 'The one person' : `The ${intF(moved)} people`} in the B2B campaign ${moved === 1 ? 'is' : 'are'} hidden. Last contact is the newest meeting, recorded call or email on record — never Zoho’s last-updated date.`
+      : `Showing everyone, including the ${intF(moved)} in the B2B campaign.`;
+    wrap.append(note);
+
+    const chips = el('div', 'cc-fx-chips');
+    chips.append(chip(`Hide the ${intF(moved)} in B2B`.replace('the 1 in', 'the one in'), s.hideB2B, () => { s.hideB2B = !s.hideB2B; render(); },
+      'Mack asked for this on Nov 6: they are already in the B2B campaign, so they do not need repeating here'));
+    chips.append(chip(s.oldest ? 'Longest since contact first' : 'Most recent first', true,
+      () => { s.oldest = !s.oldest; render(); }, 'Flip the order'));
+    chips.append(search(s.q, 'Search name, company or title', (v) => { s.q = v; render(); }));
+    wrap.append(chips);
+
+    const groups = s.hideB2B ? R.groups
+      : E.reconnect(m, Object.assign({}, E.DEFAULTS, { b2bTag: '\u0000no-such-tag' })).groups;
+    let shown = 0;
+    for (const g of groups) {
+      const rows = [...g.quiet.filter((r) => has(s.q, r.f.name, r.f.company, r.f.title)),
+        ...g.never.filter((r) => has(s.q, r.f.name, r.f.company, r.f.title))];
+      if (!rows.length) continue;
+      const quiet = rows.filter((r) => r.touch); const never = rows.filter((r) => !r.touch);
+      if (!s.oldest) quiet.reverse();
+      const ordered = [...quiet, ...never];
+      shown += ordered.length;
+      const h = el('h4', 'cc-fx-sub', `${g.label} · ${intF(ordered.length)}`);
+      wrap.append(h);
+      const t = tableWrap(['Person', 'Last contact', 'Next meeting', 'Could be', 'Why now']);
+      ordered.slice(0, PAGE).forEach((r) => {
+        const tr = el('tr');
+        tr.append(nameCell(r.f), touchCell(r, today));
+        tr.append(el('td', null, r.upcoming ? dayF(r.upcoming) : '—'));
+        const v = el('td'); v.append(pill(r.commercial.verdict, VERDICT_TONE[r.commercial.verdict] || 'muted')); tr.append(v);
+        tr.append(el('td', 'cc-fx-why', r.f.priorityInfo.band === 'Urgent' ? 'Urgent' : (r.f.next || '—')));
+        t.tbody.append(tr);
+      });
+      wrap.append(t.wrap);
+      if (ordered.length > PAGE) wrap.append(el('p', 'cc-fx-note', `Showing the ${PAGE} longest-quiet of ${intF(ordered.length)}. Search to narrow it.`));
+    }
+    if (!shown) wrap.append(el('p', 'cc-fx-note', 'Nobody matches that search.'));
+    wrap.append(el('p', 'cc-fx-note', 'Read-only. “Could be” is the read from the LinkedIn exports and Zoho — open Client or partner for the reasoning.'));
+    return wrap;
+  };
+
+  const VERDICT_TONE = { Client: 'ok', Partner: 'ok', Both: 'ok', 'Possible client': 'warn', 'Possible partner': 'warn', 'No evidence': 'muted' };
+
+  /* ---------- Client or partner (Hemang, Nov 9, 2026) ----------
+     Two independent reads per person, because they are independent properties: a signed referral partner can
+     also buy. Every row carries the evidence it scored on, so a wrong call is visible rather than plausible. */
+  const drawCommercial = (m) => {
+    const s = st.commercial;
+    const R = E.reconnect(m);
+    const rows = R.rows.filter((r) => has(s.q, r.f.name, r.f.company, r.f.title));
+    const pick = { client: (r) => ['Client', 'Both'].includes(r.commercial.verdict), partner: (r) => ['Partner', 'Both'].includes(r.commercial.verdict),
+      maybe: (r) => /^Possible/.test(r.commercial.verdict), none: (r) => r.commercial.verdict === 'No evidence' }[s.side] || (() => true);
+    const vis = rows.filter(pick).sort((a, b) => (s.side === 'partner' ? b.commercial.partner - a.commercial.partner : b.commercial.client - a.commercial.client)
+      || String(a.f.name).localeCompare(String(b.f.name)));
+    const wrap = el('section', 'cc-fx-card');
+    const n = (fn) => rows.filter(fn).length;
+    wrap.append(cardHead('Client or partner', `${intF(rows.filter((r) => r.commercial.graded).length)} of ${intF(rows.length)} carry a hand grade from a LinkedIn export`));
+    const chips = el('div', 'cc-fx-chips');
+    for (const [k, label, fn] of [['', 'Everyone', () => true], ['client', 'Could buy from us', (r) => ['Client', 'Both'].includes(r.commercial.verdict)],
+      ['partner', 'Could bring us clients', (r) => ['Partner', 'Both'].includes(r.commercial.verdict)],
+      ['maybe', 'Possible', (r) => /^Possible/.test(r.commercial.verdict)], ['none', 'No evidence', (r) => r.commercial.verdict === 'No evidence']]) {
+      chips.append(chip(`${label} (${intF(n(fn))})`, s.side === k, () => { s.side = s.side === k ? '' : k; render(); }));
+    }
+    chips.append(search(s.q, 'Search name, company or title', (v) => { s.q = v; render(); }));
+    wrap.append(chips, el('p', 'cc-fx-note', 'The two scores are independent: somebody can be both, and most people are neither. Nothing here is written to Zoho.'));
+    const t = tableWrap(['Person', 'Title', 'Read', 'Could buy — why', 'Could refer — why']);
+    vis.slice(0, PAGE).forEach((r) => {
+      const c = r.commercial; const tr = el('tr');
+      tr.append(nameCell(r.f));
+      tr.append(el('td', null, r.f.title || '—'));
+      const v = el('td'); v.append(pill(c.verdict, VERDICT_TONE[c.verdict] || 'muted')); tr.append(v);
+      tr.append(el('td', 'cc-fx-why', c.clientWhy.length ? c.clientWhy.join('; ') : '—'));
+      tr.append(el('td', 'cc-fx-why', c.partnerWhy.length ? c.partnerWhy.join('; ') : '—'));
+      t.tbody.append(tr);
+    });
+    wrap.append(t.wrap);
+    if (vis.length > PAGE) wrap.append(el('p', 'cc-fx-note', `Showing the top ${PAGE} of ${intF(vis.length)}.`));
+    wrap.append(btn('cc-chip', 'Download this list (CSV)', () => csv(vis, [
+      [(r) => r.f.name, 'Name'], [(r) => r.f.company, 'Company'], [(r) => r.f.title, 'Title'], [(r) => r.f.priority, 'Priority'],
+      [(r) => r.commercial.verdict, 'Read'], [(r) => r.commercial.client, 'Client score'], [(r) => r.commercial.partner, 'Partner score'],
+      [(r) => r.commercial.clientWhy.join('; '), 'Could buy — why'], [(r) => r.commercial.partnerWhy.join('; '), 'Could refer — why'],
+      [(r) => (r.touch ? r.touch.day : ''), 'Last contact'],
+    ], 'founder-network-client-or-partner')));
+    return wrap;
+  };
+
   const drawOverview = (m) => {
     const wrap = el('div', 'cc-fx-ov');
     const today = m.today;
@@ -779,7 +915,7 @@
     const shownIds = new Set(m.founders.map((f) => f.id));
     lede.replaceChildren(numBtn(members.length, 'In Zoho', members), document.createTextNode(' in Zoho and '), numBtn(m.founders.filter((f) => !f.inFN).length, 'From Telegram or the Founder_Network tag', m.founders.filter((f) => !f.inFN)), document.createTextNode(` more from Telegram or the Founder_Network tag, as of ${dayF(m.today)} CT.`), ...(hidden ? [document.createTextNode(' '), numBtn(hidden, 'Hidden: in the B2B campaign, or at Priority 9, 11 or 99', m.all.filter((f) => !shownIds.has(f.id))), document.createTextNode(' hidden: in the B2B campaign, or at Priority 9, 11 or 99.')] : []));
     lede.append(document.createTextNode(`${stale.length ? ' Not loaded: ' + stale.join(', ') + '.' : ''}`));
-    const view = { overview: drawOverview, actions: drawActions, founders: drawFounders, pipeline: drawPipeline, timeline: drawTimeline, quality: drawQuality, sources: drawSources, rules: drawRules }[st.view];
+    const view = { reconnect: drawReconnect, commercial: drawCommercial, overview: drawOverview, actions: drawActions, founders: drawFounders, pipeline: drawPipeline, timeline: drawTimeline, quality: drawQuality, sources: drawSources, rules: drawRules }[st.view];
     const focusId = document.activeElement && root.contains(document.activeElement) && document.activeElement.matches('input') ? document.activeElement.className : null;
     body.replaceChildren(view(m));
     if (focusId) { const i = body.querySelector('input.' + focusId.split(' ')[0]); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }

@@ -366,3 +366,79 @@ test('anyone tagged for the B2B campaign is left out of the tab and the scorecar
   assert.equal(t.find((x) => x.id === 'members').actual, 1);
   assert.equal(t.find((x) => x.id === 'closed').actual, 0, 'a B2B partner’s closed deal counts on B2B, not here');
 });
+
+/* ---------- the reminder list and the commercial read (Nov 9, 2026) ---------- */
+const founderWith = (acts, extra = {}) => ({ id: 'z:1', name: 'Test Person', inFN: true, priority: '3',
+  activities: acts, facts: { deals: [], agreements: [], intro: false, upcoming: null }, ...extra });
+
+test('lastTouch counts contact only, and says which source said so', () => {
+  const f = founderWith([
+    { source: 'Zoho CRM', type: 'Deal', day: '2026-10-20', text: 'deal created' },
+    { source: 'Zoho CRM', type: 'Task', day: '2026-10-21', text: 'task created' },
+    { source: 'Fireflies', type: 'Recorded call', day: '2026-09-01', held: true },
+    { source: 'Outlook mail', type: 'Email', day: '2026-10-05' },
+  ]);
+  const t = E.lastTouch(f, '2026-10-23');
+  assert.equal(t.day, '2026-10-05', 'a deal and a task are records we made, not contact');
+  assert.equal(t.source, 'Outlook mail');
+  assert.equal(t.what, 'email');
+});
+
+test('lastTouch ignores a meeting that was not held and anything in the future', () => {
+  const f = founderWith([
+    { source: 'Zoho CRM', type: 'Meeting', day: '2026-10-22', held: false },
+    { source: 'Zoho CRM', type: 'Meeting', day: '2026-11-30', held: true },
+    { source: 'Zoho CRM', type: 'Meeting', day: '2026-08-14', held: true },
+  ]);
+  assert.equal(E.lastTouch(f, '2026-10-23').day, '2026-08-14');
+  assert.equal(E.lastTouch(founderWith([]), '2026-10-23'), null);
+});
+
+test('lastSignal picks up the chat and the connection, and never counts as contact', () => {
+  const f = founderWith([
+    { source: 'Telegram', type: 'Telegram message', day: '2026-10-18', text: 'Mack mentioned them' },
+    { source: 'LinkedIn', type: 'Connected on LinkedIn', day: '2025-06-20' },
+  ]);
+  assert.equal(E.lastTouch(f, '2026-10-23'), null, 'being mentioned is not being spoken to');
+  assert.equal(E.lastSignal(f, '2026-10-23').day, '2026-10-18');
+  assert.equal(E.lastSignal(f, '2026-10-23').what, 'mentioned in the chat');
+});
+
+test('commercial scores buying and referring independently, and says why', () => {
+  const buyer = founderWith([], { title: 'Chief Financial Officer', priority: '1',
+    linkedinConn: { type: 'ENTERPRISE_EXEC', client: true, fit: 'C' } });
+  const b = E.commercial(buyer);
+  assert.equal(b.verdict, 'Client');
+  assert.ok(b.client > b.partner);
+  assert.ok(b.clientWhy.some((w) => /holds a budget/.test(w)), 'the reason is on the row');
+
+  const referrer = founderWith([], { title: 'Founder', linkedinConn: { type: 'IT_SERVICES', fit: 'A', refer: 'overflow dev work' } });
+  const r = E.commercial(referrer);
+  assert.equal(r.verdict, 'Partner');
+  assert.ok(r.partnerWhy.some((w) => /could refer: overflow dev work/.test(w)));
+});
+
+test('commercial gives an employee no score in either direction, and reports no evidence', () => {
+  const e = E.commercial(founderWith([], { title: 'Senior Software Engineer', priority: '5', linkedinConn: { type: 'EMPLOYEE', fit: 'C' } }));
+  assert.equal(e.verdict, 'No evidence');
+  assert.ok(e.client <= 0 && e.partner <= 0);
+  const blank = E.commercial(founderWith([], { priority: '5' }));
+  assert.equal(blank.verdict, 'No evidence');
+  assert.equal(blank.graded, false, 'a person with no grade is reported as ungraded, not guessed at');
+});
+
+test('reconnect counts the B2B-tagged from the unfiltered set and keeps never-contacted apart', () => {
+  const tagged = { id: 'z:9', name: 'In B2B', inFN: true, priority: '1', activities: [], facts: {},
+    zoho: { id: '9', Tag: 'May 2026 - 100 B2B' } };
+  const quiet = founderWith([{ source: 'Fireflies', type: 'Recorded call', day: '2026-05-01', held: true }], { id: 'z:2', name: 'Quiet', priority: '1' });
+  const older = founderWith([{ source: 'Fireflies', type: 'Recorded call', day: '2026-02-01', held: true }], { id: 'z:3', name: 'Older', priority: '1' });
+  const never = founderWith([], { id: 'z:4', name: 'Never', priority: '1' });
+  const model = { today: '2026-10-23', all: [tagged, quiet, older, never], founders: [quiet, older, never] };
+  const R = E.reconnect(model);
+  assert.equal(R.b2bTagged, 1, 'the tagged person is counted even though the view hides them');
+  assert.equal(R.total, 3);
+  assert.equal(R.never, 1);
+  const p1 = R.groups.find((g) => g.priority === '1');
+  assert.deepEqual(p1.quiet.map((r) => r.f.name), ['Older', 'Quiet'], 'longest since contact comes first');
+  assert.deepEqual(p1.never.map((r) => r.f.name), ['Never']);
+});

@@ -255,7 +255,10 @@
         if (hit && !(own && slugOf(hit.url) && slugOf(hit.url) !== own)) { c = hit; how = 'Same first and last name'; }
       }
       if (c) {
-        f.linkedinConn = { connected: c.connected, position: c.position, company: c.company, url: c.url, ties: c.ties || [] };
+        /* The hand grade travels with the connection: what kind of partner they would be, what they could refer,
+           and whether they were marked a possible client. `commercial` reads these; nothing else does. */
+        f.linkedinConn = { connected: c.connected, position: c.position, company: c.company, url: c.url, ties: c.ties || [],
+          fit: c.fit || null, type: c.type || null, why: c.why || '', refer: c.refer || '', client: c.client === true, net: c.net || 'Mack' };
         f.identities.push({ source: 'LinkedIn export', record: c.url || c.name, method: how, confidence: how === 'Same LinkedIn profile' ? 'confirmed' : 'likely', verified: how === 'Same LinkedIn profile' });
         if (c.connected) f.activities.push({ source: 'LinkedIn', type: 'Connected on LinkedIn', day: c.connected, at: c.connected, text: `Connected with Mack on LinkedIn${(c.ties || []).length ? '; ' + c.ties.join(', ').toLowerCase() : ''}`, kind: 'imported' });
         if (!f.title && c.position) f.title = c.position;
@@ -661,7 +664,106 @@
     return settings.targets.map((t) => Object.assign({}, t, { actual: counts[t.id], rows: counts[t.id] == null ? [] : rows[t.id] }, metricStatus({ actual: counts[t.id], target: t.target, today, missing: counts[t.id] == null, baseline: baselines[t.id] || 0 }, settings), { baseline: baselines[t.id] || 0 }));
   }
 
-  const api = { DEFAULTS, STATUS, TONE, STAGES, STAGE_RULES, ctDay, daysBetween, nameToks, personKey, keyOfName, slugOf, lev, zohoIndex, matchPerson, buildFounders, facts, stageOf, actionsFor, actionStatus, metricStatus, sourceStatus, expectedShare, priorityOf, inB2B, isB2BTagged, isShown, isUrgentAction, run, targets, targetRows, rankAction, outreach, draftFor };
+  /* ---------- the reminder list, and whether a person could buy or could refer (Nov 9, 2026) ----------
+     Mack's spec, Nov 6: "founder network ક્યા મેરે લિયે કરના ચાહીએ? It should remind me of the person that I have
+     forgotten." He is already in live conversation with 15 to 20 people and does not want to report on those; he
+     wants the quiet ones, by Priority, and he wants to read the order both ways — oldest contact first to find who
+     has gone cold, newest first to drive what is hot to closure. He also asked to hide the people already in the
+     B2B campaign, and for the count he is moving from the network into B2B to sit first on the tab.
+     The order is NOT Zoho's Modified_Time. He rejected that field on the call — "યે data, last updated વાલા data,
+     હમારે કામ કા નહીં હૈ" — because the real contact happens off the CRM. It is the newest thing on record that
+     was contact with the person, and every row says which source said so. */
+  const CONTACT_WHAT = { Meeting: 'a meeting', 'Recorded call': 'a recorded call', Email: 'email' };
+  const SIGNAL_WHAT = { 'Telegram message': 'mentioned in the chat', 'Telegram photo': 'a photo in the chat', 'Connected on LinkedIn': 'connected on LinkedIn' };
+  const newestAct = (acts, today) => acts.filter((a) => a.day && a.day <= today).sort((x, y) => str(y.day).localeCompare(str(x.day)))[0] || null;
+
+  /* The last time the team actually spoke to this person: a meeting that was held, a recorded call, or email.
+     A deal or a task is a record we made about them, not contact with them, so neither counts. */
+  function lastTouch(f, today) {
+    const a = newestAct((f.activities || []).filter((x) => (x.type === 'Meeting' && x.held) || x.type === 'Recorded call' || x.type === 'Email'), today);
+    return a ? { day: a.day, source: a.source, type: a.type, what: CONTACT_WHAT[a.type] || str(a.type).toLowerCase() } : null;
+  }
+  /* Evidence the person is alive in the team's world without being contact — the chat naming them, or the
+     connection being made. Someone with no contact but a recent mention is exactly who Mack should call. */
+  function lastSignal(f, today) {
+    const a = newestAct((f.activities || []).filter((x) => SIGNAL_WHAT[x.type]), today);
+    return a ? { day: a.day, source: a.source, type: a.type, what: SIGNAL_WHAT[a.type] } : null;
+  }
+
+  /* Could they buy from us, could they bring us clients, or neither. The two are independent — a signed referral
+     partner can also be a client — so they are scored separately and a person can come out as both. Most of this
+     is already hand-graded in the LinkedIn exports (the kind of partner, what they could refer, a client flag);
+     Zoho supplies the deals, the agreement and the Priority. A person with no grade and no deals scores nothing
+     and is reported as having no evidence rather than being guessed at. */
+  const PARTNER_KINDS = ['IT_SERVICES', 'MGMT_CONSULT', 'AGENCY', 'STAFFING', 'FRACTIONAL', 'VENDOR_ALLIANCE', 'COACH', 'SALES_BD', 'ADVISOR_FIN'];
+  const CLIENT_KINDS = ['ENTERPRISE_EXEC', 'OWNER_SMB', 'HEALTHCARE_EXEC', 'ERP_CRM'];
+  const NO_BUDGET_KINDS = ['EMPLOYEE', 'STUDENT', 'INVESTOR'];
+  const BUYS_TITLE = /\b(owner|founder|co-?founder|ceo|coo|cfo|cto|president|chairman|principal|managing director|vp|vice president|chief|head of|director of operations|treasurer)\b/i;
+  const IS_PARTNER_DEAL = (d) => /referral partner|platform provider/i.test(str(d.Deal_Type));
+  const pretty = (kind) => str(kind).replace(/_/g, ' ').toLowerCase();
+
+  function commercial(f, settings = DEFAULTS) {
+    const L = f.linkedinConn || {}; const F = f.facts || {};
+    const title = str(f.title || (f.zoho && f.zoho.Title));
+    const kind = str(L.type).toUpperCase();
+    const rel = f.zoho ? list(f.zoho.Relationship_Type) : [];
+    const deals = F.deals || [];
+    const clientDeals = deals.filter((d) => !IS_PARTNER_DEAL(d));
+    const openClient = clientDeals.filter((d) => ['Identify', 'Discovery', 'Proposals', 'Hold'].includes(str(d.Stage)));
+    const clientWhy = []; const partnerWhy = [];
+    let cs = 0; let ps = 0;
+
+    if (openClient.length) { cs += 45; clientWhy.push(`open client deal “${str(openClient[0].Deal_Name)}”, stage ${str(openClient[0].Stage)}`); }
+    else if (clientDeals.length) { cs += 15; clientWhy.push('a client deal that closed or was lost'); }
+    if (L.client === true) { cs += 25; clientWhy.push('graded a possible client in the LinkedIn export'); }
+    if (CLIENT_KINDS.includes(kind)) { cs += 20; clientWhy.push(pretty(kind)); }
+    if (BUYS_TITLE.test(title) && !NO_BUDGET_KINDS.includes(kind)) { cs += 20; clientWhy.push('holds a budget: ' + title); }
+    if (rel.includes('Client')) { cs += 15; clientWhy.push('already labeled Client in Zoho'); }
+    if (NO_BUDGET_KINDS.includes(kind)) { cs -= 25; clientWhy.push(pretty(kind) + ' — no budget of their own'); }
+
+    if (deals.some(IS_PARTNER_DEAL)) { ps += 35; partnerWhy.push('a referral or platform partner deal in Zoho'); }
+    if ((F.agreements || []).length) { ps += 20; partnerWhy.push('a referral agreement on record'); }
+    if (PARTNER_KINDS.includes(kind)) { ps += 25; partnerWhy.push(pretty(kind) + ' firm'); }
+    if (str(L.refer).trim()) { ps += 25; partnerWhy.push('could refer: ' + str(L.refer)); }
+    if (L.fit === 'A') { ps += 20; partnerWhy.push('graded A, strong partner fit'); }
+    else if (L.fit === 'B') { ps += 10; partnerWhy.push('graded B, possible partner fit'); }
+    else if (L.fit === 'X') { ps -= 30; partnerWhy.push('graded X, not a partner prospect'); }
+    if (F.intro) { ps += 10; partnerWhy.push('has introduced someone to us'); }
+    if (NO_BUDGET_KINDS.includes(kind)) ps -= 25;
+
+    const pr = str(f.priority);
+    if (pr === '1') { cs += 10; ps += 10; } else if (pr === '3') { cs += 5; ps += 5; }
+    const verdict = cs >= 40 && ps >= 40 ? 'Both' : cs >= 40 && cs > ps ? 'Client' : ps >= 40 && ps > cs ? 'Partner'
+      : cs >= 25 ? 'Possible client' : ps >= 25 ? 'Possible partner' : 'No evidence';
+    return { client: cs, partner: ps, clientWhy, partnerWhy, verdict, graded: Boolean(L.fit || L.type) };
+  }
+
+  /* Mack's view of the network: everyone the tab shows, by Priority, each with when we last spoke to them.
+     People we have never contacted are kept apart from the quiet ones, because a date sort over "never" means
+     nothing and they are a different job — starting, not reviving. */
+  const BANDS = [['1', 'Priority 1'], ['3', 'Priority 3'], ['5', 'Priority 5'], ['', 'No priority set']];
+  function reconnect(model, settings = DEFAULTS) {
+    const today = model.today;
+    /* model.founders is already filtered by isShown, so the unfiltered set is what the B2B count has to come from. */
+    const inFN = (model.all || model.founders).filter((f) => f.inFN);
+    const rows = inFN.filter((f) => isShown(f, settings)).map((f) => {
+      const touch = lastTouch(f, today);
+      return { f, touch, signal: lastSignal(f, today), days: touch ? daysBetween(touch.day, today) : null,
+        upcoming: (f.facts || {}).upcoming || null, commercial: commercial(f, settings) };
+    });
+    const groups = BANDS.map(([priority, label]) => {
+      const mine = rows.filter((r) => str(r.f.priority) === priority);
+      return { priority, label, count: mine.length,
+        quiet: mine.filter((r) => r.touch).sort((a, b) => str(a.touch.day).localeCompare(str(b.touch.day))),
+        never: mine.filter((r) => !r.touch) };
+    }).filter((g) => g.count);
+    return { rows, groups, total: rows.length,
+      b2bTagged: inFN.filter((f) => isB2BTagged(f.zoho, settings)).length,
+      contacted: rows.filter((r) => r.touch).length,
+      never: rows.filter((r) => !r.touch).length };
+  }
+
+  const api = { DEFAULTS, STATUS, TONE, STAGES, STAGE_RULES, ctDay, daysBetween, nameToks, personKey, keyOfName, slugOf, lev, zohoIndex, matchPerson, buildFounders, facts, stageOf, actionsFor, actionStatus, metricStatus, sourceStatus, expectedShare, priorityOf, inB2B, isB2BTagged, isShown, isUrgentAction, run, targets, targetRows, rankAction, outreach, draftFor, lastTouch, lastSignal, commercial, reconnect };
   root.FN_ENGINE = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
