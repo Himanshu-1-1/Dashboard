@@ -274,11 +274,41 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
     }
     showGate(lock);
   };
+  /* Datasets a build may not carry at all: seeded empty so a calc that reads one gets rows, not an error. */
+  const DS_DEFAULTS = { wi_research: [], wi_mack: [], li_sync: [], b2b_cal: [], b2b_ff: [], p3_log: [], li_dm: [], li_outreach: [], cos_digest: [] };
+  /* Merge every source into one set of datasets. A later source wins, as it always has, so the opened sealed file
+     overrides a snapshot branch for the same dataset. The one exception: an empty list never replaces rows an
+     earlier source already supplied. That matters while two pipelines feed the same dataset — the Chief of Staff
+     feed and the per-source snapshot branches both carrying b2b_cal, b2b_ff or b2b_mail during the changeover —
+     because a feed run that came back empty would otherwise blank a panel the branch file still has good data for,
+     silently and with no error anywhere. Which source each dataset came from, and how many rows it brought, is left
+     on window.__DASH_SOURCES__ so a build can be checked from the console without unpacking the bundle. */
+  const mergeDatasets = (sources) => {
+    const out = { ...DS_DEFAULTS };
+    const from = {};
+    Object.keys(DS_DEFAULTS).forEach((k) => { from[k] = 'not in this build'; });
+    sources.forEach(({ name, datasets }) => {
+      if (!datasets) return;
+      Object.entries(datasets).forEach(([id, rows]) => {
+        const n = Array.isArray(rows) ? rows.length : null;
+        const heldN = Array.isArray(out[id]) ? out[id].length : null;
+        if (n === 0 && heldN) { from[id] += '; ' + name + ' sent none, kept'; return; }
+        out[id] = rows;
+        from[id] = name + (n == null ? '' : ' (' + n + ')');
+      });
+    });
+    window.__DASH_SOURCES__ = from;
+    return out;
+  };
   const load = () => {
     const json = window.__DASH_DATA__;
-    const extras = [window.__BOXBYTE__, window.__COURIER__, window.__RESEARCH__, window.__MAIL__, window.__CAL__, window.__FF__, window.__LINKSYNC__, window.__P3__, window.__SEALED__].filter((x) => x && x.datasets);
+    const extras = [
+      ['boxbyte.js', window.__BOXBYTE__], ['courier.js', window.__COURIER__], ['research.js', window.__RESEARCH__],
+      ['mail.js', window.__MAIL__], ['cal.js', window.__CAL__], ['ff.js', window.__FF__],
+      ['linksync.js', window.__LINKSYNC__], ['p3.js', window.__P3__], ['sealed file', window.__SEALED__],
+    ];
     if (json && json.datasets) {
-      raw = { ...json, datasets: Object.assign({ wi_research: [], wi_mack: [], li_sync: [], b2b_cal: [], b2b_ff: [], p3_log: [], li_dm: [], li_outreach: [], cos_digest: [] }, json.datasets, ...extras.map((x) => x.datasets)) };
+      raw = { ...json, datasets: mergeDatasets([{ name: 'data.js', datasets: json.datasets }, ...extras.map(([name, src]) => ({ name, datasets: src && src.datasets }))]) };
       cache = {};
       runAll();
       stamp('Data from Zoho CRM as of ' + when(json.generated_at) + '.');
