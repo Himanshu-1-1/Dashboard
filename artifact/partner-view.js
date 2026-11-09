@@ -41,14 +41,16 @@
             const status = statusOf(d.stage);
             const c = commissionOf(d.commission_terms, d.amount, status);
             return {
-              id: d.id, deal: d.deal, client: d.account, client_contact: d.contact, stage: STAGE_LABEL[status] || d.stage || 'No stage',
+              id: d.id, deal: d.deal, client: d.account, client_contact: capName(d.contact),
+              /* Carried through so the Introduced By section can drop people already tracked here (Mack, Nov 9, 2026). */
+              contact_id: d.contact_id || null, stage: STAGE_LABEL[status] || d.stage || 'No stage',
               status, created: d.created, modified: d.modified || null, amount: d.amount,
               commission_terms: d.commission_terms || null, commission_pct: c.pct, commission: c.value, commission_why: c.why,
             };
           });
           const firm = a.account && a.account !== '—' && a.account !== a.partner ? a.account : null;
           return {
-            key: a.key, name: a.partner || firm || 'Partner', firm, contact_id: cid, account_id: aid,
+            key: a.key, name: capName(a.partner || firm || 'Partner'), firm, contact_id: cid, account_id: aid,
             signed_on: String(a.completed || a.sent || '').slice(0, 10) || null, deals,
           };
         })
@@ -87,9 +89,46 @@
     },
   });
 
+  /* Our own people show up in Introduced By because a teammate is recorded as the introducer on some contacts.
+     They are us, not referral partners, so they never get a partner page (Hemang, Nov 9, 2026). */
+  const OWN_PEOPLE = ['mack akhani', 'hemang dwivedi', 'shruti', 'harsh', 'pulkit', 'sajeed', 'meera'];
+  const isOurs = (name) => { const n = String(name || '').toLowerCase().trim(); return OWN_PEOPLE.some((o) => n === o || n.startsWith(o + ' ')); };
+
+  /* A page for everyone who makes introductions, not only those who have signed (Mack, Nov 9, 2026). Kept as its own
+     calc rather than an input to pv_partners, so a build without the introductions dataset still renders the signed
+     partners exactly as before; the view merges the two and the signed row always wins. */
+  dash.calc('pv_introducers', {
+    title: 'People who introduced someone but have not signed a referral agreement',
+    description: 'One row per person named in another contact’s Introduced By (Contact) field who has no signed Referral Partner Agreement, with any client deals recorded as referred by them. Our own team is left out: a teammate recorded as an introducer is us, not a referral partner.',
+    inputs: ['introductions', 'rb_rows'],
+    fn: (introductions, rb_rows) => {
+      const by = new Map();
+      introductions.forEach((r) => {
+        const id = r.Introduced_By_Contact_id ? String(r.Introduced_By_Contact_id) : null;
+        if (!id || by.has(id)) return;
+        by.set(id, capName(r.Introduced_By_Contact) || 'Partner');
+      });
+      return [...by.entries()]
+        .filter(([, name]) => !isOurs(name))
+        .map(([id, name]) => ({
+          key: 'intro:' + id, name, firm: null, contact_id: id, account_id: null, signed_on: null,
+          deals: rb_rows.filter((d) => d.by_id === id).map((d) => {
+            const status = statusOf(d.stage);
+            const c = commissionOf(d.commission_terms, d.amount, status);
+            return {
+              id: d.id, deal: d.deal, client: d.account, client_contact: capName(d.contact),
+              contact_id: d.contact_id || null, stage: STAGE_LABEL[status] || d.stage || 'No stage',
+              status, created: d.created, modified: d.modified || null, amount: d.amount,
+              commission_terms: d.commission_terms || null, commission_pct: c.pct, commission: c.value, commission_why: c.why,
+            };
+          }),
+        }));
+    },
+  });
+
   dash.calc('pv_intros', {
     title: 'People each partner introduced',
-    description: 'Every Zoho contact whose Introduced By (Contact) is set, grouped by the person who introduced them: name, company, title, email, phone, relationship type and the date the contact was created in Zoho.',
+    description: 'Every Zoho contact whose Introduced By (Contact) is set, grouped by the person who introduced them: name, company, title, email, phone, LinkedIn, relationship type and the date the contact was created in Zoho.',
     inputs: ['introductions'],
     fn: (introductions) => {
       const by = new Map();
@@ -98,9 +137,9 @@
         if (!id) return;
         if (!by.has(id)) by.set(id, []);
         by.get(id).push({
-          id: String(r.id), name: r.Full_Name || '—', account: r.Account_Name || null,
+          id: String(r.id), name: capName(r.Full_Name) || '—', account: r.Account_Name || null,
           account_id: r.Account_Name_id ? String(r.Account_Name_id) : null, title: r.Title || null,
-          email: r.Email || null, phone: r.Phone || null,
+          email: r.Email || null, phone: r.Phone || null, linkedin: r.LinkedIn || null,
           rel: r.Relationship_Type || null, added: r.Created_Time ? String(r.Created_Time).slice(0, 10) : null,
         });
       });
@@ -112,6 +151,31 @@
   });
 
   const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+  /* Mack's rule (Nov 9, 2026): names always capitalized. Only a token that is entirely lowercase is touched, so
+     "pruvish" becomes "Pruvish" while McKeon, O'Brien and the LAFW suffix are left exactly as Zoho holds them —
+     a blanket title-case would break all three. Display only; the records themselves are fixed in Zoho. */
+  const capName = (s) => String(s == null ? '' : s).replace(/\S+/g, (w) => (/^[a-z][a-z'’-]*$/.test(w) ? w.charAt(0).toUpperCase() + w.slice(1) : w));
+  /* A LinkedIn profile shows as a small icon, never the raw URL, and only where Zoho holds one (Mack, Nov 9, 2026). */
+  const LI_PATH = 'M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM10 9h3.8v1.7h.05c.53-1 1.83-2.05 3.76-2.05C21.3 8.65 22 11 22 14.1V21h-4v-6.1c0-1.45-.03-3.32-2.03-3.32-2.03 0-2.34 1.58-2.34 3.21V21h-4z';
+  const liIcon = (url, who) => {
+    if (!url) return null;
+    const a = el('a', 'cc-pv-li');
+    a.href = String(url);
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.title = `Open ${who} on LinkedIn`;
+    a.setAttribute('aria-label', `Open ${who} on LinkedIn`);
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', LI_PATH);
+    path.setAttribute('fill', 'currentColor');
+    svg.append(path);
+    a.append(svg);
+    return a;
+  };
   const fmtDate = (d) => (d ? new Date(String(d).slice(0, 10) + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '—');
   const fmtMoney = (v) => (v > 0 ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v) : '—');
   const ZOHO = 'https://crm.zoho.com/crm/org899412015/tab/';
@@ -133,7 +197,25 @@
   const st = { open: false, key: null, want: null, active: -1, list: [], overlay: null, inerted: [] };
   const setHash = (h) => { try { history.replaceState(null, '', h ? '#' + h : location.pathname + location.search); } catch (err) { /* sandboxed frame */ } };
 
-  const partners = () => { const d = dash.data('pv_partners'); return d && d.status === 'ok' ? d.data || [] : null; };
+  /* Signed partners first, then anyone who has only made introductions (Mack, Nov 9, 2026). A signed row always wins
+     over an introducer row for the same person, and slugs are made unique across the merged list rather than within
+     either half, so #partner=<slug> can never land on two people. An introducers calc that isn't in the build simply
+     contributes nothing. */
+  const partners = () => {
+    const d = dash.data('pv_partners');
+    if (!d || d.status !== 'ok') return null;
+    const signed = d.data || [];
+    const have = new Set(signed.map((p) => p.contact_id || p.account_id).filter(Boolean));
+    const x = dash.data('pv_introducers');
+    const extra = x && x.status === 'ok' ? (x.data || []).filter((p) => !have.has(p.contact_id)) : [];
+    return [...signed, ...extra]
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((p, i, all) => {
+        const base = slugOf(p.name) || 'partner';
+        const clash = all.some((q, j) => j !== i && (slugOf(q.name) || 'partner') === base);
+        return { ...p, slug: clash ? base + '-' + String(p.contact_id || p.account_id || i).slice(-6) : base };
+      });
+  };
   const loadState = () => { const d = dash.data('pv_partners'); return d ? d.status : 'loading'; };
   const loadError = () => { const d = dash.data('pv_partners'); return (d && (d.error || d.message)) || 'the agreements or deals did not load'; };
 
@@ -217,11 +299,19 @@
     const d = dash.data('pv_intros');
     if (d.status !== 'ok') return null;
     const row = (d.data || []).find((x) => p.contact_id && x.introducer_id === String(p.contact_id));
-    const people = row ? row.people : [];
+    /* Mack's rule (Nov 9, 2026): someone already on one of this partner's referred deals is tracked in the table
+       above, so listing them again here is noise. Scoped to this partner's own deals, by contact id — a person with
+       a deal through someone else is still work this partner handed us. */
+    const onDeal = new Set((p.deals || []).map((x) => x.contact_id && String(x.contact_id)).filter(Boolean));
+    const all = row ? row.people : [];
+    const people = all.filter((x) => !onDeal.has(String(x.id)));
+    const hidden = all.length - people.length;
     const card = el('section', 'cc-pv-card');
     card.append(el('h3', 'cc-pv-card-title', people.length ? `Introduced by ${p.name}: ${plural(people.length, 'person', 'people')}` : 'Introduced By'));
     if (!people.length) {
-      card.append(el('p', 'cc-pv-empty', `No one in Zoho is recorded as introduced by ${p.name} yet. The Introduced By (Contact) field on a contact is what puts them here.`));
+      card.append(el('p', 'cc-pv-empty', hidden
+        ? `Everyone ${p.name} introduced already has a deal above, so there is nobody left to act on here.`
+        : `No one in Zoho is recorded as introduced by ${p.name} yet. The Introduced By (Contact) field on a contact is what puts them here.`));
       return card;
     }
     const wrap = el('div', 'cc-pv-tablewrap');
@@ -232,9 +322,12 @@
     thead.append(hr);
     const tb = el('tbody');
     people.forEach((x) => {
+      const name = x.name;
       const tr = el('tr');
       const who = el('td', 'cc-pv-deal');
-      who.append(zLink('a', x.name, 'Contacts', x.id, 'Open ' + x.name + ' in Zoho CRM'));
+      who.append(zLink('a', name, 'Contacts', x.id, 'Open ' + name + ' in Zoho CRM'));
+      const li = liIcon(x.linkedin, name);
+      if (li) who.append(li);
       const co = el('td');
       if (x.account && x.account_id) co.append(zLink('a', x.account, 'Accounts', x.account_id, 'Open ' + x.account + ' in Zoho CRM'));
       else co.textContent = x.account || '—';
@@ -242,13 +335,13 @@
       if (x.email) { const a = el('a', 'cc-pv-mail', x.email); a.href = 'mailto:' + x.email; mail.append(a); } else mail.textContent = '—';
       const tel = el('td', 'cc-pv-contactcell');
       if (x.phone) { const a = el('a', 'cc-pv-mail', x.phone); a.href = 'tel:' + String(x.phone).replace(/[^+0-9]/g, ''); tel.append(a); } else tel.textContent = '—';
-      tr.append(who, co, el('td', null, x.title || '—'), mail, tel, el('td', null, x.rel || '—'), el('td', null, fmtDate(x.added)));
+      tr.append(who, co, el('td', null, capName(x.title) || '—'), mail, tel, el('td', null, x.rel || '—'), el('td', null, fmtDate(x.added)));
       tb.append(tr);
     });
     table.append(thead, tb);
     wrap.append(table);
     card.append(wrap);
-    card.append(el('p', 'cc-pv-note', 'From the Introduced By (Contact) field in Zoho; email and phone are theirs as Zoho holds them. Added to Zoho is the date the contact record was created, since Zoho records no date for the introduction itself.'));
+    card.append(el('p', 'cc-pv-note', `From the Introduced By (Contact) field in Zoho; email and phone are theirs as Zoho holds them. Added to Zoho is the date the contact record was created, since Zoho records no date for the introduction itself.${hidden ? ` ${plural(hidden, 'person', 'people')} already on a deal above ${hidden === 1 ? 'is' : 'are'} left out, so this list is only what is still to act on.` : ''}`));
     return card;
   };
 
@@ -290,8 +383,12 @@
       ? zLink('h2', p.name, 'Contacts', p.contact_id, 'Open ' + p.name + ' in Zoho CRM: their record lists the deals they referred')
       : zLink('h2', p.name, 'Accounts', p.account_id, 'Open ' + p.name + ' in Zoho CRM: the account lists the deals it referred'));
     if (p.firm) who.append(el('p', 'cc-pv-firm', p.firm));
-    const agree = el('p', 'cc-pv-agree');
-    agree.append(el('span', 'cc-pv-agree-dot'), document.createTextNode(p.signed_on ? 'Referral agreement signed ' + fmtDate(p.signed_on) : 'Referral agreement signed'));
+    /* An introducer with no agreement says so plainly rather than claiming one was signed (Mack, Nov 9, 2026). */
+    const unsigned = p.key && String(p.key).startsWith('intro:');
+    const agree = el('p', unsigned ? 'cc-pv-agree cc-pv-agree-none' : 'cc-pv-agree');
+    agree.append(el('span', 'cc-pv-agree-dot'), document.createTextNode(unsigned
+      ? 'No referral agreement signed — on this page for the introductions they have made'
+      : (p.signed_on ? 'Referral agreement signed ' + fmtDate(p.signed_on) : 'Referral agreement signed')));
     who.append(agree);
     head.append(who);
 
@@ -468,7 +565,7 @@
     const box = el('div', 'cc-pv-launch');
     box.id = 'cc-pv-launch';
     const txt = el('div', 'cc-pv-launch-txt');
-    txt.append(el('strong', null, 'Partner view'), el('span', null, 'Shows one signed partner’s referred deals and hides the rest of the dashboard, for a screen share. Pick the partner before you start sharing: the list shows every signed partner’s name. Its own link is this page’s address with #partner at the end (add =their-name, as the address shows once you pick, to open one partner straight away). The link still asks for the team passcode, so it’s for us, not for partners.'));
+    txt.append(el('strong', null, 'Partner view'), el('span', null, 'Shows one partner’s referred deals and introductions and hides the rest of the dashboard, for a screen share. Pick the partner before you start sharing: the list shows everyone who has signed a referral agreement or introduced someone to us. Its own link is this page’s address with #partner at the end (add =their-name, as the address shows once you pick, to open one partner straight away). The link still asks for the team passcode, so it’s for us, not for partners.'));
     const btn = el('button', 'cc-pv-open', 'Open partner view');
     btn.id = 'cc-pv-open';
     btn.type = 'button';

@@ -35,6 +35,13 @@ html.cc-pv-on, html.cc-pv-on body { overflow: hidden; }
 .cc-pv-firm { margin: 0; color: var(--color-fg-muted); font-size: var(--cds-font-size-body); }
 .cc-pv-agree { display: inline-flex; align-items: center; gap: 6px; margin: 6px 0 0; font-size: var(--cds-font-size-caption); color: var(--color-ok); }
 .cc-pv-agree-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-ok); }
+/* An introducer who has not signed: same line, muted, so the page never looks like it claims an agreement. */
+.cc-pv-agree-none { color: var(--color-fg-muted); }
+.cc-pv-agree-none .cc-pv-agree-dot { background: var(--color-fg-muted); }
+/* LinkedIn shows as a small icon beside the name, never the raw URL (Mack, Nov 9, 2026). */
+.cc-pv-li { display: inline-flex; align-items: center; margin-left: 6px; color: var(--color-fg-muted); vertical-align: middle; }
+.cc-pv-li svg { width: 14px; height: 14px; display: block; }
+.cc-pv-li:hover, .cc-pv-li:focus-visible { color: #0a66c2; }
 .cc-pv-stats { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); align-items: stretch; }
 .cc-pv-floor { margin: var(--cds-gap-xs) 0 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
 .cc-pv-stat { display: grid; gap: 2px; align-content: start; min-width: 120px; padding: var(--cds-pad-sm) var(--cds-pad-md); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-panel); }
