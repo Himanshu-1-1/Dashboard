@@ -39,7 +39,11 @@ html.cc-pv-on, html.cc-pv-on body { overflow: hidden; }
 .cc-pv-agree-none { color: var(--color-fg-muted); }
 .cc-pv-agree-none .cc-pv-agree-dot { background: var(--color-fg-muted); }
 /* LinkedIn shows as a small icon beside the name, never the raw URL (Mack, Nov 9, 2026). */
-.cc-pv-li { display: inline-flex; align-items: center; margin-left: 6px; color: var(--color-fg-muted); vertical-align: middle; }
+.cc-pv-licell { white-space: nowrap; }
+/* A row with no profile says so, instead of the dash every other empty cell uses: the column exists to find them. */
+.cc-pv-limiss { font-size: var(--cds-font-size-caption); color: var(--color-warn); }
+.cc-pv-ligap { color: var(--color-warn); }
+.cc-pv-li { display: inline-flex; align-items: center; color: var(--color-fg-muted); vertical-align: middle; }
 .cc-pv-li svg { width: 14px; height: 14px; display: block; }
 .cc-pv-li:hover, .cc-pv-li:focus-visible { color: #0a66c2; }
 .cc-pv-stats { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); align-items: stretch; }

@@ -318,7 +318,10 @@
     const table = el('table', 'cc-pv-table');
     const thead = el('thead');
     const hr = el('tr');
-    ['Person', 'Company', 'Title', 'Email', 'Phone', 'Relationship', 'Added to Zoho'].forEach((t) => { const th = el('th', null, t); th.scope = 'col'; hr.append(th); });
+    /* LinkedIn is a column of its own, after Title (Hemang, Nov 9, 2026): beside the name it read as part of the
+       name and was easy to miss. A row with no profile says so in words rather than showing the same dash as every
+       other empty cell, because the point of the column is to find the people whose profile Zoho is missing. */
+    ['Person', 'Company', 'Title', 'LinkedIn', 'Email', 'Phone', 'Relationship', 'Added to Zoho'].forEach((t) => { const th = el('th', null, t); th.scope = 'col'; hr.append(th); });
     thead.append(hr);
     const tb = el('tbody');
     people.forEach((x) => {
@@ -326,8 +329,10 @@
       const tr = el('tr');
       const who = el('td', 'cc-pv-deal');
       who.append(zLink('a', name, 'Contacts', x.id, 'Open ' + name + ' in Zoho CRM'));
+      const lin = el('td', 'cc-pv-licell');
       const li = liIcon(x.linkedin, name);
-      if (li) who.append(li);
+      if (li) lin.append(li);
+      else lin.append(el('span', 'cc-pv-limiss', 'Not in Zoho'));
       const co = el('td');
       if (x.account && x.account_id) co.append(zLink('a', x.account, 'Accounts', x.account_id, 'Open ' + x.account + ' in Zoho CRM'));
       else co.textContent = x.account || '—';
@@ -335,13 +340,16 @@
       if (x.email) { const a = el('a', 'cc-pv-mail', x.email); a.href = 'mailto:' + x.email; mail.append(a); } else mail.textContent = '—';
       const tel = el('td', 'cc-pv-contactcell');
       if (x.phone) { const a = el('a', 'cc-pv-mail', x.phone); a.href = 'tel:' + String(x.phone).replace(/[^+0-9]/g, ''); tel.append(a); } else tel.textContent = '—';
-      tr.append(who, co, el('td', null, capName(x.title) || '—'), mail, tel, el('td', null, x.rel || '—'), el('td', null, fmtDate(x.added)));
+      tr.append(who, co, el('td', null, capName(x.title) || '—'), lin, mail, tel, el('td', null, x.rel || '—'), el('td', null, fmtDate(x.added)));
       tb.append(tr);
     });
     table.append(thead, tb);
     wrap.append(table);
     card.append(wrap);
+    const noLi = people.filter((x) => !x.linkedin).length;
     card.append(el('p', 'cc-pv-note', `From the Introduced By (Contact) field in Zoho; email and phone are theirs as Zoho holds them. Added to Zoho is the date the contact record was created, since Zoho records no date for the introduction itself.${hidden ? ` ${plural(hidden, 'person', 'people')} already on a deal above ${hidden === 1 ? 'is' : 'are'} left out, so this list is only what is still to act on.` : ''}`));
+    /* The gap as a number, so it can be worked through rather than spotted row by row (Hemang, Nov 9, 2026). */
+    if (noLi) card.append(el('p', 'cc-pv-note cc-pv-ligap', `${noLi} of ${people.length} have no LinkedIn profile in Zoho. Find them on LinkedIn and put the profile on their contact record, and the icon appears here.`));
     return card;
   };
 
