@@ -177,7 +177,7 @@
   ];
   const st = {
     view: 'reconnect',
-    reconnect: { hideB2B: true, oldest: true, q: '' },
+    reconnect: { hideB2B: true, oldest: true, q: '', open: null },
     commercial: { side: '', q: '' },
     actions: { status: null, urgent: false, category: '', owner: '', kind: '', q: '', done: false, sort: 'urgency', page: 0 },
     founders: { band: null, stage: '', ver: '', source: '', soon: false, q: '', sort: 'score', page: 0, ids: null, idsLabel: '' },
@@ -352,6 +352,31 @@
     }
     return td;
   };
+  /* Quiet people first, longest since contact at the top; never-contacted after them, since they have no date
+     to rank by. One ordering for the sections and for the lists the cards open. */
+  const sortRows = (rows, oldest) => {
+    const quiet = rows.filter((r) => r.touch).sort((a, b) => String(a.touch.day).localeCompare(String(b.touch.day)));
+    if (!oldest) quiet.reverse();
+    return [...quiet, ...rows.filter((r) => !r.touch).sort((a, b) => String(a.f.name).localeCompare(String(b.f.name)))];
+  };
+  const touchTable = (rows, today, withPriority) => {
+    const heads = ['Person', 'Last contact', 'Next meeting', 'Could be', 'Why now'];
+    if (withPriority) heads.splice(1, 0, 'Priority');
+    const t = tableWrap(heads);
+    rows.slice(0, PAGE).forEach((r) => {
+      const tr = el('tr');
+      tr.append(nameCell(r.f));
+      if (withPriority) tr.append(el('td', null, r.f.priority ? 'P' + r.f.priority : '—'));
+      tr.append(touchCell(r, today));
+      tr.append(el('td', null, r.upcoming ? dayF(r.upcoming) : '—'));
+      const v = el('td'); v.append(pill(r.commercial.verdict, VERDICT_TONE[r.commercial.verdict] || 'muted')); tr.append(v);
+      tr.append(el('td', 'cc-fx-why', r.f.priorityInfo.band === 'Urgent' ? 'Urgent' : (r.f.next || '—')));
+      t.tbody.append(tr);
+    });
+    if (!rows.length) { const tr = el('tr'); const td = el('td', 'cc-fx-empty', 'Nobody here.'); td.colSpan = heads.length; tr.append(td); t.tbody.append(tr); }
+    return t;
+  };
+
   const drawReconnect = (m) => {
     const s = st.reconnect; const today = m.today;
     const R = E.reconnect(m);
@@ -360,15 +385,29 @@
     /* First on the tab, because Mack asked for it first: how many of the network he has handed to B2B. */
     const top = el('div', 'cc-fx-kpis');
     const moved = R.b2bTagged;
-    const kpi = (n, label, note, tone) => {
-      const d = el('div', 'cc-fx-kpi cc-fx-' + (tone || 'muted'));
-      d.append(el('strong', null, intF(n)), el('span', null, label), el('small', null, note));
-      return d;
+    /* Each card opens exactly the people it counts (Hemang, Nov 9, 2026). An inline list rather than a jump to
+       the Founders directory, because the B2B card's people are filtered out of that view and would vanish. */
+    const CARDS = {
+      b2b: { rows: R.b2bRows, title: 'In the B2B campaign', note: 'Shruti tracks these on B2B Today. They are hidden from the sections below.' },
+      all: { rows: R.rows, title: 'In the network here', note: 'Everyone on this view, every Priority, longest since contact first.' },
+      never: { rows: R.rows.filter((r) => !r.touch), title: 'Never contacted', note: 'No meeting, recorded call or email on record. A LinkedIn connection or a Telegram mention is a signal, not contact.' },
+    };
+    const kpi = (id, n, label, note, tone) => {
+      const b = el('button', 'cc-fx-kpi cc-fx-' + (tone || 'muted'));
+      b.type = 'button';
+      b.append(el('strong', null, intF(n)), el('span', null, label), el('small', null, note));
+      const open = s.open === id;
+      b.setAttribute('aria-pressed', String(open));
+      b.setAttribute('aria-expanded', String(open));
+      b.title = open ? 'Hide this list' : `List these ${intF(n)}`;
+      b.disabled = !n;
+      b.addEventListener('click', () => { s.open = open ? null : id; render(); });
+      return b;
     };
     top.append(
-      kpi(moved, 'moved into B2B', 'carry the B2B tag, so Shruti tracks them there — hidden below', 'ok'),
-      kpi(R.total, 'in the network here', moved ? 'the B2B ones already taken out' : 'nobody carries the B2B tag', 'muted'),
-      kpi(R.never, 'never contacted', 'no meeting, call or email on record', R.never ? 'warn' : 'ok'),
+      kpi('b2b', moved, 'moved into B2B', 'carry the B2B tag, so Shruti tracks them there — hidden below', 'ok'),
+      kpi('all', R.total, 'in the network here', moved ? 'the B2B ones already taken out' : 'nobody carries the B2B tag', 'muted'),
+      kpi('never', R.never, 'never contacted', 'no meeting, call or email on record', R.never ? 'warn' : 'ok'),
     );
     wrap.append(cardHead('Who to reconnect with', `${intF(R.contacted)} with contact on record`), top);
 
@@ -377,6 +416,23 @@
       ? `${moved === 1 ? 'The one person' : `The ${intF(moved)} people`} in the B2B campaign ${moved === 1 ? 'is' : 'are'} hidden. Last contact is the newest meeting, recorded call or email on record — never Zoho’s last-updated date.`
       : `Showing everyone, including the ${intF(moved)} in the B2B campaign.`;
     wrap.append(note);
+
+    /* The open list sits with the card it came from, above the controls, which belong to the sections below. */
+    const card = CARDS[s.open];
+    if (card) {
+      const box = el('div', 'cc-fx-tlist');
+      const hd = el('div', 'cc-fx-cardhead');
+      const idx = Object.keys(CARDS).indexOf(s.open);
+      hd.append(el('h3', null, `${card.title}: ${intF(card.rows.length)}`), btn('cc-chip', 'Close', () => {
+        s.open = null; render();
+        const back = root.querySelectorAll('.cc-fx-kpi')[idx];
+        if (back) back.focus({ preventScroll: true });
+      }));
+      box.append(hd, el('p', 'cc-fx-note', card.note));
+      box.append(touchTable(sortRows(card.rows, s.oldest), today, true).wrap);
+      if (card.rows.length > PAGE) box.append(el('p', 'cc-fx-note', `Showing ${PAGE} of ${intF(card.rows.length)}. The sections below hold the rest, by Priority.`));
+      wrap.append(box);
+    }
 
     const chips = el('div', 'cc-fx-chips');
     chips.append(chip(`Hide the ${intF(moved)} in B2B`.replace('the 1 in', 'the one in'), s.hideB2B, () => { s.hideB2B = !s.hideB2B; render(); },
@@ -393,22 +449,10 @@
       const rows = [...g.quiet.filter((r) => has(s.q, r.f.name, r.f.company, r.f.title)),
         ...g.never.filter((r) => has(s.q, r.f.name, r.f.company, r.f.title))];
       if (!rows.length) continue;
-      const quiet = rows.filter((r) => r.touch); const never = rows.filter((r) => !r.touch);
-      if (!s.oldest) quiet.reverse();
-      const ordered = [...quiet, ...never];
+      const ordered = sortRows(rows, s.oldest);
       shown += ordered.length;
-      const h = el('h4', 'cc-fx-sub', `${g.label} · ${intF(ordered.length)}`);
-      wrap.append(h);
-      const t = tableWrap(['Person', 'Last contact', 'Next meeting', 'Could be', 'Why now']);
-      ordered.slice(0, PAGE).forEach((r) => {
-        const tr = el('tr');
-        tr.append(nameCell(r.f), touchCell(r, today));
-        tr.append(el('td', null, r.upcoming ? dayF(r.upcoming) : '—'));
-        const v = el('td'); v.append(pill(r.commercial.verdict, VERDICT_TONE[r.commercial.verdict] || 'muted')); tr.append(v);
-        tr.append(el('td', 'cc-fx-why', r.f.priorityInfo.band === 'Urgent' ? 'Urgent' : (r.f.next || '—')));
-        t.tbody.append(tr);
-      });
-      wrap.append(t.wrap);
+      wrap.append(el('h4', 'cc-fx-sub', `${g.label} · ${intF(ordered.length)}`));
+      wrap.append(touchTable(ordered, today, false).wrap);
       if (ordered.length > PAGE) wrap.append(el('p', 'cc-fx-note', `Showing the ${PAGE} longest-quiet of ${intF(ordered.length)}. Search to narrow it.`));
     }
     if (!shown) wrap.append(el('p', 'cc-fx-note', 'Nobody matches that search.'));

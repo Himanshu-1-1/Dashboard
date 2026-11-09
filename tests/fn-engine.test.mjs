@@ -442,3 +442,18 @@ test('reconnect counts the B2B-tagged from the unfiltered set and keeps never-co
   assert.deepEqual(p1.quiet.map((r) => r.f.name), ['Older', 'Quiet'], 'longest since contact comes first');
   assert.deepEqual(p1.never.map((r) => r.f.name), ['Never']);
 });
+
+test('reconnect gives each card a list exactly as long as the number on it', () => {
+  const tagged = { id: 'z:9', name: 'In B2B', inFN: true, priority: '1', activities: [], facts: {},
+    zoho: { id: '9', Tag: 'May 2026 - 100 B2B', Title: 'Chief Executive Officer' } };
+  const quiet = founderWith([{ source: 'Fireflies', type: 'Recorded call', day: '2026-05-01', held: true }], { id: 'z:2', name: 'Quiet', priority: '1' });
+  const never = founderWith([], { id: 'z:4', name: 'Never', priority: '3' });
+  const R = E.reconnect({ today: '2026-10-23', all: [tagged, quiet, never], founders: [quiet, never] });
+  assert.equal(R.b2bRows.length, R.b2bTagged, 'the B2B card lists every person it counts');
+  assert.deepEqual(R.b2bRows.map((r) => r.f.name), ['In B2B']);
+  assert.equal(R.rows.length, R.total, 'the network card lists every person it counts');
+  assert.equal(R.rows.filter((r) => !r.touch).length, R.never, 'the never-contacted card lists every person it counts');
+  const row = R.b2bRows[0];
+  assert.ok(row.commercial && row.commercial.verdict, 'a B2B row carries the same read as the rest, so the list shows the same columns');
+  assert.equal(row.touch, null, 'and the same last-contact read');
+});

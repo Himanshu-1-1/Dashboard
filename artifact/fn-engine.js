@@ -746,19 +746,21 @@
     const today = model.today;
     /* model.founders is already filtered by isShown, so the unfiltered set is what the B2B count has to come from. */
     const inFN = (model.all || model.founders).filter((f) => f.inFN);
-    const rows = inFN.filter((f) => isShown(f, settings)).map((f) => {
+    const row = (f) => {
       const touch = lastTouch(f, today);
       return { f, touch, signal: lastSignal(f, today), days: touch ? daysBetween(touch.day, today) : null,
         upcoming: (f.facts || {}).upcoming || null, commercial: commercial(f, settings) };
-    });
+    };
+    const rows = inFN.filter((f) => isShown(f, settings)).map(row);
+    /* The same predicate the count uses, so the list a card opens is exactly as long as the number on it. */
+    const b2bRows = inFN.filter((f) => isB2BTagged(f.zoho, settings)).map(row);
     const groups = BANDS.map(([priority, label]) => {
       const mine = rows.filter((r) => str(r.f.priority) === priority);
       return { priority, label, count: mine.length,
         quiet: mine.filter((r) => r.touch).sort((a, b) => str(a.touch.day).localeCompare(str(b.touch.day))),
         never: mine.filter((r) => !r.touch) };
     }).filter((g) => g.count);
-    return { rows, groups, total: rows.length,
-      b2bTagged: inFN.filter((f) => isB2BTagged(f.zoho, settings)).length,
+    return { rows, groups, total: rows.length, b2bRows, b2bTagged: b2bRows.length,
       contacted: rows.filter((r) => r.touch).length,
       never: rows.filter((r) => !r.touch).length };
   }
