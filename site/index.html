@@ -3311,6 +3311,10 @@ dash.calc('attention', {
   };
   const partnerLink = (r) => (r.contact_id ? ['Contacts', 'contact_id'] : ['Accounts', 'account_id']);
   const fmt = (v, kind) => {
+    /* A deal with no Amount in Zoho says so and asks for it, rather than showing a dash or a $0 that reads as a real
+       zero (Hemang, Nov 10, 2026). 0 counts as missing: `deals_tagged` stores Amount as 0 when the field is empty,
+       and no deal here is genuinely worth nothing. Checked before the blank test so null reaches this branch. */
+    if (kind === 'deal_amount') return v == null || v === '' || Number(v) === 0 ? 'Enter amount in CRM' : moneyF(v);
     if (v == null || v === '') return '—';
     if (kind === 'pct') return pctF(v);
     if (kind === 'money') return moneyF(v);
@@ -4513,10 +4517,10 @@ dash.calc('attention', {
 
   /* Detail panels: every chart opens the records behind what was clicked */
   const picked = {};
-  const DEAL_COLS = [['deal', 'Deal', null, false, false, ['Potentials', 'id']], ['account', 'Account', null, false, false, ['Accounts', 'account_id']], ['contact', 'Contact', null, true, false, ['Contacts', 'contact_id']], ['stage', 'Stage'], ['amount', 'Amount', 'money', false, true], ['updated', 'Updated', 'date', true]];
+  const DEAL_COLS = [['deal', 'Deal', null, false, false, ['Potentials', 'id']], ['account', 'Account', null, false, false, ['Accounts', 'account_id']], ['contact', 'Contact', null, true, false, ['Contacts', 'contact_id']], ['stage', 'Stage'], ['amount', 'Amount', 'deal_amount', false, true], ['updated', 'Updated', 'date', true]];
   const PEOPLE_COLS = [['contact', 'Contact', null, false, false, ['Contacts', 'contact_id']], ['account', 'Company', null, true], ['owner', 'Owner', null, true], ['meetings', 'Meetings', 'int', false, true], ['next_step', 'Next step'], ['due', 'Due', 'date']];
   const MET_COLS = [['Full_Name', 'Contact'], ['Account_Name', 'Company'], ['Priority', 'Priority'], ['Assigned', 'Owner', null, true], ['Total_Meetings_Created', 'Meetings', 'int', false, true]];
-  const REF_COLS = [['partner', 'Referred by'], ['partner_contact', 'Partner contact', null, true], ['agreement', 'Agreement'], ['deal', 'Client deal'], ['client', 'Client', null, true], ['stage', 'Stage'], ['amount', 'Amount', 'money', false, true], ['referred_on', 'Referred', 'date', true]];
+  const REF_COLS = [['partner', 'Referred by'], ['partner_contact', 'Partner contact', null, true], ['agreement', 'Agreement'], ['deal', 'Client deal'], ['client', 'Client', null, true], ['stage', 'Stage'], ['amount', 'Amount', 'deal_amount', false, true], ['referred_on', 'Referred', 'date', true]];
   const byStageThenRecentD = (a, c) => stageRank(a.stage) - stageRank(c.stage) || String(c.updated || '').localeCompare(String(a.updated || ''));
   const inCampaign = (r, c) => CC_RULES.personCampaign(r) === c;
   const MC_PEOPLE_COLS = [['contact', 'Contact', null, false, false, ['Contacts', 'contact_id']], ['account', 'Company'], ['priority', 'Priority', null, true], ['linkedin', 'LinkedIn'], ['owner', 'Owner', null, true], ['meetings', 'Meetings', 'int', false, true]];
@@ -4629,7 +4633,7 @@ dash.calc('attention', {
     },
     'pipe-stage': {
       card: '#pipe-stage',
-      build: (stage) => ({ ...stageDeals(() => true, HUE.rp)(stage), cols: [['deal', 'Deal'], ['account', 'Account'], ['campaign', 'Campaign'], ['deal_type', 'Deal Type', null, true], ['amount', 'Amount', 'money', false, true], ['updated', 'Updated', 'date', true]] }),
+      build: (stage) => ({ ...stageDeals(() => true, HUE.rp)(stage), cols: [['deal', 'Deal'], ['account', 'Account'], ['campaign', 'Campaign'], ['deal_type', 'Deal Type', null, true], ['amount', 'Amount', 'deal_amount', false, true], ['updated', 'Updated', 'date', true]] }),
     },
     meetings: {
       card: '#ov-meetings',
@@ -4653,7 +4657,7 @@ dash.calc('attention', {
         const total = known.reduce((s, d) => s + d.amount_known, 0);
         return {
           title: 'Deals created in ' + monthF(new Date(month + '-01T00:00:00Z')), source: 'deals_tagged', rowKey: 'id',
-          cols: [['deal', 'Deal'], ['account', 'Account'], ['deal_type', 'Deal Type'], ['campaign', 'Campaign', null, true], ['stage', 'Stage'], ['amount_known', 'Amount', 'money', false, true], ['created', 'Created', 'date', true]],
+          cols: [['deal', 'Deal'], ['account', 'Account'], ['deal_type', 'Deal Type'], ['campaign', 'Campaign', null, true], ['stage', 'Stage'], ['amount_known', 'Amount', 'deal_amount', false, true], ['created', 'Created', 'date', true]],
           rows,
           note: known.length
             ? `${moneyF(total)} across ${known.length} of ${rows.length} deals that carry an Amount in Zoho. The rest have none, so this is a floor, not the month's full value.`
@@ -4669,7 +4673,7 @@ dash.calc('attention', {
         card: '#' + id,
         build: (month) => ({
           title: what + ' created in ' + monthF(new Date(month + '-01T00:00:00Z')), swatch: hueOf(c), source: 'deals_tagged', rowKey: 'id',
-          cols: [['deal', 'Deal'], ['account', 'Account'], ['contact', 'Contact', null, true], ['stage', 'Stage'], ['amount', 'Amount', 'money', false, true], ['created', 'Created', 'date', true]],
+          cols: [['deal', 'Deal'], ['account', 'Account'], ['contact', 'Contact', null, true], ['stage', 'Stage'], ['amount', 'Amount', 'deal_amount', false, true], ['created', 'Created', 'date', true]],
           rows: (rowsOf('deals_tagged') || []).filter((d) => keep(d) && String(d.created || '').slice(0, 7) === month).sort((a, b2) => String(a.created).localeCompare(String(b2.created))),
         }),
       }];
@@ -5081,7 +5085,7 @@ dash.calc('attention', {
     table.closest('.cc-card').querySelector('.cc-empty').hidden = rows.length > 0;
   };
   const byStageThenRecent = (a, b2) => stageRank(a.stage) - stageRank(b2.stage) || String(b2.updated || '').localeCompare(String(a.updated || ''));
-  const dealFmt = { updated: 'date', amount: 'money' };
+  const dealFmt = { updated: 'date', amount: 'deal_amount' };
 
   const filters = { p1: false, missing: false };
   const chipP1 = root.querySelector('#fn-only-p1');
@@ -5139,7 +5143,7 @@ dash.calc('attention', {
     const refTable = root.querySelector('#ref-table');
     if (tableState(refTable, 'referrals') === 'ok') {
       const refs = (rowsOf('referrals') || []).slice().sort((a, c) => Number(c.recorded) - Number(a.recorded) || String(c.referred_on || '').localeCompare(String(a.referred_on || '')));
-      fillTable(refTable, refs, { fmt: { amount: 'money', referred_on: 'date' }, rowClass: (r) => (!r.recorded ? 'cc-row-bad' : !r.signed ? 'cc-row-warn' : '') });
+      fillTable(refTable, refs, { fmt: { amount: 'deal_amount', referred_on: 'date' }, rowClass: (r) => (!r.recorded ? 'cc-row-bad' : !r.signed ? 'cc-row-warn' : '') });
     }
     const bbTable = root.querySelector('#bb-messages');
     if (tableState(bbTable, 'boxbyte_messages') === 'ok') {
@@ -5212,8 +5216,8 @@ dash.calc('attention', {
   };
   const dlRows = () => dlAll().filter((d) => dlKind === 'All' || d.kind === dlKind);
   const dlSum = (list) => list.reduce((n, d) => n + (d.amount > 0 ? d.amount : 0), 0);
-  const DL_COLS = [['deal', 'Deal', null, false, false, ['Potentials', 'id']], ['account', 'Account', null, true, false, ['Accounts', 'account_id']], ['contact', 'Contact', null, false, false, ['Contacts', 'contact_id']], ['kind_label', 'Deal Type', null, true], ['stage_label', 'Stage'], ['amount_known', 'Amount', 'money', false, true], ['age', 'Days since update', 'int', true, true]];
-  const DL_COLS_LOST = [...DL_COLS.slice(0, 5), ['reason', 'Loss reason'], ['amount_known', 'Amount', 'money', false, true]];
+  const DL_COLS = [['deal', 'Deal', null, false, false, ['Potentials', 'id']], ['account', 'Account', null, true, false, ['Accounts', 'account_id']], ['contact', 'Contact', null, false, false, ['Contacts', 'contact_id']], ['kind_label', 'Deal Type', null, true], ['stage_label', 'Stage'], ['amount_known', 'Amount', 'deal_amount', false, true], ['age', 'Days since update', 'int', true, true]];
+  const DL_COLS_LOST = [...DL_COLS.slice(0, 5), ['reason', 'Loss reason'], ['amount_known', 'Amount', 'deal_amount', false, true]];
   const dlScope = () => (dlKind === 'All' ? '' : ' · ' + DL_KIND_NAME[dlKind]);
   const dlSpec = (title, keep, opts = {}) => ({
     title: 'Deals' + dlScope() + ' · ' + title, swatch: opts.swatch || null, source: 'deals_tagged', rowKey: 'id',
