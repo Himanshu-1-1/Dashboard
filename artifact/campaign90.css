@@ -1,0 +1,93 @@
+/* 90-day sales campaign tracker on the Deals tab. Uses the page's own tokens so the card reads as part of the
+   dashboard, and borrows the progress-bar idiom (solid fill for achieved, tick for where today should be) from the
+   B2B scorecard, so the team reads this the way they already read that. */
+/* Any figure with records behind it. It stays a figure, not a button: the dotted underline is the only affordance,
+   so a row of numbers does not turn into a row of controls. This rule comes FIRST, before every sized component
+   below, because `font: inherit` resets font-size — placed after them it silently shrank every clickable figure to
+   body size while the unclickable ones kept their 22-30px. */
+.cc-c90-open { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; text-align: inherit; cursor: pointer; text-decoration: underline; text-decoration-style: dotted; text-decoration-color: color-mix(in oklab, currentColor 40%, transparent); text-underline-offset: 3px; }
+.cc-c90-open:hover { text-decoration-style: solid; text-decoration-color: currentColor; }
+.cc-c90-open:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; border-radius: 2px; }
+.cc-c90-inline { display: inline; font-size: inherit; }
+
+.cc-c90-body { display: grid; gap: var(--cds-gap-lg); min-width: 0; }
+
+.cc-c90-verdict { margin: 0; font-size: var(--cds-font-size-heading); line-height: 1.5; max-width: 86ch; }
+.cc-c90-verdict strong { font-weight: var(--cds-font-weight-medium, 600); }
+.cc-c90-good { color: var(--color-ok); }
+.cc-c90-bad { color: var(--color-bad); }
+.cc-c90-verdict.cc-c90-good, .cc-c90-verdict.cc-c90-bad { color: var(--color-fg); }
+.cc-c90-verdict.cc-c90-good strong { color: var(--color-ok); }
+.cc-c90-verdict.cc-c90-bad strong { color: var(--color-bad); }
+
+.cc-c90-top { display: grid; gap: var(--cds-gap-sm); grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.5rem), 1fr)); }
+.cc-c90-stat { display: grid; gap: 2px; align-content: start; padding: var(--cds-pad-sm) var(--cds-pad-md); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); min-width: 0; }
+.cc-c90-stat-v { font-size: 26px; font-weight: var(--cds-font-weight-medium, 600); font-variant-numeric: tabular-nums; line-height: 1.15; overflow-wrap: anywhere; }
+.cc-c90-stat-l { font-size: var(--cds-font-size-body); }
+.cc-c90-stat-s { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+
+.cc-c90-overall { display: grid; gap: var(--cds-gap-xs); }
+.cc-c90-barnote { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+
+/* Not clipped: the pace tick overhangs the bar top and bottom by 2px so it stays readable against a full fill. */
+.cc-c90-bar { position: relative; height: 10px; border-radius: 999px; background: color-mix(in oklab, var(--color-fg) 9%, var(--color-panel)); }
+.cc-c90-fill { position: absolute; inset: 0 auto 0 0; border-radius: 999px; }
+.cc-c90-fill-green { background: var(--color-ok); }
+.cc-c90-fill-blue { background: var(--s1); }
+.cc-c90-fill-grey { background: var(--color-fg-muted); }
+/* The tick sits above the fill, so a bar that has passed pace still shows where pace was. */
+.cc-c90-bar .cc-c90-tick { position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; background: var(--color-fg); opacity: .75; border-radius: 1px; }
+
+.cc-c90-tracks { display: grid; gap: var(--cds-gap-md); grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); }
+.cc-c90-track { display: grid; gap: var(--cds-gap-sm); align-content: start; padding: var(--cds-pad-md) var(--cds-pad-lg) var(--cds-pad-lg); border: 1px solid var(--color-border-line); border-top: 3px solid var(--color-fg-muted); border-radius: var(--cds-radius); min-width: 0; }
+.cc-c90-track-blue { border-top-color: var(--s1); }
+.cc-c90-track-green { border-top-color: var(--color-ok); }
+.cc-c90-track-head { display: grid; gap: 1px; }
+.cc-c90-track-name { margin: 0; font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium, 600); }
+.cc-c90-track-target { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.cc-c90-track-v { margin: 0; font-size: 30px; font-weight: var(--cds-font-weight-medium, 600); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.cc-c90-track-why { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); line-height: 1.45; }
+.cc-c90-warn { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-warn); line-height: 1.45; }
+
+.cc-c90-metric { display: flex; align-items: baseline; gap: var(--cds-gap-sm); font-size: var(--cds-font-size-body); border-top: 1px solid var(--color-border-line); padding-top: 6px; }
+.cc-c90-metric-l { flex: 1 1 auto; color: var(--color-fg-muted); }
+.cc-c90-metric-v { font-weight: var(--cds-font-weight-medium, 600); font-variant-numeric: tabular-nums; }
+.cc-c90-metric-t { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); white-space: nowrap; }
+
+.cc-c90-sub { margin: 0 0 var(--cds-gap-sm); font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium, 600); }
+.cc-c90-months, .cc-c90-mtg { display: grid; gap: var(--cds-gap-xs); min-width: 0; }
+.cc-c90-monthrow { display: grid; gap: var(--cds-gap-md); grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); }
+.cc-c90-month { display: grid; gap: 4px; align-content: start; padding: var(--cds-pad-sm) var(--cds-pad-md); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); min-width: 0; }
+/* A month that has not started is dimmed, so an empty bar never reads as a miss. */
+.cc-c90-month-ahead { opacity: .62; }
+.cc-c90-month-now { border-color: var(--color-fg-muted); }
+.cc-c90-month-l { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.cc-c90-month-v { font-size: 22px; font-weight: var(--cds-font-weight-medium, 600); font-variant-numeric: tabular-nums; line-height: 1.15; }
+.cc-c90-month-t { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.cc-c90-mtgrow { display: grid; gap: var(--cds-gap-sm); grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); }
+
+.cc-c90-note { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); line-height: 1.5; max-width: 90ch; }
+
+.cc-c90-caveats { border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-sm) var(--cds-pad-md); font-size: var(--cds-font-size-body); }
+.cc-c90-caveats > summary { cursor: pointer; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.cc-c90-caveats > summary:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; border-radius: 2px; }
+.cc-c90-caveatbody { display: grid; gap: var(--cds-gap-sm); padding-top: var(--cds-gap-sm); max-width: 90ch; }
+.cc-c90-caveatbody p { margin: 0; line-height: 1.5; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.cc-c90-caveatbody strong { color: var(--color-fg); }
+.cc-c90-nt { margin: 0; padding-left: 18px; display: grid; gap: 2px; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+
+.cc-c90-drill .cc-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--cds-gap-md); }
+.cc-c90-close { font: inherit; font-size: var(--cds-font-size-caption); padding: 6px 12px; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-panel); color: var(--color-fg); cursor: pointer; white-space: nowrap; }
+.cc-c90-close:hover { border-color: var(--color-fg-muted); }
+.cc-c90-close:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
+.cc-c90-drillbody { display: grid; gap: var(--cds-gap-sm); overflow-x: auto; min-width: 0; }
+.cc-c90-drillbody .cc-c90-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cc-c90-dealcell { font-weight: var(--cds-font-weight-medium, 600); min-width: 11rem; }
+.cc-c90-drillbody small { display: block; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+/* A deal with no Amount, and a date standing in for a Closing Date Zoho does not hold. */
+.cc-c90-missing { color: var(--color-warn); font-variant-numeric: normal; }
+.cc-c90-est { color: var(--color-warn); }
+
+.cc-c90-zlink { color: inherit; text-decoration: underline; text-decoration-color: color-mix(in oklab, currentColor 35%, transparent); text-underline-offset: 3px; }
+.cc-c90-zlink:hover { text-decoration-color: currentColor; }
+.cc-c90-zlink:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; border-radius: 2px; }

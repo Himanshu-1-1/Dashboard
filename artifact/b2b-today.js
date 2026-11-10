@@ -979,15 +979,21 @@
   const rbStatus = (stage) => (stage === 'Closed' ? 'won' : RB_LOST.includes(stage) ? 'lost' : 'open');
   dash.calc('rb_rows', {
     title: 'Client deals and who referred them',
-    description: 'One row per client deal (every Deal Type except Reseller/ Referral Partner and Platform Provider Agreement): name, type, stage, status (open = any stage but Closed, Closed Lost or Closed Lost to Competition; won = Closed; lost = Closed Lost or Closed Lost to Competition), amount where set, the dates Zoho created it and last changed it (Central time), the deal’s Commission Details text, account, contact, the Referred By Contact and Referred By Account from the deal’s Commission Details, whether the referrer is Founder Network (the referring contact’s Relationship Type), and whether a referrer is recorded at all.',
+    description: 'One row per client deal (every Deal Type except Reseller/ Referral Partner and Platform Provider Agreement): name, type, stage, status (open = any stage but Closed, Closed Lost or Closed Lost to Competition; won = Closed; lost = Closed Lost or Closed Lost to Competition), amount where set, the dates Zoho created it and last changed it (Central time), its Closing Date and the effective date it was won (Closing Date when Zoho holds one, otherwise the last-changed date, with a flag saying which was used), the deal’s Commission Details text, account, contact, the Referred By Contact and Referred By Account from the deal’s Commission Details, whether the referrer is Founder Network (the referring contact’s Relationship Type), and whether a referrer is recorded at all.',
     inputs: ['rb_deals'],
     fn: (rb_deals) => rb_deals.map((d) => {
       const by = d.Referred_By_Contact || null;
       const byAcct = d.Referred_By_Account || null;
       const rel = String(d['Referred_By_Contact.Relationship_Type'] || '');
+      /* When a deal was won. Zoho's Closing_Date is empty on every deal in the CRM today, so the effective date falls
+         back to Modified_Time, which also moves on any edit; won_on_est says which of the two this row used, so a page
+         can warn rather than present a guess as a fact. Filling Closing_Date in Zoho takes over with no code change. */
+      const closing = d.Closing_Date ? String(d.Closing_Date).slice(0, 10) : null;
+      const modified = d.Modified_Time ? ctDate(d.Modified_Time) : null;
       return {
         id: String(d.id), deal: d.Deal_Name || 'Deal', type: d.Deal_Type || 'No Deal Type', stage: d.Stage || null, status: rbStatus(d.Stage),
-        amount: Number(d.Amount) > 0 ? Number(d.Amount) : null, created: d.Created_Time ? ctDate(d.Created_Time) : null, modified: d.Modified_Time ? ctDate(d.Modified_Time) : null, commission_terms: String(d.Commission_Details || '').trim() || null,
+        closing, won_on: closing || modified, won_on_est: !closing,
+        amount: Number(d.Amount) > 0 ? Number(d.Amount) : null, created: d.Created_Time ? ctDate(d.Created_Time) : null, modified, commission_terms: String(d.Commission_Details || '').trim() || null,
         account: d.Account_Name || null, account_id: d.Account_Name_id ? String(d.Account_Name_id) : null,
         contact: d.Contact_Name || null, contact_id: d.Contact_Name_id ? String(d.Contact_Name_id) : null,
         by, by_id: d.Referred_By_Contact_id ? String(d.Referred_By_Contact_id) : null,
