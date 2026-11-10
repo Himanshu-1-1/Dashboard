@@ -76,7 +76,12 @@
 .cc-c90-caveatbody strong { color: var(--color-fg); }
 .cc-c90-nt { margin: 0; padding-left: 18px; display: grid; gap: 2px; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
 
-.cc-c90-drill .cc-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--cds-gap-md); }
+/* The list sits between the card's own blocks, under whichever one was clicked, so it reads as an inset panel rather
+   than a second card: an inner border and a tinted ground, with a left rule tying it to the block above. */
+.cc-c90-drill { display: grid; gap: var(--cds-gap-sm); padding: var(--cds-pad-md) var(--cds-pad-lg); border: 1px solid var(--color-border-line); border-left: 3px solid var(--color-fg-muted); border-radius: var(--cds-radius); background: color-mix(in oklab, var(--color-fg) 3.5%, var(--color-panel)); min-width: 0; }
+.cc-c90-drill[hidden] { display: none; }
+.cc-c90-drillhead { display: flex; align-items: baseline; justify-content: space-between; gap: var(--cds-gap-md); }
+.cc-c90-drilltitle { margin: 0; font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium, 600); }
 .cc-c90-close { font: inherit; font-size: var(--cds-font-size-caption); padding: 6px 12px; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-panel); color: var(--color-fg); cursor: pointer; white-space: nowrap; }
 .cc-c90-close:hover { border-color: var(--color-fg-muted); }
 .cc-c90-close:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }

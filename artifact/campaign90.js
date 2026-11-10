@@ -169,6 +169,21 @@
   let host = null;
   let drill = null;
   let drillBody = null;
+  /* The block of the card the last click came from, so a list opens under the figure that opened it rather than at
+     the foot of the whole card (Hemang, Nov 10, 2026): clicking Direct put its deals below Revenue by month. */
+  let drillFrom = null;
+  const noteFrom = (e) => {
+    const t = e.target;
+    if (!(t instanceof Element) || !host || (drill && drill.contains(t))) return;
+    let block = t;
+    while (block && block.parentElement !== host) block = block.parentElement;
+    if (block && block !== drill) drillFrom = block;
+  };
+  const placeDrill = () => {
+    if (!host || !drill) return;
+    const after = drillFrom && drillFrom.parentElement === host ? drillFrom : host.lastElementChild;
+    if (after && after !== drill && after.nextElementSibling !== drill) after.after(drill);
+  };
 
   const zLink = (text, module, id, title) => {
     if (!id) return document.createTextNode(text || '—');
@@ -183,13 +198,14 @@
   const STAGE_LABEL = { Closed: 'Closed Won' };
 
   const openDrill = (title, count) => {
-    drill.querySelector('h3').textContent = title + ' (' + intF(count) + ')';
+    drill.querySelector('.cc-c90-drilltitle').textContent = title + ' (' + intF(count) + ')';
     drill.hidden = false;
   };
   const finishDrill = (body, note) => {
     drillBody.replaceChildren(body);
     if (note) drillBody.prepend(el('p', 'cc-c90-note', note));
     /* CC_SORT watches the document for new tables and wires this one itself. */
+    placeDrill();
     drill.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   };
 
@@ -488,7 +504,10 @@
     caveat.append(body);
     frag.append(caveat);
 
+    /* The drill lives inside the body, between the blocks, so it can sit under whichever one was clicked. */
+    frag.append(drill);
     host.replaceChildren(frag);
+    drillFrom = null;
   };
 
   const mount = () => {
@@ -502,21 +521,27 @@
     host = el('div', 'cc-c90-body');
     card.append(head, host);
 
-    drill = el('article', 'cc-card cc-c90-drill');
+    /* A nested panel rather than a second card: it sits between the blocks of this one. */
+    drill = el('section', 'cc-c90-drill');
     drill.id = 'cc-c90-list';
     drill.hidden = true;
-    const dh = el('div', 'cc-card-head');
-    dh.append(el('h3', null, 'Deals'));
+    const dh = el('div', 'cc-c90-drillhead');
+    dh.append(el('h4', 'cc-c90-drilltitle', 'Deals'));
     const close = el('button', 'cc-c90-close', 'Close');
     close.type = 'button';
     close.addEventListener('click', () => { drill.hidden = true; });
     dh.append(close);
     drillBody = el('div', 'cc-c90-drillbody');
     drill.append(dh, drillBody);
+    host.append(drill);
 
-    /* Right under "Deals at a glance" (Hemang, Nov 10, 2026), with its list below it. */
+    /* Clicks are noted in the capture phase, before the opener runs, so the list knows which block to sit under. */
+    host.addEventListener('click', noteFrom, true);
+    host.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') noteFrom(e); }, true);
+
+    /* Right under "Deals at a glance" (Hemang, Nov 10, 2026). */
     const anchor = document.getElementById('dl-kpis');
-    if (anchor) { anchor.after(drill); anchor.after(card); } else { sec.prepend(drill); sec.prepend(card); }
+    if (anchor) anchor.after(card); else sec.prepend(card);
     return true;
   };
 
