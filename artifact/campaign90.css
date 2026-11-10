@@ -58,9 +58,10 @@
 .cc-c90-legend { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm) var(--cds-gap-md); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
 .cc-c90-legitem { display: inline-flex; align-items: center; gap: 6px; }
 .cc-c90-chip { width: 10px; height: 10px; border-radius: 3px; flex: none; background: var(--color-fg-muted); }
-.cc-c90-chip-blue { background: var(--s1); }
-.cc-c90-chip-green { background: var(--color-ok); }
-.cc-c90-chip-purple { background: var(--s7); }
+.cc-c90-chip-met { background: var(--color-ok); }
+.cc-c90-chip-reachable { background: var(--s1); }
+.cc-c90-chip-short { background: var(--color-bad); }
+.cc-c90-chip-none { background: var(--color-fg-muted); }
 .cc-c90-legtick { width: 2px; height: 14px; flex: none; background: var(--color-fg); opacity: .8; border-radius: 1px; }
 .cc-c90-legreach { width: 0; height: 0; flex: none; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 8px solid var(--color-fg); opacity: .8; }
 
@@ -75,10 +76,23 @@
 /* 4px rounded data-end, anchored to the baseline at left. A zero value draws no fill at all (the row simply omits
    it): a minimum width would put a colored mark against $0, which reads as a small amount rather than none. */
 .cc-c90-barfill { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 4px; min-width: 3px; }
+/* Status fills. Red / blue / green passes every palette check on both the light and dark panel; amber for
+   "reachable" was rejected because against red it is dE 2.1 for deutan viewers, and a target still in reach is
+   not a warning. The old blue/green/grey names stay for the overall progress bar above. */
+.cc-c90-fill-met { background: var(--color-ok); }
+.cc-c90-fill-reachable { background: var(--s1); }
+.cc-c90-fill-short { background: var(--color-bad); }
+.cc-c90-fill-none { background: var(--color-fg-muted); }
 .cc-c90-fill-blue { background: var(--s1); }
 .cc-c90-fill-green { background: var(--color-ok); }
-.cc-c90-fill-purple { background: var(--s7); }
 .cc-c90-fill-grey { background: var(--color-fg-muted); }
+
+/* The state in words beside each bar, so the color is never the only carrier. */
+.cc-c90-state { font-size: var(--cds-font-size-caption); font-weight: var(--cds-font-weight-medium, 600); white-space: nowrap; }
+.cc-c90-state-met { color: var(--color-ok); }
+.cc-c90-state-reachable { color: var(--s1); }
+.cc-c90-state-short { color: var(--color-bad); }
+.cc-c90-state-none { color: var(--color-fg-muted); }
 /* The target tick and the reach caret overlap the fill, so each carries a 2px surface ring to stay readable on it. */
 .cc-c90-targettick { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--color-fg); opacity: .85; border-radius: 1px; box-shadow: 0 0 0 2px var(--color-panel); }
 .cc-c90-reach { position: absolute; top: 100%; margin-top: 2px; width: 0; height: 0; margin-left: -5px; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 8px solid var(--color-fg); opacity: .8; }
@@ -97,10 +111,7 @@
 .cc-c90-cols { position: absolute; inset: 0; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--cds-gap-md); align-items: end; }
 /* Capped and centered: three full-width bars read as blocks, not columns. */
 .cc-c90-col { position: relative; height: 100%; width: min(100%, 120px); margin-inline: auto; display: flex; align-items: flex-end; }
-.cc-c90-stack { position: relative; width: 100%; display: flex; flex-direction: column-reverse; border-radius: 4px 4px 0 0; overflow: hidden; }
-/* 2px surface gap between stacked segments. */
-.cc-c90-seg { position: relative; width: 100%; min-height: 3px; box-shadow: 0 -2px 0 0 var(--color-panel); }
-.cc-c90-seg:first-child { box-shadow: none; }
+.cc-c90-colbar { position: relative; width: 100%; border-radius: 4px 4px 0 0; min-height: 3px; }
 .cc-c90-seghit { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; padding: 0; background: none; cursor: pointer; }
 .cc-c90-seghit:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
 /* A month that has not started is an outline, not a miss. Scoped to the column: the label row below carries the same

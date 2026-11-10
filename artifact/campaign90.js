@@ -109,9 +109,15 @@
           openCount: o.length, openValue: sumAmount(o),
           /* What this track still needs, and whether its own open deals could supply it. Judging the campaign on an
              even weekday pace would be meaningless on a six-deal target: one deal swings it either way. Coverage is
-             the question that has an answer — is the money to hit this number already in the pipeline. */
+             the question that has an answer — is the money to hit this number already in the pipeline.
+             `state` is what the bar is colored by (Hemang, Nov 11, 2026): met, reachable, short, or none for a track
+             the sheet gives no target. Every bar prints its state in words too, because a status must never be
+             carried by color alone. */
           gap: t.target.revenue ? Math.max(0, t.target.revenue - sumAmount(w)) : null,
           covered: t.target.revenue ? sumAmount(o) >= Math.max(0, t.target.revenue - sumAmount(w)) : null,
+          state: !t.target.revenue ? 'none'
+            : sumAmount(w) >= t.target.revenue ? 'met'
+              : sumAmount(o) >= t.target.revenue - sumAmount(w) ? 'reachable' : 'short',
           wonDeals: w, madeDeals: made2, openDeals: o,
         };
       });
@@ -127,9 +133,14 @@
         const last = monthEnd(mo.key);
         const monthGone = today < mo.key + '-01' ? 0 : weekdays(mo.key + '-01', today < last ? today : last);
         const monthTotal = weekdays(mo.key + '-01', last);
+        const when = mo.key < today.slice(0, 7) ? 'past' : mo.key === today.slice(0, 7) ? 'now' : 'ahead';
         return {
           key: mo.key, label: mo.label, target: mo.target, revenue: sumAmount(w), closed: w.length, wonDeals: w, byTrack,
-          state: mo.key < today.slice(0, 7) ? 'past' : mo.key === today.slice(0, 7) ? 'now' : 'ahead',
+          when,
+          /* A month cannot be called reachable: no deal in Zoho carries an expected close month, so there is nothing
+             to attribute open pipeline to. The states a month can honestly be in are met, missed (it has ended short),
+             open (running) and ahead (not started). */
+          state: sumAmount(w) >= mo.target ? 'met' : when === 'past' ? 'short' : when === 'now' ? 'open' : 'ahead',
           share: monthTotal ? Math.min(1, monthGone / monthTotal) : 0,
         };
       });
@@ -141,6 +152,11 @@
         noAmount: won.filter((d) => !(d.amount > 0)).length,
         openCount: open.length, openValue: sumAmount(open),
         wonDeals: won, madeDeals: made, openDeals: open,
+        /* The campaign as a whole, by the same three states the bars use, so the top bar cannot drift from them.
+           It can read reachable while the verdict reads At risk, and both are true: the total gap is covered by the
+           open pipeline, but most of that pipeline is Direct and neither campaign track can reach its own number. */
+        state: sumAmount(won) >= TOTAL_TARGET.revenue ? 'met'
+          : sumAmount(open) >= TOTAL_TARGET.revenue - sumAmount(won) ? 'reachable' : 'short',
         tracks, months,
         /* Deals the window dated from the last-changed date because Zoho holds no Closing Date for them. */
         estimated: won.filter((d) => d.won_on_est),
@@ -309,7 +325,20 @@
     return wrap;
   };
 
-  /* A hue chip beside a name, so a track is never identified by color alone. */
+  /* The bars are colored by whether the target is met, still reachable from the open pipeline, or out of reach
+     (Hemang, Nov 11, 2026). That retires the per-track hues on the bars: green already meant Founder Network here and
+     in three other sections, so a green Founder Network bar would not say whether it was green for its identity or
+     for hitting its number. The row label carries identity instead, and red/blue/green passes every palette check on
+     both the light and dark panel — blue rather than amber for reachable, which against red is ΔE 2.1 for deutan
+     viewers and is a warning color besides, when a target still in reach is not a warning. */
+  const STATE = {
+    met: { tone: 'met', word: 'Target met' },
+    reachable: { tone: 'reachable', word: 'Reachable' },
+    short: { tone: 'short', word: 'Not reachable' },
+    none: { tone: 'none', word: 'No target' },
+    open: { tone: 'reachable', word: 'In progress' },
+    ahead: { tone: 'none', word: 'Not started' },
+  };
   const chip = (tone) => el('span', 'cc-c90-chip cc-c90-chip-' + tone);
 
   const pct = (v, max) => (max > 0 ? Math.max(0, Math.min(100, (v / max) * 100)) : 0);
@@ -328,11 +357,14 @@
 
     const rows = el('div', 'cc-c90-rows');
     m.tracks.forEach((t) => {
+      const st = STATE[t.state];
       const row = el('div', 'cc-c90-row');
       const rh = el('div', 'cc-c90-rowhead');
       const name = el('span', 'cc-c90-rowname');
-      name.append(chip(t.tone), document.createTextNode(t.label));
+      name.append(document.createTextNode(t.label));
       rh.append(name);
+      /* The state in words beside the bar: a status is never carried by color alone. */
+      rh.append(el('span', 'cc-c90-state cc-c90-state-' + st.tone, st.word));
       const openWon = t.wonDeals.length ? () => showDeals(t.label + ' — closed in the window', t.wonDeals, t.why) : null;
       rh.append(fig('span', 'cc-c90-rowval', moneyF(t.revenue), openWon));
       rh.append(el('span', 'cc-c90-rowof', t.target.revenue ? 'of ' + moneyF(t.target.revenue) : 'no target on the sheet'));
@@ -341,7 +373,7 @@
       const rail = el('div', 'cc-c90-rail');
       /* Nothing closed draws no bar: a minimum-width mark against $0 reads as a small amount rather than none. */
       if (t.revenue > 0) {
-        const fill = el('span', 'cc-c90-barfill cc-c90-fill-' + t.tone);
+        const fill = el('span', 'cc-c90-barfill cc-c90-fill-' + st.tone);
         fill.style.width = pct(t.revenue, axisMax).toFixed(2) + '%';
         rail.append(fill);
       }
@@ -361,7 +393,7 @@
         rail.append(caret);
       }
       rail.setAttribute('role', 'img');
-      rail.setAttribute('aria-label', t.label + ': ' + moneyF(t.revenue) + ' closed'
+      rail.setAttribute('aria-label', t.label + ', ' + st.word.toLowerCase() + ': ' + moneyF(t.revenue) + ' closed'
         + (t.target.revenue ? ' of ' + moneyF(t.target.revenue) + ' target' : ', no target')
         + (t.openValue > 0 ? ', reaching ' + moneyF(reachAt) + ' if every open deal closes' : ''));
       row.append(rail);
@@ -413,27 +445,26 @@
 
     const cols = el('div', 'cc-c90-cols');
     m.months.forEach((mo) => {
-      const col = el('div', 'cc-c90-col cc-c90-col-' + mo.state);
-      const stack = el('div', 'cc-c90-stack');
-      stack.style.height = pct(mo.revenue, axisMax).toFixed(2) + '%';
-      mo.byTrack.filter((b) => b.amount > 0).forEach((b) => {
-        const seg = el('span', 'cc-c90-seg cc-c90-fill-' + b.tone);
-        seg.style.height = (mo.revenue > 0 ? (b.amount / mo.revenue) * 100 : 0).toFixed(2) + '%';
-        seg.title = b.label + ' — ' + moneyF(b.amount) + ' in ' + mo.label;
-        if (b.deals.length) {
-          const btn = el('button', 'cc-c90-seghit');
-          btn.type = 'button';
-          btn.setAttribute('aria-label', b.label + ', ' + moneyF(b.amount) + ' in ' + mo.label);
-          btn.addEventListener('click', () => showDeals(mo.label + ' — ' + b.label, b.deals,
-            'Deals whose won date falls in ' + mo.label + ', referred the way ' + b.label + ' counts them.'));
-          seg.append(btn);
-        }
-        stack.append(seg);
-      });
-      col.append(stack);
+      const st = STATE[mo.state];
+      const col = el('div', 'cc-c90-col cc-c90-col-' + mo.when);
+      if (mo.revenue > 0) {
+        const bar2 = el('span', 'cc-c90-colbar cc-c90-fill-' + st.tone);
+        bar2.style.height = pct(mo.revenue, axisMax).toFixed(2) + '%';
+        /* The track split is no longer drawn as stacked segments — the column carries the month's state instead, and
+           one color language runs across the whole card. Opening the column still lists every deal with its track. */
+        bar2.title = mo.byTrack.filter((b) => b.amount > 0)
+          .map((b) => b.label + ' ' + moneyF(b.amount)).join(' · ') || moneyF(mo.revenue);
+        const hit = el('button', 'cc-c90-seghit');
+        hit.type = 'button';
+        hit.setAttribute('aria-label', mo.label + ', ' + moneyF(mo.revenue));
+        hit.addEventListener('click', () => showDeals(mo.label + ' — closed deals', mo.wonDeals,
+          'Deals whose won date falls in ' + mo.label + '.'));
+        bar2.append(hit);
+        col.append(bar2);
+      }
       col.setAttribute('role', 'img');
-      col.setAttribute('aria-label', mo.label + ': ' + moneyF(mo.revenue) + ' of ' + moneyF(mo.target)
-        + (mo.state === 'ahead' ? ', not started' : mo.state === 'now' ? ', in progress' : ''));
+      col.setAttribute('aria-label', mo.label + ', ' + st.word.toLowerCase() + ': '
+        + moneyF(mo.revenue) + ' of ' + moneyF(mo.target));
       cols.append(col);
     });
     plot.append(cols);
@@ -441,23 +472,31 @@
 
     const labs = el('div', 'cc-c90-collabs');
     m.months.forEach((mo) => {
-      const lab = el('div', 'cc-c90-collab cc-c90-col-' + mo.state);
+      const st = STATE[mo.state];
+      const lab = el('div', 'cc-c90-collab cc-c90-col-' + mo.when);
       lab.append(fig('span', 'cc-c90-colval', moneyF(mo.revenue),
         mo.wonDeals.length ? () => showDeals(mo.label + ' — closed deals', mo.wonDeals, 'Deals whose won date falls in ' + mo.label + '.') : null));
       lab.append(el('span', 'cc-c90-colname', mo.label));
-      lab.append(el('span', 'cc-c90-colstate', mo.state === 'ahead' ? 'not started' : mo.state === 'now' ? 'in progress' : 'closed out'));
+      lab.append(el('span', 'cc-c90-state cc-c90-state-' + st.tone, st.word));
       labs.append(lab);
     });
     sec.append(labs);
     return sec;
   };
 
-  /* One legend for both charts: identity is never carried by color alone. */
-  const legend = (m) => {
+  /* One status key for both charts. Every bar also prints its state in words, so this is a convenience, not the
+     only way to read the color. */
+  const LEGEND = [
+    ['met', 'Target met'],
+    ['reachable', 'Reachable from the open pipeline'],
+    ['short', 'Not reachable'],
+    ['none', 'No target on the sheet'],
+  ];
+  const legend = () => {
     const box = el('div', 'cc-c90-legend');
-    m.tracks.forEach((t) => {
+    LEGEND.forEach(([tone, word]) => {
       const item = el('span', 'cc-c90-legitem');
-      item.append(chip(t.tone), document.createTextNode(t.label));
+      item.append(chip(tone), document.createTextNode(word));
       box.append(item);
     });
     const tick = el('span', 'cc-c90-legitem');
@@ -573,14 +612,16 @@
     frag.append(top);
 
     const overall = el('div', 'cc-c90-overall');
-    /* Green only once the target is met: a green bar under an "At risk" verdict says two different things. */
-    overall.append(bar(m.revenue, m.target.revenue, m.share, met ? 'green' : 'blue'));
-    overall.append(el('p', 'cc-c90-barnote', Math.round((m.revenue / m.target.revenue) * 100) + '% of ' + moneyF(m.target.revenue)
-      + '. ' + intF(m.weekdaysGone) + ' of ' + intF(m.weekdaysTotal) + ' working days gone, so the tick sits at '
-      + moneyF(Math.round(pace)) + '.'));
+    overall.append(bar(m.revenue, m.target.revenue, m.share, STATE[m.state].tone));
+    const onote = el('p', 'cc-c90-barnote');
+    onote.append(el('span', 'cc-c90-state cc-c90-state-' + STATE[m.state].tone, STATE[m.state].word));
+    onote.append(document.createTextNode(' — ' + Math.round((m.revenue / m.target.revenue) * 100) + '% of '
+      + moneyF(m.target.revenue) + '. ' + intF(m.weekdaysGone) + ' of ' + intF(m.weekdaysTotal)
+      + ' working days gone, so the tick sits at ' + moneyF(Math.round(pace)) + '.'));
+    overall.append(onote);
     frag.append(overall);
 
-    frag.append(legend(m));
+    frag.append(legend());
     frag.append(trackChart(m));
     frag.append(monthChart(m));
 
