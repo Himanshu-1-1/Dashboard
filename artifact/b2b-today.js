@@ -59,7 +59,10 @@
     table.dataset.ccSorted = '1';
     [...hr.cells].forEach((th, col) => {
       const label = th.textContent.trim();
-      if (!label || label === '#' || label === 'Done' || th.querySelector('button, a, input')) return;
+      /* A header that holds its own control is left alone: wiring it would read every option as the label and then
+         replace the control with a sort button, which is what happened to the drill's Stage filter (Hemang, Nov 10,
+         2026). select and textarea were missing from this guard. */
+      if (!label || label === '#' || label === 'Done' || th.querySelector('button, a, input, select, textarea')) return;
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'cc-colsort';

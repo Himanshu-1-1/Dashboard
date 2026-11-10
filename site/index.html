@@ -4958,7 +4958,9 @@ dash.calc('attention', {
           th.dataset.field = f;
           const sel = el('select', 'cc-thsel');
           sel.setAttribute('aria-label', 'Show only one stage');
-          sel.append(new Option(label + ': All (' + spec.rows.length + ')', ''));
+          /* The closed control reads just the column name (Hemang, Nov 10, 2026); the drill's title already carries
+             the row count, and the per-stage counts stay on the options where they are the thing being chosen. */
+          sel.append(new Option(label, ''));
           stages.forEach((s) => sel.append(new Option(s + ' (' + spec.rows.filter((r) => r[stageField] === s).length + ')', s)));
           sel.value = chosen || '';
           sel.addEventListener('click', (e) => e.stopPropagation());
