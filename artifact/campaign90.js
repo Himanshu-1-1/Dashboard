@@ -32,7 +32,10 @@
   const TRACKS = [
     { key: 'ref', label: 'Referral Business', tone: 'blue', target: { revenue: 60000, closed: 3, logged: 15, meetings: 180, avg: 20000 } },
     { key: 'fn', label: 'Founder Network', tone: 'green', target: { revenue: 22500, closed: 3, logged: 8, meetings: 60, avg: 7500 } },
-    { key: 'dir', label: 'Direct', tone: 'grey', target: { revenue: null, closed: null, logged: null, meetings: null, avg: null } },
+    /* Direct is purple, not grey: grey already means Combined in Closed Won and Business from Referral Partners, and
+       against the green it fails the normal-vision separation floor (ΔE 14.4, floor 15) — labels don't excuse that
+       one. Blue / green / purple passes all six checks on both the light and dark panel. */
+    { key: 'dir', label: 'Direct', tone: 'purple', target: { revenue: null, closed: null, logged: null, meetings: null, avg: null } },
   ];
   const TRACK_WHY = {
     ref: 'Referred By is set and the referrer is not Founder Network.',
@@ -115,11 +118,17 @@
 
       const months = MONTHS.map((mo) => {
         const w = won.filter((d) => String(d.won_on).slice(0, 7) === mo.key);
+        /* The month's revenue split by track, so the column can be stacked in the same colors as the track bars
+           rather than needing a fourth hue of its own. */
+        const byTrack = TRACKS.map((t) => {
+          const part = w.filter((d) => trackOf(d) === t.key);
+          return { key: t.key, label: t.label, tone: t.tone, amount: sumAmount(part), deals: part };
+        });
         const last = monthEnd(mo.key);
         const monthGone = today < mo.key + '-01' ? 0 : weekdays(mo.key + '-01', today < last ? today : last);
         const monthTotal = weekdays(mo.key + '-01', last);
         return {
-          key: mo.key, label: mo.label, target: mo.target, revenue: sumAmount(w), closed: w.length, wonDeals: w,
+          key: mo.key, label: mo.label, target: mo.target, revenue: sumAmount(w), closed: w.length, wonDeals: w, byTrack,
           state: mo.key < today.slice(0, 7) ? 'past' : mo.key === today.slice(0, 7) ? 'now' : 'ahead',
           share: monthTotal ? Math.min(1, monthGone / monthTotal) : 0,
         };
@@ -300,6 +309,165 @@
     return wrap;
   };
 
+  /* A hue chip beside a name, so a track is never identified by color alone. */
+  const chip = (tone) => el('span', 'cc-c90-chip cc-c90-chip-' + tone);
+
+  const pct = (v, max) => (max > 0 ? Math.max(0, Math.min(100, (v / max) * 100)) : 0);
+
+  /* Revenue against target, one row per track, all three on one dollar axis so the bars are comparable.
+     The rail is the axis (0 to the largest target), the fill is what has closed, the tick is that track's own
+     target, and the caret is as far as the track could reach if every open deal closed — which is the coverage
+     question the verdict turns on, read off the geometry: a caret short of the tick cannot reach the target. */
+  const trackChart = (m) => {
+    const sec = el('section', 'cc-c90-chart');
+    const axisMax = Math.max(...m.tracks.map((t) => Math.max(t.target.revenue || 0, t.revenue)), 1);
+    const head = el('div', 'cc-c90-charthead');
+    head.append(el('h4', 'cc-c90-sub', 'Revenue by track'));
+    head.append(el('p', 'cc-c90-note', 'The bar is what has closed, the tick is that track’s target, and the caret is as far as the track reaches if every open deal closes.'));
+    sec.append(head);
+
+    const rows = el('div', 'cc-c90-rows');
+    m.tracks.forEach((t) => {
+      const row = el('div', 'cc-c90-row');
+      const rh = el('div', 'cc-c90-rowhead');
+      const name = el('span', 'cc-c90-rowname');
+      name.append(chip(t.tone), document.createTextNode(t.label));
+      rh.append(name);
+      const openWon = t.wonDeals.length ? () => showDeals(t.label + ' — closed in the window', t.wonDeals, t.why) : null;
+      rh.append(fig('span', 'cc-c90-rowval', moneyF(t.revenue), openWon));
+      rh.append(el('span', 'cc-c90-rowof', t.target.revenue ? 'of ' + moneyF(t.target.revenue) : 'no target on the sheet'));
+      row.append(rh);
+
+      const rail = el('div', 'cc-c90-rail');
+      /* Nothing closed draws no bar: a minimum-width mark against $0 reads as a small amount rather than none. */
+      if (t.revenue > 0) {
+        const fill = el('span', 'cc-c90-barfill cc-c90-fill-' + t.tone);
+        fill.style.width = pct(t.revenue, axisMax).toFixed(2) + '%';
+        rail.append(fill);
+      }
+      if (t.target.revenue) {
+        const tick = el('span', 'cc-c90-targettick');
+        tick.style.left = pct(t.target.revenue, axisMax).toFixed(2) + '%';
+        tick.title = 'Target ' + moneyF(t.target.revenue);
+        rail.append(tick);
+      }
+      const reachAt = t.revenue + t.openValue;
+      if (t.openValue > 0) {
+        const over = reachAt > axisMax;
+        const caret = el('span', 'cc-c90-reach' + (over ? ' cc-c90-reach-over' : ''));
+        caret.style.left = pct(reachAt, axisMax).toFixed(2) + '%';
+        caret.title = 'Reaches ' + moneyF(reachAt) + ' if every open deal closes'
+          + (over ? ' — beyond the right edge of this axis' : '');
+        rail.append(caret);
+      }
+      rail.setAttribute('role', 'img');
+      rail.setAttribute('aria-label', t.label + ': ' + moneyF(t.revenue) + ' closed'
+        + (t.target.revenue ? ' of ' + moneyF(t.target.revenue) + ' target' : ', no target')
+        + (t.openValue > 0 ? ', reaching ' + moneyF(reachAt) + ' if every open deal closes' : ''));
+      row.append(rail);
+
+      const facts = el('div', 'cc-c90-rowfacts');
+      facts.append(metric('Deals closed', intF(t.closed), t.target.closed, openWon));
+      facts.append(metric('Deals logged', intF(t.logged), t.target.logged,
+        t.madeDeals.length ? () => showDeals(t.label + ' — logged in the window', t.madeDeals, t.why) : null));
+      facts.append(metric('Open pipeline', moneyF(t.openValue), null,
+        t.openDeals.length ? () => showDeals(t.label + ' — open deals', t.openDeals, t.why) : null, 'money'));
+      row.append(facts);
+
+      if (t.gap > 0) {
+        const cover = el('p', t.covered ? 'cc-c90-note' : 'cc-c90-warn');
+        cover.textContent = moneyF(t.gap) + ' still to close against ' + moneyF(t.openValue) + ' open'
+          + (t.covered ? ' — enough in the pipeline to reach it.' : ' — not enough in the pipeline to reach it.');
+        row.append(cover);
+      }
+      if (t.noAmount) {
+        row.append(el('p', 'cc-c90-warn', intF(t.noAmount) + ' of the closed '
+          + plural(t.noAmount, 'deal has', 'deals have') + ' no Amount in Zoho, so this figure is a floor.'));
+      }
+      rows.append(row);
+    });
+    sec.append(rows);
+
+    const axis = el('div', 'cc-c90-axis');
+    axis.append(el('span', null, moneyF(0)));
+    axis.append(el('span', null, moneyF(axisMax)));
+    sec.append(axis);
+    return sec;
+  };
+
+  /* Revenue by month: one column a month against the $27,500 line, stacked by track in the same hues as the bars
+     above, so the two charts share one legend and no fourth color is invented for the months. */
+  const monthChart = (m) => {
+    const sec = el('section', 'cc-c90-chart');
+    const axisMax = Math.max(...m.months.map((mo) => Math.max(mo.target, mo.revenue)), 1);
+    const head = el('div', 'cc-c90-charthead');
+    head.append(el('h4', 'cc-c90-sub', 'Revenue by month'));
+    head.append(el('p', 'cc-c90-note', 'Each month against its ' + moneyF(MONTHS[0].target) + ' share of the goal. A month that has not started is drawn as an outline, not a miss.'));
+    sec.append(head);
+
+    const plot = el('div', 'cc-c90-plot');
+    const line = el('div', 'cc-c90-targetline');
+    line.style.bottom = pct(MONTHS[0].target, axisMax).toFixed(2) + '%';
+    line.title = 'Target ' + moneyF(MONTHS[0].target) + ' a month';
+    plot.append(line, el('span', 'cc-c90-targetlabel', moneyF(MONTHS[0].target)));
+
+    const cols = el('div', 'cc-c90-cols');
+    m.months.forEach((mo) => {
+      const col = el('div', 'cc-c90-col cc-c90-col-' + mo.state);
+      const stack = el('div', 'cc-c90-stack');
+      stack.style.height = pct(mo.revenue, axisMax).toFixed(2) + '%';
+      mo.byTrack.filter((b) => b.amount > 0).forEach((b) => {
+        const seg = el('span', 'cc-c90-seg cc-c90-fill-' + b.tone);
+        seg.style.height = (mo.revenue > 0 ? (b.amount / mo.revenue) * 100 : 0).toFixed(2) + '%';
+        seg.title = b.label + ' — ' + moneyF(b.amount) + ' in ' + mo.label;
+        if (b.deals.length) {
+          const btn = el('button', 'cc-c90-seghit');
+          btn.type = 'button';
+          btn.setAttribute('aria-label', b.label + ', ' + moneyF(b.amount) + ' in ' + mo.label);
+          btn.addEventListener('click', () => showDeals(mo.label + ' — ' + b.label, b.deals,
+            'Deals whose won date falls in ' + mo.label + ', referred the way ' + b.label + ' counts them.'));
+          seg.append(btn);
+        }
+        stack.append(seg);
+      });
+      col.append(stack);
+      col.setAttribute('role', 'img');
+      col.setAttribute('aria-label', mo.label + ': ' + moneyF(mo.revenue) + ' of ' + moneyF(mo.target)
+        + (mo.state === 'ahead' ? ', not started' : mo.state === 'now' ? ', in progress' : ''));
+      cols.append(col);
+    });
+    plot.append(cols);
+    sec.append(plot);
+
+    const labs = el('div', 'cc-c90-collabs');
+    m.months.forEach((mo) => {
+      const lab = el('div', 'cc-c90-collab cc-c90-col-' + mo.state);
+      lab.append(fig('span', 'cc-c90-colval', moneyF(mo.revenue),
+        mo.wonDeals.length ? () => showDeals(mo.label + ' — closed deals', mo.wonDeals, 'Deals whose won date falls in ' + mo.label + '.') : null));
+      lab.append(el('span', 'cc-c90-colname', mo.label));
+      lab.append(el('span', 'cc-c90-colstate', mo.state === 'ahead' ? 'not started' : mo.state === 'now' ? 'in progress' : 'closed out'));
+      labs.append(lab);
+    });
+    sec.append(labs);
+    return sec;
+  };
+
+  /* One legend for both charts: identity is never carried by color alone. */
+  const legend = (m) => {
+    const box = el('div', 'cc-c90-legend');
+    m.tracks.forEach((t) => {
+      const item = el('span', 'cc-c90-legitem');
+      item.append(chip(t.tone), document.createTextNode(t.label));
+      box.append(item);
+    });
+    const tick = el('span', 'cc-c90-legitem');
+    tick.append(el('span', 'cc-c90-legtick'), document.createTextNode('Target'));
+    const reach = el('span', 'cc-c90-legitem');
+    reach.append(el('span', 'cc-c90-legreach'), document.createTextNode('Reach if every open deal closes'));
+    box.append(tick, reach);
+    return box;
+  };
+
   const stat = (label, value, sub, tone, onOpen) => {
     const box = el('div', 'cc-c90-stat');
     box.append(fig('span', 'cc-c90-stat-v' + (tone ? ' cc-c90-' + tone : ''), value, onOpen));
@@ -412,102 +580,57 @@
       + moneyF(Math.round(pace)) + '.'));
     frag.append(overall);
 
-    /* Tracks: Referral Business and Founder Network carry the sheet's targets; Direct carries none. */
-    const tWrap = el('div', 'cc-c90-tracks');
-    m.tracks.forEach((t) => {
-      const card = el('section', 'cc-c90-track cc-c90-track-' + t.tone);
-      const head = el('div', 'cc-c90-track-head');
-      head.append(el('h4', 'cc-c90-track-name', t.label));
-      head.append(el('span', 'cc-c90-track-target', t.target.revenue ? 'Target ' + moneyF(t.target.revenue) : 'No target on the sheet'));
-      card.append(head);
-      const openWon = t.wonDeals.length ? () => showDeals(t.label + ' — closed in the window', t.wonDeals, t.why) : null;
-      card.append(fig('p', 'cc-c90-track-v', moneyF(t.revenue), openWon));
-      card.append(bar(t.revenue, t.target.revenue || 0, t.target.revenue ? m.share : 0, t.tone));
-      card.append(metric('Deals closed', intF(t.closed), t.target.closed, openWon));
-      card.append(metric('Deals logged', intF(t.logged), t.target.logged,
-        t.madeDeals.length ? () => showDeals(t.label + ' — logged in the window', t.madeDeals, t.why) : null));
-      card.append(metric('Open pipeline', moneyF(t.openValue), null,
-        t.openDeals.length ? () => showDeals(t.label + ' — open deals', t.openDeals, t.why) : null, 'money'));
-      if (t.gap > 0) {
-        const cover = el('p', t.covered ? 'cc-c90-track-why' : 'cc-c90-warn');
-        cover.textContent = moneyF(t.gap) + ' still to close against ' + moneyF(t.openValue) + ' open'
-          + (t.covered ? ' — enough in the pipeline to reach it.' : ' — not enough in the pipeline to reach it.');
-        card.append(cover);
-      }
-      if (t.target.avg) card.append(el('p', 'cc-c90-track-why', t.why + ' The sheet assumes ' + moneyF(t.target.avg) + ' a deal.'));
-      else card.append(el('p', 'cc-c90-track-why', t.why));
-      if (t.noAmount) {
-        const warn = el('p', 'cc-c90-warn');
-        warn.append(document.createTextNode(intF(t.noAmount) + ' of the closed ' + plural(t.noAmount, 'deal has', 'deals have') + ' no Amount in Zoho, so this figure is a floor.'));
-        card.append(warn);
-      }
-      tWrap.append(card);
-    });
-    frag.append(tWrap);
-
-    /* Revenue by month: $27,500 each. */
-    const mSec = el('section', 'cc-c90-months');
-    mSec.append(el('h4', 'cc-c90-sub', 'Revenue by month'));
-    const mRow = el('div', 'cc-c90-monthrow');
-    m.months.forEach((mo) => {
-      const box = el('div', 'cc-c90-month cc-c90-month-' + mo.state);
-      box.append(el('div', 'cc-c90-month-l', mo.label));
-      box.append(fig('div', 'cc-c90-month-v' + (mo.revenue >= mo.target ? ' cc-c90-good' : mo.state === 'past' ? ' cc-c90-bad' : ''), moneyF(mo.revenue),
-        mo.wonDeals.length ? () => showDeals(mo.label + ' — closed deals', mo.wonDeals, 'Deals whose won date falls in ' + mo.label + '.') : null));
-      box.append(bar(mo.revenue, mo.target, mo.state === 'now' ? mo.share : 0, mo.revenue >= mo.target ? 'green' : 'blue'));
-      box.append(el('div', 'cc-c90-month-t', 'of ' + moneyF(mo.target)
-        + (mo.state === 'ahead' ? ' — not started' : mo.state === 'now' ? ' — in progress' : '')));
-      mRow.append(box);
-    });
-    mSec.append(mRow);
-    frag.append(mSec);
+    frag.append(legend(m));
+    frag.append(trackChart(m));
+    frag.append(monthChart(m));
 
     frag.append(meetingBlock(m));
-
-    /* What the figures rest on, and what the sheet asks for that Zoho cannot answer. */
-    const caveat = el('details', 'cc-c90-caveats');
-    caveat.append(el('summary', null, 'How these figures are worked out, and what they can’t show'));
-    const body = el('div', 'cc-c90-caveatbody');
-    const dateNote = el('p');
-    dateNote.append(el('strong', null, 'The close date is a stand-in. '));
-    dateNote.append(document.createTextNode('Zoho’s Closing Date is empty on every deal in the CRM, so a deal is dated by when it was last changed. That date also moves when anyone edits the deal, so editing an old won deal would move its revenue into the current month. '));
-    if (m.noClosingDate.length) {
-      const b = el('button', 'cc-c90-open cc-c90-inline', 'Fill Closing Date on ' + intF(m.noClosingDate.length) + ' closed ' + plural(m.noClosingDate.length, 'deal', 'deals') + '.');
-      b.type = 'button';
-      b.addEventListener('click', () => showDeals('Closed deals with no Closing Date', m.noClosingDate,
-        'Setting Closing Date in Zoho on each of these makes the campaign figures exact; the page prefers that field as soon as it holds a date.'));
-      dateNote.append(b);
-    }
-    body.append(dateNote);
-    const agreeNote = el('p');
-    agreeNote.append(el('strong', null, 'Partner agreements are not revenue. '));
-    agreeNote.append(document.createTextNode('Deals of type Reseller/ Referral Partner and Platform Provider Agreement are left out, so signing a partner never adds to the target. Referral Partner Deals and the Closed Won panel on B2B Today track those.'));
-    body.append(agreeNote);
-    const days = el('p');
-    days.append(el('strong', null, 'Working days. '));
-    days.append(document.createTextNode(intF(m.weekdaysTotal) + ' weekdays fall between ' + fmtDate(m.from) + ' and '
-      + fmtDate(m.to) + '. The sheet counts 60, which presumably sets the holidays aside; this page counts every weekday, so the even-pace tick sits slightly later than the sheet’s would. The tick is a reference line only — the verdict is based on whether each track’s open pipeline can reach its number, not on pace.'));
-    body.append(days);
-    if (m.noAmount) {
-      const amt = el('p');
-      amt.append(el('strong', null, 'Every total is a floor. '));
-      amt.append(document.createTextNode(intF(m.noAmount) + ' of the ' + intF(m.closed) + ' closed deals ' + plural(m.noAmount, 'has', 'have') + ' no Amount in Zoho.'));
-      body.append(amt);
-    }
-    const nt = el('p');
-    nt.append(el('strong', null, 'Not tracked. '));
-    nt.append(document.createTextNode('The sheet’s activity targets have nowhere to be recorded in Zoho, so this card leaves them out rather than showing them as zero:'));
-    body.append(nt);
-    const ul = el('ul', 'cc-c90-nt');
-    NOT_TRACKED.forEach((x) => ul.append(el('li', null, x)));
-    body.append(ul);
-    caveat.append(body);
-    frag.append(caveat);
-
-    /* The drill lives inside the body, between the blocks, so it can sit under whichever one was clicked. */
+    frag.append(caveats(m));
     frag.append(drill);
     host.replaceChildren(frag);
     drillFrom = null;
+  };
+
+  /* What the figures rest on, and what the sheet asks for that Zoho cannot answer. */
+  const caveats = (m) => {
+  const caveat = el('details', 'cc-c90-caveats');
+  caveat.append(el('summary', null, 'How these figures are worked out, and what they can’t show'));
+  const body = el('div', 'cc-c90-caveatbody');
+  const dateNote = el('p');
+  dateNote.append(el('strong', null, 'The close date is a stand-in. '));
+  dateNote.append(document.createTextNode('Zoho’s Closing Date is empty on every deal in the CRM, so a deal is dated by when it was last changed. That date also moves when anyone edits the deal, so editing an old won deal would move its revenue into the current month. '));
+  if (m.noClosingDate.length) {
+    const b = el('button', 'cc-c90-open cc-c90-inline', 'Fill Closing Date on ' + intF(m.noClosingDate.length) + ' closed ' + plural(m.noClosingDate.length, 'deal', 'deals') + '.');
+    b.type = 'button';
+    b.addEventListener('click', () => showDeals('Closed deals with no Closing Date', m.noClosingDate,
+      'Setting Closing Date in Zoho on each of these makes the campaign figures exact; the page prefers that field as soon as it holds a date.'));
+    dateNote.append(b);
+  }
+  body.append(dateNote);
+  const agreeNote = el('p');
+  agreeNote.append(el('strong', null, 'Partner agreements are not revenue. '));
+  agreeNote.append(document.createTextNode('Deals of type Reseller/ Referral Partner and Platform Provider Agreement are left out, so signing a partner never adds to the target. Referral Partner Deals and the Closed Won panel on B2B Today track those.'));
+  body.append(agreeNote);
+  const days = el('p');
+  days.append(el('strong', null, 'Working days. '));
+  days.append(document.createTextNode(intF(m.weekdaysTotal) + ' weekdays fall between ' + fmtDate(m.from) + ' and '
+    + fmtDate(m.to) + '. The sheet counts 60, which presumably sets the holidays aside; this page counts every weekday, so the even-pace tick sits slightly later than the sheet’s would. The tick is a reference line only — the verdict is based on whether each track’s open pipeline can reach its number, not on pace.'));
+  body.append(days);
+  if (m.noAmount) {
+    const amt = el('p');
+    amt.append(el('strong', null, 'Every total is a floor. '));
+    amt.append(document.createTextNode(intF(m.noAmount) + ' of the ' + intF(m.closed) + ' closed deals ' + plural(m.noAmount, 'has', 'have') + ' no Amount in Zoho.'));
+    body.append(amt);
+  }
+  const nt = el('p');
+  nt.append(el('strong', null, 'Not tracked. '));
+  nt.append(document.createTextNode('The sheet’s activity targets have nowhere to be recorded in Zoho, so this card leaves them out rather than showing them as zero:'));
+  body.append(nt);
+  const ul = el('ul', 'cc-c90-nt');
+  NOT_TRACKED.forEach((x) => ul.append(el('li', null, x)));
+  body.append(ul);
+  caveat.append(body);
+    return caveat;
   };
 
   const mount = () => {

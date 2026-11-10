@@ -38,15 +38,6 @@
 /* The tick sits above the fill, so a bar that has passed pace still shows where pace was. */
 .cc-c90-bar .cc-c90-tick { position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; background: var(--color-fg); opacity: .75; border-radius: 1px; }
 
-.cc-c90-tracks { display: grid; gap: var(--cds-gap-md); grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); }
-.cc-c90-track { display: grid; gap: var(--cds-gap-sm); align-content: start; padding: var(--cds-pad-md) var(--cds-pad-lg) var(--cds-pad-lg); border: 1px solid var(--color-border-line); border-top: 3px solid var(--color-fg-muted); border-radius: var(--cds-radius); min-width: 0; }
-.cc-c90-track-blue { border-top-color: var(--s1); }
-.cc-c90-track-green { border-top-color: var(--color-ok); }
-.cc-c90-track-head { display: grid; gap: 1px; }
-.cc-c90-track-name { margin: 0; font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium, 600); }
-.cc-c90-track-target { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
-.cc-c90-track-v { margin: 0; font-size: 30px; font-weight: var(--cds-font-weight-medium, 600); font-variant-numeric: tabular-nums; line-height: 1.1; }
-.cc-c90-track-why { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); line-height: 1.45; }
 .cc-c90-warn { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-warn); line-height: 1.45; }
 
 .cc-c90-metric { display: flex; align-items: baseline; gap: var(--cds-gap-sm); font-size: var(--cds-font-size-body); border-top: 1px solid var(--color-border-line); padding-top: 6px; }
@@ -55,15 +46,73 @@
 .cc-c90-metric-t { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); white-space: nowrap; }
 
 .cc-c90-sub { margin: 0 0 var(--cds-gap-sm); font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium, 600); }
-.cc-c90-months, .cc-c90-mtg { display: grid; gap: var(--cds-gap-xs); min-width: 0; }
-.cc-c90-monthrow { display: grid; gap: var(--cds-gap-md); grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); }
-.cc-c90-month { display: grid; gap: 4px; align-content: start; padding: var(--cds-pad-sm) var(--cds-pad-md); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); min-width: 0; }
-/* A month that has not started is dimmed, so an empty bar never reads as a miss. */
-.cc-c90-month-ahead { opacity: .62; }
-.cc-c90-month-now { border-color: var(--color-fg-muted); }
-.cc-c90-month-l { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
-.cc-c90-month-v { font-size: 22px; font-weight: var(--cds-font-weight-medium, 600); font-variant-numeric: tabular-nums; line-height: 1.15; }
-.cc-c90-month-t { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.cc-c90-mtg { display: grid; gap: var(--cds-gap-xs); min-width: 0; }
+
+/* ---- charts ----
+   Built as HTML boxes with percentage widths and heights rather than SVG: the bars stay responsive with no viewBox
+   arithmetic, the text is real text, and every color comes from the page's own tokens so dark mode is the design
+   system's chosen steps rather than an automatic flip. Track hues are blue (Referral), green (Founder Network) and
+   purple (Direct) — validated as a categorical set against both the light and dark panel. */
+.cc-c90-chart { display: grid; gap: var(--cds-gap-sm); min-width: 0; }
+.cc-c90-charthead { display: grid; gap: 2px; }
+.cc-c90-legend { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm) var(--cds-gap-md); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.cc-c90-legitem { display: inline-flex; align-items: center; gap: 6px; }
+.cc-c90-chip { width: 10px; height: 10px; border-radius: 3px; flex: none; background: var(--color-fg-muted); }
+.cc-c90-chip-blue { background: var(--s1); }
+.cc-c90-chip-green { background: var(--color-ok); }
+.cc-c90-chip-purple { background: var(--s7); }
+.cc-c90-legtick { width: 2px; height: 14px; flex: none; background: var(--color-fg); opacity: .8; border-radius: 1px; }
+.cc-c90-legreach { width: 0; height: 0; flex: none; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 8px solid var(--color-fg); opacity: .8; }
+
+/* Revenue by track: one dollar axis, the rail is the axis and the tick is each track's own target. */
+.cc-c90-rows { display: grid; gap: var(--cds-gap-md); }
+.cc-c90-row { display: grid; gap: 6px; min-width: 0; }
+.cc-c90-rowhead { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--cds-gap-sm); }
+.cc-c90-rowname { display: inline-flex; align-items: center; gap: 7px; font-size: var(--cds-font-size-body); font-weight: var(--cds-font-weight-medium, 600); }
+.cc-c90-rowval { font-size: 20px; font-weight: var(--cds-font-weight-medium, 600); font-variant-numeric: tabular-nums; margin-left: auto; }
+.cc-c90-rowof { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); white-space: nowrap; }
+.cc-c90-rail { position: relative; height: 18px; border-radius: 4px; background: color-mix(in oklab, var(--color-fg) 7%, var(--color-panel)); }
+/* 4px rounded data-end, anchored to the baseline at left. A zero value draws no fill at all (the row simply omits
+   it): a minimum width would put a colored mark against $0, which reads as a small amount rather than none. */
+.cc-c90-barfill { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 4px; min-width: 3px; }
+.cc-c90-fill-blue { background: var(--s1); }
+.cc-c90-fill-green { background: var(--color-ok); }
+.cc-c90-fill-purple { background: var(--s7); }
+.cc-c90-fill-grey { background: var(--color-fg-muted); }
+/* The target tick and the reach caret overlap the fill, so each carries a 2px surface ring to stay readable on it. */
+.cc-c90-targettick { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--color-fg); opacity: .85; border-radius: 1px; box-shadow: 0 0 0 2px var(--color-panel); }
+.cc-c90-reach { position: absolute; top: 100%; margin-top: 2px; width: 0; height: 0; margin-left: -5px; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 8px solid var(--color-fg); opacity: .8; }
+/* A reach past the right edge is clipped, and says so rather than sitting silently at the end. */
+.cc-c90-reach-over { border-bottom-color: var(--color-fg-muted); }
+.cc-c90-reach-over::after { content: '›'; position: absolute; left: 1px; top: -2px; font-size: 13px; line-height: 1; color: var(--color-fg-muted); }
+.cc-c90-rowfacts { display: flex; flex-wrap: wrap; gap: 0 var(--cds-gap-lg); margin-top: 10px; }
+.cc-c90-rowfacts .cc-c90-metric { flex: 1 1 11rem; border-top: 0; padding-top: 0; }
+/* The axis belongs to the chart, not to the last row above it, so it is set off by a rule and its own space. */
+.cc-c90-axis { display: flex; justify-content: space-between; margin-top: 2px; padding-top: 6px; border-top: 1px solid var(--color-border-line); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
+
+/* Revenue by month: columns against the per-month target line. */
+.cc-c90-plot { position: relative; height: 140px; margin-top: 18px; }
+.cc-c90-targetline { position: absolute; left: 0; right: 0; height: 0; border-top: 2px dashed var(--color-fg); opacity: .55; }
+.cc-c90-targetlabel { position: absolute; right: 0; top: -17px; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
+.cc-c90-cols { position: absolute; inset: 0; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--cds-gap-md); align-items: end; }
+/* Capped and centered: three full-width bars read as blocks, not columns. */
+.cc-c90-col { position: relative; height: 100%; width: min(100%, 120px); margin-inline: auto; display: flex; align-items: flex-end; }
+.cc-c90-stack { position: relative; width: 100%; display: flex; flex-direction: column-reverse; border-radius: 4px 4px 0 0; overflow: hidden; }
+/* 2px surface gap between stacked segments. */
+.cc-c90-seg { position: relative; width: 100%; min-height: 3px; box-shadow: 0 -2px 0 0 var(--color-panel); }
+.cc-c90-seg:first-child { box-shadow: none; }
+.cc-c90-seghit { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; padding: 0; background: none; cursor: pointer; }
+.cc-c90-seghit:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
+/* A month that has not started is an outline, not a miss. Scoped to the column: the label row below carries the same
+   state class, where a full-height overlay would sit on top of the value and swallow its click. */
+.cc-c90-col.cc-c90-col-ahead::before { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 100%; border: 1px dashed var(--color-border-line); border-radius: 4px 4px 0 0; pointer-events: none; }
+.cc-c90-collabs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--cds-gap-md); }
+/* Capped and centered to match the column above it, so the label sits under its own bar. */
+.cc-c90-collab { display: grid; gap: 1px; width: min(100%, 120px); margin-inline: auto; padding-top: 6px; border-top: 1px solid var(--color-border-line); min-width: 0; }
+.cc-c90-collab.cc-c90-col-ahead { opacity: .62; }
+.cc-c90-colval { font-size: 18px; font-weight: var(--cds-font-weight-medium, 600); font-variant-numeric: tabular-nums; }
+.cc-c90-colname { font-size: var(--cds-font-size-caption); }
+.cc-c90-colstate { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
 .cc-c90-mtgrow { display: grid; gap: var(--cds-gap-sm); grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); }
 
 .cc-c90-note { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); line-height: 1.5; max-width: 90ch; }
