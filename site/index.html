@@ -4641,11 +4641,25 @@ dash.calc('attention', {
     },
     monthly: {
       card: '#pipe-monthly',
-      build: (month) => ({
-        title: 'Deals created in ' + monthF(new Date(month + '-01T00:00:00Z')), source: 'deals_tagged', rowKey: 'id',
-        cols: [['deal', 'Deal'], ['account', 'Account'], ['deal_type', 'Deal Type'], ['campaign', 'Campaign', null, true], ['stage', 'Stage'], ['created', 'Created', 'date', true]],
-        rows: (rowsOf('deals_tagged') || []).filter((d) => String(d.created || '').slice(0, 7) === month).sort((a, b) => String(a.created).localeCompare(String(b.created))),
-      }),
+      /* Amount on every row and a total for the month (Hemang, Nov 10, 2026). `deals_tagged` carries amount as 0
+         when Zoho has none, so it is mapped to null here and shows as a dash: a deal with no value entered must not
+         read as $0, and the month's total is a floor over the deals that do carry one. */
+      build: (month) => {
+        const rows = (rowsOf('deals_tagged') || [])
+          .filter((d) => String(d.created || '').slice(0, 7) === month)
+          .map((d) => ({ ...d, amount_known: d.amount > 0 ? d.amount : null }))
+          .sort((a, b) => String(a.created).localeCompare(String(b.created)));
+        const known = rows.filter((d) => d.amount_known);
+        const total = known.reduce((s, d) => s + d.amount_known, 0);
+        return {
+          title: 'Deals created in ' + monthF(new Date(month + '-01T00:00:00Z')), source: 'deals_tagged', rowKey: 'id',
+          cols: [['deal', 'Deal'], ['account', 'Account'], ['deal_type', 'Deal Type'], ['campaign', 'Campaign', null, true], ['stage', 'Stage'], ['amount_known', 'Amount', 'money', false, true], ['created', 'Created', 'date', true]],
+          rows,
+          note: known.length
+            ? `${moneyF(total)} across ${known.length} of ${rows.length} deals that carry an Amount in Zoho. The rest have none, so this is a floor, not the month's full value.`
+            : (rows.length ? 'None of these deals has an Amount in Zoho, so there is nothing to total.' : null),
+        };
+      },
     },
     ...Object.fromEntries(['ov-rp', 'ov-icp', 'ov-fn', 'ov-mc', 'hero-rp', 'hero-icp', 'hero-fn', 'hero-mc'].map((id) => {
       const c = id.split('-')[1];
@@ -4805,7 +4819,19 @@ dash.calc('attention', {
       const title = { open: 'Open deals (Identify, Discovery, Proposals)', hold: 'Deals on Hold', won: 'Deals won', won_amount: 'Deals won (amount where set)', lost: 'Deals lost' }[q.measure];
       return { title, source: 'deals_tagged', rowKey: 'id', cols: [...DEAL_COLS.slice(0, 3), ['campaign', 'Campaign', null, true], ...DEAL_COLS.slice(3)], rows: (rowsOf('deals_tagged') || []).filter(keep).sort(byStageThenRecentD) };
     },
-    deals_monthly: (q) => (q.month ? { ...DRILLS.monthly.build(q.month), title: 'Deals created in ' + monthF(new Date(q.month + '-01T00:00:00Z')) + (q.kind ? ' · ' + q.kind : ''), rows: DRILLS.monthly.build(q.month).rows.filter((d) => !q.kind || d.kind === q.kind) } : null),
+    /* One build, then the Deal Type filter, so the Amount total describes the rows actually shown (Hemang, Nov 10, 2026). */
+    deals_monthly: (q) => {
+      if (!q.month) return null;
+      const base = DRILLS.monthly.build(q.month);
+      const rows = base.rows.filter((d) => !q.kind || d.kind === q.kind);
+      const known = rows.filter((d) => d.amount_known);
+      const total = known.reduce((s, d) => s + d.amount_known, 0);
+      return { ...base, rows,
+        title: 'Deals created in ' + monthF(new Date(q.month + '-01T00:00:00Z')) + (q.kind ? ' · ' + q.kind : ''),
+        note: known.length
+          ? `${moneyF(total)} across ${known.length} of ${rows.length} deals that carry an Amount in Zoho. The rest have none, so this is a floor, not the full value.`
+          : (rows.length ? 'None of these deals has an Amount in Zoho, so there is nothing to total.' : null) };
+    },
     campaign_river: (q) => { const r = markRow('campaign_river', q); return r && META[q.campaign] ? stepSpec(q.campaign, r.step) : null; },
     meeting_totals: (q) => {
       const camp = ['B2B Campaign', 'ICP Prospecting', 'Founder Network', 'Medical Courier'];
