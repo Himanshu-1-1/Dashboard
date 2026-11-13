@@ -710,14 +710,23 @@
   };
 
   dash.calc('p3_periods', {
-    title: 'Priority 3 changes today, this week and this month',
+    title: 'Priority 3 changes yesterday, today, this week and this month',
     description: 'From p3_events: Zoho’s Priority History and the daily LI Connect snapshot, counted from the baseline taken when tracking began (Central time; weeks start Monday). Balances: the count now minus the count at the start of the period, rebuilt from the recorded changes. Events: unique contacts that made the change in the period while at Priority 3: pursued (LI Connect empty to Requested), connected (Requested to Connected), Email Required (newly set), and two-way conversations (Priority 3 to 1 while Connected). Periods that began before tracking started are marked partial.',
     inputs: ['p3_state', 'p3_events', 'p3_base'],
     fn: (p3_state, p3_events, p3_base) => {
       const today = todayCT();
       const t = new Date(today + 'T00:00:00Z');
       const mon = new Date(t); mon.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7));
-      const starts = { today, week: mon.toISOString().slice(0, 10), month: today.slice(0, 8) + '01' };
+      /* Yesterday is a CLOSED window (Mack, Nov 12, 2026: "This should be yesterday's date only"). He opens the
+         dashboard each morning to see what moved the day before, and Today reads 0 at 8am, which is what made the
+         panel look dead. Every other period runs from its start to now, so `to` is null for those. */
+      const yest = new Date(t); yest.setUTCDate(t.getUTCDate() - 1);
+      const starts = {
+        yesterday: { from: yest.toISOString().slice(0, 10), to: today },
+        today: { from: today, to: null },
+        week: { from: mon.toISOString().slice(0, 10), to: null },
+        month: { from: today.slice(0, 8) + '01', to: null },
+      };
       const ctOf = (iso) => new Date(iso).toLocaleString('sv-SE', { timeZone: 'America/Chicago' }).replace(' ', 'T');
       const ev = p3_events
         .filter((e) => e && e.contact_id && e.at && (e.field === 'Priority' || e.field === 'LI_Connect'))
@@ -740,15 +749,18 @@
       const stateAt = (id, ct) => ({ pr: valueAt(id, 'Priority', ct), li: valueAt(id, 'LI_Connect', ct) });
       const ids = new Set([...now.keys(), ...byId.keys()]);
       const out = [];
-      Object.entries(starts).forEach(([period, day]) => {
+      Object.entries(starts).forEach(([period, span]) => {
+        const day = span.from;
         const ct0 = day + 'T00:00:00';
+        const ctEnd = span.to ? span.to + 'T00:00:00' : null;
         const partial = !tracked || tracked > day;
-        const row = { key: period, period, start: day, partial, tracked, li_from: liFrom };
+        const row = { key: period, period, start: day, end: span.to || null, partial, tracked, li_from: liFrom };
         Object.entries(P3_KPIS).forEach(([k, f]) => {
           let nowN = 0; let thenN = 0;
           const joined = []; const left = [];
           ids.forEach((id) => {
-            const c = now.get(id) || { pr: null, li: null };
+            /* A closed window compares the two ends of the window; an open one compares the start with now. */
+            const c = ctEnd ? stateAt(id, ctEnd) : (now.get(id) || { pr: null, li: null });
             const a = f(c); const b = f(stateAt(id, ct0));
             if (a) nowN += 1; if (b) thenN += 1;
             if (a && !b) joined.push(id); if (b && !a) left.push(id);
@@ -757,7 +769,7 @@
           row[k + '_in'] = joined;
           row[k + '_out'] = left;
         });
-        const inP = ev.filter((e) => e.ct >= ct0);
+        const inP = ev.filter((e) => e.ct >= ct0 && (!ctEnd || e.ct < ctEnd));
         const uniq = (list) => [...new Map(list.map((e) => [e.id, e])).values()];
         const at3 = (e) => stateAt(e.id, e.ct).pr === '3';
         row.pursued = uniq(inP.filter((e) => e.field === 'LI_Connect' && e.from == null && e.to === 'Requested' && at3(e)));
@@ -1255,7 +1267,10 @@
     drawPf();
     pf.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
-  const pfSop = el('a', 'cc-b2-soplink', 'SOP');
+  /* Labeled for what it is, not "SOP" (Mack, Nov 12, 2026). He went looking for what the Priorities mean, found them
+     only after hunting, and decided against printing them inline here: "یہ بہت کراؤڈڈ ہو جائے گا... لنک ہی دے دو". A
+     findable link in the first section's header is the whole ask. */
+  const pfSop = el('a', 'cc-b2-soplink', 'Priority definitions');
   pfSop.href = PF_SOP_URL; pfSop.target = '_blank'; pfSop.rel = 'noopener'; pfSop.title = 'B2B Priority Definition: what each Priority means';
   pfSop.setAttribute('aria-label', 'SOP: B2B Priority Definition (opens in a new tab)');
   pfHead.append(pfTitleBox, pfReset, pfSop);
@@ -2688,7 +2703,7 @@
       c.setAttribute('aria-label', opt.label + ': ' + opt.big + '. Open the list.');
       p3Grid.append(c);
     };
-    const PERIODS = [['today', 'Today', 'today'], ['week', 'Week', 'this week'], ['month', 'Month', 'this month']];
+    const PERIODS = [['yesterday', 'Yesterday', 'yesterday'], ['today', 'Today', 'today'], ['week', 'Week', 'this week'], ['month', 'Month', 'this month']];
     const NET_NAME = { backlog: 'Priority 3 backlog', untouched: 'Untouched (Priority 3, LI Connect empty)', pending: 'Pending requests (Priority 3, Requested)', connected: 'Connected (Priority 3)', email: 'Email Required (Priority 3)' };
     const byIdP3 = new Map(ppl.map((p) => [p.id, p]));
     const showNet = (k, key, word) => {
