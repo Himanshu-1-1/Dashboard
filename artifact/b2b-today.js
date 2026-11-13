@@ -979,20 +979,36 @@
   const rbStatus = (stage) => (stage === 'Closed' ? 'won' : RB_LOST.includes(stage) ? 'lost' : 'open');
   dash.calc('rb_rows', {
     title: 'Client deals and who referred them',
-    description: 'One row per client deal (every Deal Type except Reseller/ Referral Partner and Platform Provider Agreement): name, type, stage, status (open = any stage but Closed, Closed Lost or Closed Lost to Competition; won = Closed; lost = Closed Lost or Closed Lost to Competition), amount where set, the dates Zoho created it and last changed it (Central time), its Closing Date and the effective date it was won (Closing Date when Zoho holds one, otherwise the last-changed date, with a flag saying which was used), the deal’s Commission Details text, account, contact, the Referred By Contact and Referred By Account from the deal’s Commission Details, whether the referrer is Founder Network (the referring contact’s Relationship Type), and whether a referrer is recorded at all.',
-    inputs: ['rb_deals'],
-    fn: (rb_deals) => rb_deals.map((d) => {
+    description: 'One row per client deal (every Deal Type except Reseller/ Referral Partner and Platform Provider Agreement): name, type, stage, status (open = any stage but Closed, Closed Lost or Closed Lost to Competition; won = Closed; lost = Closed Lost or Closed Lost to Competition), amount where set, the dates Zoho created it and last changed it (Central time), its Closing Date and the effective date it was won (Closing Date when Zoho holds one, otherwise the date the deal entered Closed in Zoho’s own Stage History, otherwise the last-changed date, with won_on_src naming which was used and won_on_est true only for that last resort), the deal’s Commission Details text, account, contact, the Referred By Contact and Referred By Account from the deal’s Commission Details, whether the referrer is Founder Network (the referring contact’s Relationship Type), and whether a referrer is recorded at all.',
+    inputs: ['rb_deals', 'deal_stage_history'],
+    fn: (rb_deals, deal_stage_history) => {
+      /* When a deal entered Closed, from Zoho's own Stage History (module DealHistory). Each history row is one stage
+         occupancy: Modified_Time is when the deal ENTERED that Stage, and Moved_To__s names where it went next, so the
+         row with Stage Closed and no Moved_To__s is the one that still stands. This beats Modified_Time on the deal,
+         which moves on any edit and was dragging deals closed back in June into the current month. A deal that went
+         Closed, reopened and closed again has several Closed rows; the latest standing one wins. */
+      const enteredClosed = new Map();
+      deal_stage_history.forEach((h) => {
+        if (String(h.Stage || '') !== 'Closed' || h.Moved_To__s || !h.Potential_Name_id || !h.Modified_Time) return;
+        const k = String(h.Potential_Name_id);
+        const at = String(h.Modified_Time);
+        if (!enteredClosed.has(k) || at > enteredClosed.get(k)) enteredClosed.set(k, at);
+      });
+      return rb_deals.map((d) => {
       const by = d.Referred_By_Contact || null;
       const byAcct = d.Referred_By_Account || null;
       const rel = String(d['Referred_By_Contact.Relationship_Type'] || '');
-      /* When a deal was won. Zoho's Closing_Date is empty on every deal in the CRM today, so the effective date falls
-         back to Modified_Time, which also moves on any edit; won_on_est says which of the two this row used, so a page
-         can warn rather than present a guess as a fact. Filling Closing_Date in Zoho takes over with no code change. */
+      /* Closing_Date first (nobody fills it today, but it takes over with no code change), then the Stage History entry
+         time, then Modified_Time as a last resort for a deal closed before stage tracking began (Feb 17, 2026 in this
+         org — no deal in the CRM today falls there). won_on_est stays true only for that last case, so a page warns on
+         a guess and not on a recorded fact; won_on_src names which of the three this row used. */
       const closing = d.Closing_Date ? String(d.Closing_Date).slice(0, 10) : null;
       const modified = d.Modified_Time ? ctDate(d.Modified_Time) : null;
+      const entered = enteredClosed.has(String(d.id)) ? ctDate(enteredClosed.get(String(d.id))) : null;
       return {
         id: String(d.id), deal: d.Deal_Name || 'Deal', type: d.Deal_Type || 'No Deal Type', stage: d.Stage || null, status: rbStatus(d.Stage),
-        closing, won_on: closing || modified, won_on_est: !closing,
+        closing, won_on: closing || entered || modified, won_on_est: !closing && !entered,
+        won_on_src: closing ? 'Closing Date' : entered ? 'Zoho Stage History' : 'last changed (no stage history)',
         amount: Number(d.Amount) > 0 ? Number(d.Amount) : null, created: d.Created_Time ? ctDate(d.Created_Time) : null, modified, commission_terms: String(d.Commission_Details || '').trim() || null,
         account: d.Account_Name || null, account_id: d.Account_Name_id ? String(d.Account_Name_id) : null,
         contact: d.Contact_Name || null, contact_id: d.Contact_Name_id ? String(d.Contact_Name_id) : null,
@@ -1000,7 +1016,8 @@
         by_account: byAcct, by_account_id: d.Referred_By_Account_id ? String(d.Referred_By_Account_id) : null,
         referred: Boolean(by || byAcct), fn: /founder network/i.test(rel),
       };
-    }),
+      });
+    },
   });
 
   /* B2B partner meetings: every prospect with a completed meeting (mtg_people) and the Referral Partner deals linked to
@@ -1041,7 +1058,7 @@
         ].filter((d) => !mineIds.has(String(d.id))).map((d) => [String(d.id), d])).values()].map(brief);
         const otherRaw = mine.length || companyOnly.length ? [] : [...(otherByContact.get(p.id) || []), ...(p.account_id && !OWN_CO.test(String(p.account || '')) ? otherByAccount.get(String(p.account_id)) || [] : [])];
         const other = [...new Map(otherRaw.map((d) => [String(d.id), d])).values()].map((d) => ({ ...brief(d), type: d.deal_type || 'Not set' }));
-        return { id: p.id, name: p.name, account: p.account, account_id: p.account_id, assigned: p.assigned, first: p.days[0] || null, last: p.last, meetings: p.n, deals: mine, company_deals: companyOnly, other_deals: other, created: mine.length > 0, other: other.length > 0 };
+        return { id: p.id, name: p.name, account: p.account, account_id: p.account_id, assigned: p.assigned, first: p.days[0] || null, last: p.last, next: p.next || null, meetings: p.n, deals: mine, company_deals: companyOnly, other_deals: other, created: mine.length > 0, other: other.length > 0 };
       });
     },
   });
@@ -3570,12 +3587,54 @@
     ['Priority', (r) => { const pp = rows('b2b_people').find((p) => p.id === r.id); return pp && pp.priority ? 'P' + pp.priority : 'Not set'; }],
     ['CRM Owner', (r) => r.assigned || 'Not assigned'],
     ['Referral Partner Deal', pmDealCell],
+    ['Why it is live', (r) => (r.motion && r.motion.length ? r.motion.join('; ') : 'nothing since the meeting')],
   ];
   const PM_PERIODS = [['week', 'This week'], ['month', 'This month'], ['year', 'This year'], ['all', 'All time']];
   /* Open work only (Mack, Oct 28, 2026): a deal at Closed, Closed Lost or Closed Lost to Competition isn't shown here, and a
      met partner whose deals are all closed or lost leaves the section; signed partners are in Closed Won below. A deal with
      no stage is treated as open. CRM Owner tabs (Zoho's Assigned field) filter the whole section. */
   const pmOpenDeal = (d) => !d.stage || CC_RULES.openStages.includes(d.stage);
+  /* Who belongs on the not-created list (Mack, Nov 12, 2026; rule picked by Hemang, Nov 13). Having met someone once
+     is not a reason to open a deal — Mack said so himself in the same breath he proposed it ("یہ سب کچرا ہو جائے گا
+     پھر"), because everyone we have ever met would sit there forever until a human cleared them, which is exactly the
+     "same reds every day" complaint. A deal is the container for chasing a signature, so the test is whether the
+     relationship is still moving: met at least once AND at least one sign of motion since. Nothing here is typed by
+     anyone into Zoho, so it needs no work from Shruti, and it is self-clearing — a partner who goes quiet drops off
+     the list on his own. Each row carries the reasons it qualified, so a wrong call is visible rather than plausible.
+     Mail and LinkedIn are used only when the build carries them (pmMotionGap names any that are missing). */
+  const PM_MOTION_TALK = new Set(['talking', 'they_wrote', 'said_yes']);
+  let pmMotionGap = [];
+  const pmMotion = () => {
+    const gap = [];
+    const mail = mailOk() ? new Map(rows('b2b_mail_people').map((r) => [String(r.id), r])) : (gap.push('email'), null);
+    const li = liHas() && state(['b2b_li_people']) === 'ok'
+      ? new Map(rows('b2b_li_people').filter((x) => x.in_export).map((x) => [String(x.id), x]))
+      : (gap.push('LinkedIn'), null);
+    const task = new Set();
+    if (state(['open_tasks']) === 'ok') rows('open_tasks').forEach((t) => { if (t.Who_Id_id) task.add(String(t.Who_Id_id)); });
+    else gap.push('open tasks');
+    const agr = new Map();
+    if (state(['agreements']) === 'ok') {
+      rows('agreements').filter((a) => a.kind !== 'MNDA').forEach((a) => { if (a.contact_id) agr.set(String(a.contact_id), a); });
+    } else gap.push('agreements');
+    pmMotionGap = gap;
+    return (p) => {
+      const why = [];
+      if (p.meetings > 1) why.push(`met ${intF(p.meetings)} times`);
+      /* p.next and last_in are UTC timestamps; slicing to 10 characters would read an evening Central meeting as the
+         next day, so both go through ctDay first. */
+      if (p.next) why.push(`next meeting ${fullDayF(ctDay(p.next))}`);
+      const a = agr.get(String(p.id));
+      if (a && a.state && a.state !== 'None in Zoho Sign') why.push(`agreement ${String(a.state).toLowerCase()}`);
+      if (task.has(String(p.id))) why.push('open task in Zoho');
+      const m = mail ? mail.get(String(p.id)) : null;
+      const inDay = m && m.last_in ? ctDay(m.last_in) : null;
+      if (inDay && (!p.last || inDay >= String(p.last).slice(0, 10))) why.push(`emailed us ${fullDayF(inDay)}`);
+      const l = li ? li.get(String(p.id)) : null;
+      if (l && PM_MOTION_TALK.has(l.status)) why.push(`LinkedIn: ${String(l.status).replace(/_/g, ' ')}`);
+      return why;
+    };
+  };
   const pmActive = (r) => {
     const deals = r.deals.filter(pmOpenDeal);
     const otherDeals = (r.other_deals || []).filter(pmOpenDeal);
@@ -3822,7 +3881,8 @@
       return;
     }
     const raw = rows('b2b_partner_deals');
-    const active = raw.map(pmActive).filter(Boolean);
+    const motionOf = pmMotion();
+    const active = raw.map(pmActive).filter(Boolean).map((r) => ({ ...r, motion: motionOf(r) }));
     const leftOut = raw.length - active.length;
     pmOwner = ownerTabs(pmOwners, active, pmOwner, (o) => { pmReopen = pmOpenNow(); pmOwner = o; pmSel = null; drawPm(); });
     const ownerTag = pmOwner === 'All' ? '' : pmOwner + ': ';
@@ -3843,7 +3903,10 @@
     const scope = from ? ` first met ${periodName.toLowerCase()} (since ${fullDayF(from)})` : '';
     const made = all.filter((r) => r.created);
     const others = all.filter((r) => !r.created && r.other);
-    const missing = all.filter((r) => !r.created && !r.other);
+    /* Not created counts only partners the relationship is still moving with (see pmMotion). The rest met us once and
+       went quiet: they are counted on their own line, never as red, so the number Mack acts on is work that is live. */
+    const missing = all.filter((r) => !r.created && !r.other && r.motion.length);
+    const quiet = all.filter((r) => !r.created && !r.other && !r.motion.length);
     if (!everyone.length) {
       pmTools.replaceChildren();
       if (pmReopen) { pmReopen = null; drill.hidden = true; }
@@ -3959,7 +4022,7 @@
       `Referral Partner deal created: ${intF(made.length)}. Open the list.`);
     const gap = tile(missing.length ? 'cc-pm-bad' : all.length ? 'cc-pm-ok' : 'cc-pm-none', 'Referral Partner Deal Not Created', missing.length, null,
       opener('miss', () => (missing.length
-        ? showTable(ownerTag + 'Referral Partner deal not created' + (from ? ', ' + periodName.toLowerCase() : ''), pmCols, pmSort(missing), `${from ? 'Partners' : 'Met partners'}${scope} with no Referral Partner deal linked to them.` + ' Create the deal in Zoho as SOP 002 sets out (Deal Type Reseller/ Referral Partner, Stage Identify, Amount $0.00, their company as Account Name and this person as Contact Name); they drop off this list at the next refresh. ' + PM_OWNER_NOTE)
+        ? showTable(ownerTag + 'Referral Partner deal not created' + (from ? ', ' + periodName.toLowerCase() : ''), pmCols, pmSort(missing), `${from ? 'Partners' : 'Met partners'}${scope} with no Referral Partner deal linked to them, where the relationship is still moving — a second meeting held or booked, an agreement, an open task, or a reply by email or LinkedIn since the meeting. The Why it is live column says which, and partners who met us once and went quiet are on their own line under the cards rather than here.${pmMotionGap.length ? ` Not in this build: ${pmMotionGap.join(', ')}.` : ''}` + ' Create the deal in Zoho as SOP 002 sets out (Deal Type Reseller/ Referral Partner, Stage Identify, Amount $0.00, their company as Account Name and this person as Contact Name); they drop off this list at the next refresh. ' + PM_OWNER_NOTE)
         : showTable(ownerTag + 'Referral Partner deal not created' + (from ? ', ' + periodName.toLowerCase() : ''), pmCols, [], null, from ? `All partners first met ${periodName.toLowerCase()} have Referral Partner Deals created.` : 'All met partners have Referral Partner Deals created.'))),
       `Referral Partner deal not created: ${intF(missing.length)}, target 0. Open the list.`);
     const tgt = el('p', 'cc-pm-target', 'Target: 0');
@@ -3975,6 +4038,16 @@
       otherLine.append(ob, document.createTextNode(' (Platform Provider, client work and so on), so ' + (others.length === 1 ? 'isn’t' : 'aren’t') + ' counted as missing a Referral Partner deal.'));
     }
     otherLine.hidden = !others.length;
+    /* Met once and quiet since. Not red, because there is nothing to chase and the row would never clear itself;
+       counted here so the number above is live work and this group is still one click away. */
+    const quietLine = el('p', 'cc-pm-period cc-pm-others');
+    if (quiet.length) {
+      const qb = el('button', 'cc-pm-prev', `${intF(quiet.length)} met ${quiet.length === 1 ? 'partner has' : 'partners have'} gone quiet`);
+      qb.type = 'button';
+      qb.addEventListener('click', opener('quiet', () => showTable(ownerTag + 'Met partners who have gone quiet' + (from ? ', ' + periodName.toLowerCase() : ''), pmCols, pmSort(quiet), `${from ? 'Partners' : 'Met partners'}${scope} with no Referral Partner deal and nothing since the meeting — no second meeting or one booked, no agreement, no open task, no reply by email or LinkedIn. A deal is for chasing a signature, so these aren’t counted as missing one. Reach out and they move to the red count on their own.${pmMotionGap.length ? ` Not in this build: ${pmMotionGap.join(', ')}, so some may have replied without it showing here.` : ''} ` + PM_OWNER_NOTE)));
+      quietLine.append(qb, document.createTextNode(' since the meeting, so ' + (quiet.length === 1 ? 'is' : 'are') + ' not counted as missing a Referral Partner deal.'));
+    }
+    quietLine.hidden = !quiet.length;
     if (!from) {
       [['made', ok], ['miss', gap], ['other', otherLine]].forEach(([key, node]) => {
         node.addEventListener('pointerenter', () => { hoverK = key; readout(); });
@@ -3993,7 +4066,7 @@
       b.addEventListener('click', opener('period', () => showTable(ownerTag + 'Partners met, ' + periodName.toLowerCase(), pmCols, pmSort(all), `Partners${scope}, most recent meeting first. ` + PM_OWNER_NOTE)));
       periodLine.append(b, document.createTextNode(` (since ${fullDayF(from)}). Their deals as they stand today:`));
     } else periodLine.textContent = 'Every partner met so far. Their deals as they stand today:';
-    right.append(pmTools, periodLine, pair, otherLine);
+    right.append(pmTools, periodLine, pair, otherLine, quietLine);
     pmBody.replaceChildren(metWrap, right);
     if (from) {
       const series = pmSeries(pmPeriod).map(([a, b, label], i, arr) => {

@@ -6,9 +6,12 @@
    Three decisions Hemang made on Nov 10, 2026, because the sheet does not map onto Zoho one to one:
 
    1. When a deal was won. Closing_Date is empty on every deal in the CRM and Completion_Date is set on 2 of 14 closed
-      deals, so the effective close date falls back to Modified_Time (rb_rows.won_on). Modified_Time also moves on any
-      edit, so editing an old won deal moves its revenue into the current month. The card says so and lists the deals
-      with no Closing Date to fill in. Once Zoho holds the field, rb_rows prefers it and nothing here changes.
+      deals. Settled Nov 13, 2026: the date comes from Zoho's own Stage History (module DealHistory) — the moment the
+      deal entered the Closed stage — which Zoho writes once and no later edit to the deal disturbs. Modified_Time is
+      only a last resort for a deal closed before stage tracking began (Feb 17, 2026; none in the CRM today), and
+      won_on_est is true only then. This replaced the earlier Modified_Time fallback, which had five old deals dated
+      into the window and was counting $5,000 of October revenue (PCAZ: Custom Courier App, really closed Oct 22) as
+      November. Closing_Date still wins where Zoho holds one.
    2. Which track a deal belongs to. By the referrer's Relationship Type, the same split "Business from Referral
       Partners" already uses, so the two sections can never disagree: a referrer who is Founder Network puts the deal
       in Founder Network, any other recorded referrer puts it in Referral Business.
@@ -85,7 +88,7 @@
 
   dash.calc('c90', {
     title: '90-day sales campaign against target',
-    description: 'The TLS Sales Campaign Goal sheet (Nov 1, 2026 to Jan 31, 2027; $82,500 across Referral Business $60,000 and Founder Network $22,500, $27,500 a month) measured against Zoho. Each client deal (rb_rows: every Deal Type except Reseller/ Referral Partner and Platform Provider Agreement) goes in one track by its referrer: Founder Network when the referring contact’s Relationship Type is Founder Network, Referral Business when any other referrer is recorded, Direct when none is. Revenue is the Amount of deals at stage Closed whose effective won date falls in the window; that date is Zoho’s Closing Date where it holds one and the last-changed date otherwise, since no deal in the CRM has a Closing Date yet. Deals closed counts the same deals, including those with no Amount, so revenue is a floor. Deals logged counts deals Zoho created in the window, whatever stage they are at now. Open pipeline is every client deal still open, whenever it was created. Pace compares each target with the share of the window’s weekdays that have passed, in Central time.',
+    description: 'The TLS Sales Campaign Goal sheet (Nov 1, 2026 to Jan 31, 2027; $82,500 across Referral Business $60,000 and Founder Network $22,500, $27,500 a month) measured against Zoho. Each client deal (rb_rows: every Deal Type except Reseller/ Referral Partner and Platform Provider Agreement) goes in one track by its referrer: Founder Network when the referring contact’s Relationship Type is Founder Network, Referral Business when any other referrer is recorded, Direct when none is. Revenue is the Amount of deals at stage Closed whose effective won date falls in the window; that date is Zoho’s Closing Date where it holds one, otherwise the moment the deal entered the Closed stage in Zoho’s own Stage History (module DealHistory), which no later edit to the deal moves, and only as a last resort the last-changed date. Deals closed counts the same deals, including those with no Amount, so revenue is a floor. Deals logged counts deals Zoho created in the window, whatever stage they are at now. Open pipeline is every client deal still open, whenever it was created. Pace compares each target with the share of the window’s weekdays that have passed, in Central time.',
     inputs: ['rb_rows'],
     fn: (rb_rows) => {
       const today = todayCT();
@@ -261,7 +264,7 @@
         const wonCell = el('td', null, d.status === 'won' ? fmtDate(d.won_on) : '—');
         if (d.status === 'won' && d.won_on_est) {
           wonCell.classList.add('cc-c90-est');
-          wonCell.title = 'No Closing Date in Zoho — this is the date the deal was last changed';
+          wonCell.title = 'No Closing Date and no stage history for this deal — this is the date it was last changed, which any edit moves';
         }
         tr.append(
           name, client, by,
@@ -639,7 +642,7 @@
   const body = el('div', 'cc-c90-caveatbody');
   const dateNote = el('p');
   dateNote.append(el('strong', null, 'The close date is a stand-in. '));
-  dateNote.append(document.createTextNode('Zoho’s Closing Date is empty on every deal in the CRM, so a deal is dated by when it was last changed. That date also moves when anyone edits the deal, so editing an old won deal would move its revenue into the current month. '));
+  dateNote.append(document.createTextNode('Zoho’s Closing Date is empty on every deal in the CRM, so a deal is dated by when it entered the Closed stage in Zoho’s own Stage History. Zoho writes that once and later edits to the deal don’t move it. '));
   if (m.noClosingDate.length) {
     const b = el('button', 'cc-c90-open cc-c90-inline', 'Fill Closing Date on ' + intF(m.noClosingDate.length) + ' closed ' + plural(m.noClosingDate.length, 'deal', 'deals') + '.');
     b.type = 'button';
