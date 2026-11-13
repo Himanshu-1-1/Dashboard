@@ -770,7 +770,10 @@
           row[k + '_out'] = left;
         });
         const inP = ev.filter((e) => e.ct >= ct0 && (!ctEnd || e.ct < ctEnd));
-        const uniq = (list) => [...new Map(list.map((e) => [e.id, e])).values()];
+        /* Each event carries the Priority the contact held at that moment (`pr_then`), which is what these lists are
+           filtered on. Without it a row cannot explain itself: someone who connected at Priority 3 and was promoted
+           soon after shows "Priority now P1" in a Priority 3 list and reads as a bug when it is the funnel working. */
+        const uniq = (list) => [...new Map(list.map((e) => [e.id, { ...e, pr_then: stateAt(e.id, e.ct).pr }])).values()];
         const at3 = (e) => stateAt(e.id, e.ct).pr === '3';
         row.pursued = uniq(inP.filter((e) => e.field === 'LI_Connect' && e.from == null && e.to === 'Requested' && at3(e)));
         row.newly_connected = uniq(inP.filter((e) => e.field === 'LI_Connect' && e.from === 'Requested' && e.to === 'Connected' && at3(e)));
@@ -2626,11 +2629,20 @@
     svg.innerHTML = P3_ICON[name];
     return svg;
   };
+  /* Priority at the moment of the change, beside Priority now. They differ when someone has moved on since, which is
+     the point of these lists; marking the cell when it changed stops a correct row reading as a contradiction. */
+  const prThen = (r, p) => {
+    const then = r.pr_then == null ? null : String(r.pr_then);
+    const now = p && p.priority != null ? String(p.priority) : null;
+    const cell = el('td', then && now && then !== now ? 'cc-b2-wait' : null, then ? 'P' + then : 'Not set');
+    if (then && now && then !== now) cell.title = `Was P${then} when this changed; now P${now}`;
+    return cell;
+  };
   const showP3 = (title, list, note, trans) => {
     drill.querySelector('h3').textContent = title + ' (' + intF(list.length) + ')';
     const tbl = el('table', 'cc-tbl');
     const th = el('thead'); const hr = el('tr');
-    (trans ? ['Name', 'Company', 'Changed (CT)', 'From', 'To', 'Priority now', 'LI Connect now', 'Assigned'] : ['Name', 'Company', 'Priority', 'LI Connect', 'Assigned', 'Met']).forEach((x) => { const c = el('th', null, x); c.scope = 'col'; hr.append(c); });
+    (trans ? ['Name', 'Company', 'Changed (CT)', 'From', 'To', 'Priority then', 'Priority now', 'LI Connect now', 'Assigned'] : ['Name', 'Company', 'Priority', 'LI Connect', 'Assigned', 'Met']).forEach((x) => { const c = el('th', null, x); c.scope = 'col'; hr.append(c); });
     th.append(hr); tbl.append(th);
     const tb = el('tbody');
     const people = new Map(rows('p3_state').map((p) => [p.id, p]));
@@ -2639,7 +2651,7 @@
       const tr = el('tr');
       const n = el('td'); n.append(link('Contacts', p.id, p.name)); tr.append(n);
       const a = el('td'); if (p.account_id) a.append(link('Accounts', p.account_id, p.account)); else a.textContent = 'No company'; tr.append(a);
-      if (trans) tr.append(el('td', null, r.src === 'linkedin' ? r.ct.slice(0, 10) + ' (LinkedIn)' : r.ct.replace('T', ' ').slice(0, 16)), el('td', null, r.from || 'Empty'), el('td', null, r.to || 'Empty'), el('td', null, p.priority ? 'P' + p.priority : 'Not set'), el('td', null, p.li || 'Empty'), el('td', null, assignedOf(p.id)));
+      if (trans) tr.append(el('td', null, r.src === 'linkedin' ? r.ct.slice(0, 10) + ' (LinkedIn)' : r.ct.replace('T', ' ').slice(0, 16)), el('td', null, r.from || 'Empty'), el('td', null, r.to || 'Empty'), prThen(r, p), el('td', null, p.priority ? 'P' + p.priority : 'Not set'), el('td', null, p.li || 'Empty'), el('td', null, assignedOf(p.id)));
       else tr.append(el('td', null, p.priority ? 'P' + p.priority : 'Not set'), el('td', null, p.li || 'Empty'), el('td', null, assignedOf(p.id)), el('td', null, p.met ? intF(p.met) : '—'));
       tb.append(tr);
     });
