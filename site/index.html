@@ -275,7 +275,7 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
     showGate(lock);
   };
   /* Datasets a build may not carry at all: seeded empty so a calc that reads one gets rows, not an error. */
-  const DS_DEFAULTS = { wi_research: [], wi_mack: [], li_sync: [], b2b_cal: [], b2b_ff: [], p3_log: [], li_dm: [], li_outreach: [], cos_digest: [] };
+  const DS_DEFAULTS = { wi_research: [], wi_mack: [], li_sync: [], b2b_cal: [], b2b_ff: [], p3_log: [], li_dm: [], li_outreach: [], cos_digest: [], deal_stage_history: [] };
   /* Merge every source into one set of datasets. A later source wins, as it always has, so the opened sealed file
      overrides a snapshot branch for the same dataset. The one exception: an empty list never replaces rows an
      earlier source already supplied. That matters while two pipelines feed the same dataset — the Chief of Staff
@@ -1949,6 +1949,25 @@ dash.loader('open_tasks', {
         else o[key] = v;
       }
       for (const n of numeric) if (o[n] != null && o[n] !== '') o[n] = Number(o[n]);
+      return o;
+    });
+    return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };
+  },
+});
+dash.loader('deal_stage_history', {
+  description: 'Zoho’s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text, counts and amounts become numbers.',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? (answer.trim() ? JSON.parse(answer) : {}) : (answer || {});
+    if (a.status === 'error' || (a.code && !a.data)) throw new Error(a.message || a.code || 'Zoho CRM refused the query');
+    const body = a.data && !Array.isArray(a.data) ? a.data : a;
+    const list = Array.isArray(body.data) ? body.data : [];
+    const rows = list.map((r) => {
+      const o = {};
+      for (const [k, v] of Object.entries(r)) {
+        if (Array.isArray(v)) o[k] = v.map((x) => (x && typeof x === 'object' ? x.name : x)).filter((x) => x != null && x !== '').join(', ');
+        else if (v && typeof v === 'object') { o[k] = v.name ?? null; o[k + '_id'] = v.id ?? null; }
+        else o[k] = v;
+      }
       return o;
     });
     return { columns: rows.length ? Object.keys(rows[0]) : [], rows, cut: Boolean(body.info && body.info.more_records) };

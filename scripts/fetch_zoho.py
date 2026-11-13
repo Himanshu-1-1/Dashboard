@@ -64,6 +64,11 @@ QUERIES = {
     'p3_hist': {"sql": "select Full_Name, Priority, Moved_To__s, Modified_Time from Priority_History where id is not null order by id asc", "paged": True},
     'other_links': {"sql": "select Other_Contacts, Other_Accounts from Contacts_X_Accounts where id is not null order by id asc", "paged": True},
     'rb_deals': {"sql": "select Deal_Name, Deal_Type, Stage, Amount, Account_Name, Contact_Name, Referred_By_Contact, Referred_By_Contact.Relationship_Type, Referred_By_Account, Commission_Details, Closing_Date, Created_Time, Modified_Time from Deals where (Deal_Type is null or (Deal_Type not like '%Referral Partner%' and Deal_Type not like '%Platform Provider%')) order by id asc", "paged": True},
+    # Zoho's own Stage History for Deals (built-in field_tracker module, the Stage History related list on a Deal).
+    # One row per stage the deal has occupied: Modified_Time is when it ENTERED that Stage, Moved_To__s is where it
+    # went next (null while it is still there). This is how a deal's real won date is known: no later edit to the
+    # deal writes a history row, so unlike Modified_Time it cannot drag an old deal into the current month.
+    'deal_stage_history': {"sql": "select Potential_Name, Stage, Moved_To__s, Modified_Time from DealHistory where id is not null order by id asc", "paged": True},
     'b2b_added': {"sql": f"select First_Name, Last_Name, Full_Name, Account_Name, LinkedIn, Assigned, Relationship_Type, Priority, Created_Time from Contacts where ((Tag like '%{B2B_TAG}%') and {ACTIVE}) order by Created_Time desc", "paged": True},
     'wi_introducers': {"sql": f"select Full_Name, Title, Account_Name, Account_Name.Industries, Account_Name.Billing_State, Industry, Relationship_Type, Tag, LI_Connect, Total_Meetings_Created, Last_Activity_Time, DO_NOT_CONTACT, Priority from Contacts where (Relationship_Type is not null and {ACTIVE}) order by Full_Name asc", "paged": True},
     'fn_people': {"sql": "select Full_Name, Account_Name, Priority, LI_Connect, Assigned, Total_Meetings_Created from Contacts where (Relationship_Type like '%Founder Network%' and Priority in ('1','3')) order by Priority asc", "paged": True},

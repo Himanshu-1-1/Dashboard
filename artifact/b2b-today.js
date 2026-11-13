@@ -710,14 +710,23 @@
   };
 
   dash.calc('p3_periods', {
-    title: 'Priority 3 changes today, this week and this month',
+    title: 'Priority 3 changes yesterday, today, this week and this month',
     description: 'From p3_events: Zoho’s Priority History and the daily LI Connect snapshot, counted from the baseline taken when tracking began (Central time; weeks start Monday). Balances: the count now minus the count at the start of the period, rebuilt from the recorded changes. Events: unique contacts that made the change in the period while at Priority 3: pursued (LI Connect empty to Requested), connected (Requested to Connected), Email Required (newly set), and two-way conversations (Priority 3 to 1 while Connected). Periods that began before tracking started are marked partial.',
     inputs: ['p3_state', 'p3_events', 'p3_base'],
     fn: (p3_state, p3_events, p3_base) => {
       const today = todayCT();
       const t = new Date(today + 'T00:00:00Z');
       const mon = new Date(t); mon.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7));
-      const starts = { today, week: mon.toISOString().slice(0, 10), month: today.slice(0, 8) + '01' };
+      /* Yesterday is a CLOSED window (Mack, Nov 12, 2026: "This should be yesterday's date only"). He opens the
+         dashboard each morning to see what moved the day before, and Today reads 0 at 8am, which is what made the
+         panel look dead. Every other period runs from its start to now, so `to` is null for those. */
+      const yest = new Date(t); yest.setUTCDate(t.getUTCDate() - 1);
+      const starts = {
+        yesterday: { from: yest.toISOString().slice(0, 10), to: today },
+        today: { from: today, to: null },
+        week: { from: mon.toISOString().slice(0, 10), to: null },
+        month: { from: today.slice(0, 8) + '01', to: null },
+      };
       const ctOf = (iso) => new Date(iso).toLocaleString('sv-SE', { timeZone: 'America/Chicago' }).replace(' ', 'T');
       const ev = p3_events
         .filter((e) => e && e.contact_id && e.at && (e.field === 'Priority' || e.field === 'LI_Connect'))
@@ -740,15 +749,18 @@
       const stateAt = (id, ct) => ({ pr: valueAt(id, 'Priority', ct), li: valueAt(id, 'LI_Connect', ct) });
       const ids = new Set([...now.keys(), ...byId.keys()]);
       const out = [];
-      Object.entries(starts).forEach(([period, day]) => {
+      Object.entries(starts).forEach(([period, span]) => {
+        const day = span.from;
         const ct0 = day + 'T00:00:00';
+        const ctEnd = span.to ? span.to + 'T00:00:00' : null;
         const partial = !tracked || tracked > day;
-        const row = { key: period, period, start: day, partial, tracked, li_from: liFrom };
+        const row = { key: period, period, start: day, end: span.to || null, partial, tracked, li_from: liFrom };
         Object.entries(P3_KPIS).forEach(([k, f]) => {
           let nowN = 0; let thenN = 0;
           const joined = []; const left = [];
           ids.forEach((id) => {
-            const c = now.get(id) || { pr: null, li: null };
+            /* A closed window compares the two ends of the window; an open one compares the start with now. */
+            const c = ctEnd ? stateAt(id, ctEnd) : (now.get(id) || { pr: null, li: null });
             const a = f(c); const b = f(stateAt(id, ct0));
             if (a) nowN += 1; if (b) thenN += 1;
             if (a && !b) joined.push(id); if (b && !a) left.push(id);
@@ -757,8 +769,11 @@
           row[k + '_in'] = joined;
           row[k + '_out'] = left;
         });
-        const inP = ev.filter((e) => e.ct >= ct0);
-        const uniq = (list) => [...new Map(list.map((e) => [e.id, e])).values()];
+        const inP = ev.filter((e) => e.ct >= ct0 && (!ctEnd || e.ct < ctEnd));
+        /* Each event carries the Priority the contact held at that moment (`pr_then`), which is what these lists are
+           filtered on. Without it a row cannot explain itself: someone who connected at Priority 3 and was promoted
+           soon after shows "Priority now P1" in a Priority 3 list and reads as a bug when it is the funnel working. */
+        const uniq = (list) => [...new Map(list.map((e) => [e.id, { ...e, pr_then: stateAt(e.id, e.ct).pr }])).values()];
         const at3 = (e) => stateAt(e.id, e.ct).pr === '3';
         row.pursued = uniq(inP.filter((e) => e.field === 'LI_Connect' && e.from == null && e.to === 'Requested' && at3(e)));
         row.newly_connected = uniq(inP.filter((e) => e.field === 'LI_Connect' && e.from === 'Requested' && e.to === 'Connected' && at3(e)));
@@ -979,20 +994,36 @@
   const rbStatus = (stage) => (stage === 'Closed' ? 'won' : RB_LOST.includes(stage) ? 'lost' : 'open');
   dash.calc('rb_rows', {
     title: 'Client deals and who referred them',
-    description: 'One row per client deal (every Deal Type except Reseller/ Referral Partner and Platform Provider Agreement): name, type, stage, status (open = any stage but Closed, Closed Lost or Closed Lost to Competition; won = Closed; lost = Closed Lost or Closed Lost to Competition), amount where set, the dates Zoho created it and last changed it (Central time), its Closing Date and the effective date it was won (Closing Date when Zoho holds one, otherwise the last-changed date, with a flag saying which was used), the deal’s Commission Details text, account, contact, the Referred By Contact and Referred By Account from the deal’s Commission Details, whether the referrer is Founder Network (the referring contact’s Relationship Type), and whether a referrer is recorded at all.',
-    inputs: ['rb_deals'],
-    fn: (rb_deals) => rb_deals.map((d) => {
+    description: 'One row per client deal (every Deal Type except Reseller/ Referral Partner and Platform Provider Agreement): name, type, stage, status (open = any stage but Closed, Closed Lost or Closed Lost to Competition; won = Closed; lost = Closed Lost or Closed Lost to Competition), amount where set, the dates Zoho created it and last changed it (Central time), its Closing Date and the effective date it was won (Closing Date when Zoho holds one, otherwise the date the deal entered Closed in Zoho’s own Stage History, otherwise the last-changed date, with won_on_src naming which was used and won_on_est true only for that last resort), the deal’s Commission Details text, account, contact, the Referred By Contact and Referred By Account from the deal’s Commission Details, whether the referrer is Founder Network (the referring contact’s Relationship Type), and whether a referrer is recorded at all.',
+    inputs: ['rb_deals', 'deal_stage_history'],
+    fn: (rb_deals, deal_stage_history) => {
+      /* When a deal entered Closed, from Zoho's own Stage History (module DealHistory). Each history row is one stage
+         occupancy: Modified_Time is when the deal ENTERED that Stage, and Moved_To__s names where it went next, so the
+         row with Stage Closed and no Moved_To__s is the one that still stands. This beats Modified_Time on the deal,
+         which moves on any edit and was dragging deals closed back in June into the current month. A deal that went
+         Closed, reopened and closed again has several Closed rows; the latest standing one wins. */
+      const enteredClosed = new Map();
+      deal_stage_history.forEach((h) => {
+        if (String(h.Stage || '') !== 'Closed' || h.Moved_To__s || !h.Potential_Name_id || !h.Modified_Time) return;
+        const k = String(h.Potential_Name_id);
+        const at = String(h.Modified_Time);
+        if (!enteredClosed.has(k) || at > enteredClosed.get(k)) enteredClosed.set(k, at);
+      });
+      return rb_deals.map((d) => {
       const by = d.Referred_By_Contact || null;
       const byAcct = d.Referred_By_Account || null;
       const rel = String(d['Referred_By_Contact.Relationship_Type'] || '');
-      /* When a deal was won. Zoho's Closing_Date is empty on every deal in the CRM today, so the effective date falls
-         back to Modified_Time, which also moves on any edit; won_on_est says which of the two this row used, so a page
-         can warn rather than present a guess as a fact. Filling Closing_Date in Zoho takes over with no code change. */
+      /* Closing_Date first (nobody fills it today, but it takes over with no code change), then the Stage History entry
+         time, then Modified_Time as a last resort for a deal closed before stage tracking began (Feb 17, 2026 in this
+         org — no deal in the CRM today falls there). won_on_est stays true only for that last case, so a page warns on
+         a guess and not on a recorded fact; won_on_src names which of the three this row used. */
       const closing = d.Closing_Date ? String(d.Closing_Date).slice(0, 10) : null;
       const modified = d.Modified_Time ? ctDate(d.Modified_Time) : null;
+      const entered = enteredClosed.has(String(d.id)) ? ctDate(enteredClosed.get(String(d.id))) : null;
       return {
         id: String(d.id), deal: d.Deal_Name || 'Deal', type: d.Deal_Type || 'No Deal Type', stage: d.Stage || null, status: rbStatus(d.Stage),
-        closing, won_on: closing || modified, won_on_est: !closing,
+        closing, won_on: closing || entered || modified, won_on_est: !closing && !entered,
+        won_on_src: closing ? 'Closing Date' : entered ? 'Zoho Stage History' : 'last changed (no stage history)',
         amount: Number(d.Amount) > 0 ? Number(d.Amount) : null, created: d.Created_Time ? ctDate(d.Created_Time) : null, modified, commission_terms: String(d.Commission_Details || '').trim() || null,
         account: d.Account_Name || null, account_id: d.Account_Name_id ? String(d.Account_Name_id) : null,
         contact: d.Contact_Name || null, contact_id: d.Contact_Name_id ? String(d.Contact_Name_id) : null,
@@ -1000,7 +1031,8 @@
         by_account: byAcct, by_account_id: d.Referred_By_Account_id ? String(d.Referred_By_Account_id) : null,
         referred: Boolean(by || byAcct), fn: /founder network/i.test(rel),
       };
-    }),
+      });
+    },
   });
 
   /* B2B partner meetings: every prospect with a completed meeting (mtg_people) and the Referral Partner deals linked to
@@ -1041,7 +1073,7 @@
         ].filter((d) => !mineIds.has(String(d.id))).map((d) => [String(d.id), d])).values()].map(brief);
         const otherRaw = mine.length || companyOnly.length ? [] : [...(otherByContact.get(p.id) || []), ...(p.account_id && !OWN_CO.test(String(p.account || '')) ? otherByAccount.get(String(p.account_id)) || [] : [])];
         const other = [...new Map(otherRaw.map((d) => [String(d.id), d])).values()].map((d) => ({ ...brief(d), type: d.deal_type || 'Not set' }));
-        return { id: p.id, name: p.name, account: p.account, account_id: p.account_id, assigned: p.assigned, first: p.days[0] || null, last: p.last, meetings: p.n, deals: mine, company_deals: companyOnly, other_deals: other, created: mine.length > 0, other: other.length > 0 };
+        return { id: p.id, name: p.name, account: p.account, account_id: p.account_id, assigned: p.assigned, first: p.days[0] || null, last: p.last, next: p.next || null, meetings: p.n, deals: mine, company_deals: companyOnly, other_deals: other, created: mine.length > 0, other: other.length > 0 };
       });
     },
   });
@@ -1238,7 +1270,10 @@
     drawPf();
     pf.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
-  const pfSop = el('a', 'cc-b2-soplink', 'SOP');
+  /* Labeled for what it is, not "SOP" (Mack, Nov 12, 2026). He went looking for what the Priorities mean, found them
+     only after hunting, and decided against printing them inline here: "یہ بہت کراؤڈڈ ہو جائے گا... لنک ہی دے دو". A
+     findable link in the first section's header is the whole ask. */
+  const pfSop = el('a', 'cc-b2-soplink', 'Priority definitions');
   pfSop.href = PF_SOP_URL; pfSop.target = '_blank'; pfSop.rel = 'noopener'; pfSop.title = 'B2B Priority Definition: what each Priority means';
   pfSop.setAttribute('aria-label', 'SOP: B2B Priority Definition (opens in a new tab)');
   pfHead.append(pfTitleBox, pfReset, pfSop);
@@ -2594,11 +2629,20 @@
     svg.innerHTML = P3_ICON[name];
     return svg;
   };
+  /* Priority at the moment of the change, beside Priority now. They differ when someone has moved on since, which is
+     the point of these lists; marking the cell when it changed stops a correct row reading as a contradiction. */
+  const prThen = (r, p) => {
+    const then = r.pr_then == null ? null : String(r.pr_then);
+    const now = p && p.priority != null ? String(p.priority) : null;
+    const cell = el('td', then && now && then !== now ? 'cc-b2-wait' : null, then ? 'P' + then : 'Not set');
+    if (then && now && then !== now) cell.title = `Was P${then} when this changed; now P${now}`;
+    return cell;
+  };
   const showP3 = (title, list, note, trans) => {
     drill.querySelector('h3').textContent = title + ' (' + intF(list.length) + ')';
     const tbl = el('table', 'cc-tbl');
     const th = el('thead'); const hr = el('tr');
-    (trans ? ['Name', 'Company', 'Changed (CT)', 'From', 'To', 'Priority now', 'LI Connect now', 'Assigned'] : ['Name', 'Company', 'Priority', 'LI Connect', 'Assigned', 'Met']).forEach((x) => { const c = el('th', null, x); c.scope = 'col'; hr.append(c); });
+    (trans ? ['Name', 'Company', 'Changed (CT)', 'From', 'To', 'Priority then', 'Priority now', 'LI Connect now', 'Assigned'] : ['Name', 'Company', 'Priority', 'LI Connect', 'Assigned', 'Met']).forEach((x) => { const c = el('th', null, x); c.scope = 'col'; hr.append(c); });
     th.append(hr); tbl.append(th);
     const tb = el('tbody');
     const people = new Map(rows('p3_state').map((p) => [p.id, p]));
@@ -2607,7 +2651,7 @@
       const tr = el('tr');
       const n = el('td'); n.append(link('Contacts', p.id, p.name)); tr.append(n);
       const a = el('td'); if (p.account_id) a.append(link('Accounts', p.account_id, p.account)); else a.textContent = 'No company'; tr.append(a);
-      if (trans) tr.append(el('td', null, r.src === 'linkedin' ? r.ct.slice(0, 10) + ' (LinkedIn)' : r.ct.replace('T', ' ').slice(0, 16)), el('td', null, r.from || 'Empty'), el('td', null, r.to || 'Empty'), el('td', null, p.priority ? 'P' + p.priority : 'Not set'), el('td', null, p.li || 'Empty'), el('td', null, assignedOf(p.id)));
+      if (trans) tr.append(el('td', null, r.src === 'linkedin' ? r.ct.slice(0, 10) + ' (LinkedIn)' : r.ct.replace('T', ' ').slice(0, 16)), el('td', null, r.from || 'Empty'), el('td', null, r.to || 'Empty'), prThen(r, p), el('td', null, p.priority ? 'P' + p.priority : 'Not set'), el('td', null, p.li || 'Empty'), el('td', null, assignedOf(p.id)));
       else tr.append(el('td', null, p.priority ? 'P' + p.priority : 'Not set'), el('td', null, p.li || 'Empty'), el('td', null, assignedOf(p.id)), el('td', null, p.met ? intF(p.met) : '—'));
       tb.append(tr);
     });
@@ -2671,7 +2715,7 @@
       c.setAttribute('aria-label', opt.label + ': ' + opt.big + '. Open the list.');
       p3Grid.append(c);
     };
-    const PERIODS = [['today', 'Today', 'today'], ['week', 'Week', 'this week'], ['month', 'Month', 'this month']];
+    const PERIODS = [['yesterday', 'Yesterday', 'yesterday'], ['today', 'Today', 'today'], ['week', 'Week', 'this week'], ['month', 'Month', 'this month']];
     const NET_NAME = { backlog: 'Priority 3 backlog', untouched: 'Untouched (Priority 3, LI Connect empty)', pending: 'Pending requests (Priority 3, Requested)', connected: 'Connected (Priority 3)', email: 'Email Required (Priority 3)' };
     const byIdP3 = new Map(ppl.map((p) => [p.id, p]));
     const showNet = (k, key, word) => {
@@ -2714,11 +2758,36 @@
     const mailBy = mailOk() ? new Map(rows('b2b_mail_people').map((x) => [x.id, x])) : new Map();
     const liBy = state(['b2b_li_people']) === 'ok' ? new Map(rows('b2b_li_people').filter((x) => x.in_export).map((x) => [x.id, x])) : new Map();
     const LI_TWO = new Set(['talking', 'they_wrote', 'said_yes']);
+    /* Shruti's LinkedIn conversations (Hemang, Nov 13, 2026). `li_dm` is built from Mack's export alone, and Shruti runs
+       the B2B LinkedIn outreach, so until now her replies were invisible here: a prospect she had been talking to for
+       weeks sat under "Priority 1, no reply found" and the two-way count could not move on her work. Her reviewed DMs
+       already exist in `shruti_network` for Mack's Network tab; this joins them by LinkedIn profile (`liKey`) through
+       `b2b_added_rows`, which carries both the Zoho id and the profile URL, because `b2b_people` has no URL to match on
+       and `sn_rows` lives in network.js, which loads after this file. Done here in the view rather than inside
+       `b2b_li_people` so a build without her export behaves exactly as before. */
+    const snBy = new Map();
+    if (state(['shruti_network']) === 'ok' && state(['b2b_added_rows']) === 'ok') {
+      const bySlug = new Map();
+      rows('b2b_added_rows').forEach((r) => { const k = liKey(r.linkedin); if (k && !bySlug.has(k)) bySlug.set(k, String(r.id)); });
+      rows('shruti_network').forEach((r) => {
+        const k = liKey(r.url || r.linkedin);
+        const id = k ? bySlug.get(k) : null;
+        if (!id) return;
+        let dm = r.dm;
+        if (typeof dm === 'string') { try { dm = JSON.parse(dm); } catch (e) { dm = null; } }
+        /* A profile should appear once in her export, but if it ever appears twice, keep the newest conversation
+           rather than whichever row happened to be last — arbitrary order must not decide what the count shows. */
+        if (!dm || !dm.status) return;
+        const prev = snBy.get(id);
+        if (!prev || String(dm.last || '') > String(prev.last || '')) snBy.set(id, dm);
+      });
+    }
     const proof = (p) => {
       const out = [];
       const mt = mtgBy.get(p.id); if (mt && mt.n > 0) out.push(`${intF(mt.n)} ${mt.n === 1 ? 'meeting' : 'meetings'} held, last ${dayF(mt.last)}`);
       const ml = mailBy.get(p.id); if (ml && ml.n_in > 0) out.push(`${intF(ml.n_in)} ${ml.n_in === 1 ? 'email' : 'emails'} from them, last ${dayF(ctDay(ml.last_in))}`);
       const lk = liBy.get(p.id); if (lk && lk.theirs > 0 && LI_TWO.has(lk.status)) out.push(`LinkedIn: ${lk.label.toLowerCase()}${lk.last_in ? ', last ' + dayF(ctDay(lk.last_in)) : ''}`);
+      const sn = snBy.get(p.id); if (sn && LI_TWO.has(sn.status)) out.push(`LinkedIn (Shruti): ${String(LI_STATUS[sn.status] || sn.status).toLowerCase()}${sn.last ? ', last ' + dayF(ctDay(sn.last)) : ''}`);
       return out;
     };
     const p1all = ppl.filter((p) => p.priority === '1').map((p) => ({ ...p, proof: proof(p) }));
@@ -2726,6 +2795,25 @@
     const unproven = p1all.filter((p) => !p.proof.length);
     const p3Talking = ppl.filter((p) => p.priority === '3').map((p) => ({ ...p, proof: proof(p) })).filter((p) => p.proof.length);
     const srcGap = [mtgBy.size ? null : 'meetings', mailBy.size ? null : 'email', liBy.size ? null : 'LinkedIn'].filter(Boolean);
+    /* How current the LinkedIn evidence is (Hemang, Nov 13, 2026). Both LinkedIn sources are hand-made exports, so this
+       number silently stops moving when nobody downloads a new one — which is exactly how it read as a broken count for
+       days. The card now says how old each export is and goes amber past LI_STALE_DAYS, so a frozen input announces
+       itself instead of looking like a flat week. Meetings and email come from the hourly feed and need no such note. */
+    const LI_STALE_DAYS = 7;
+    const newest = (vals) => vals.filter(Boolean).map((v) => ctDay(v)).filter(Boolean).sort().pop() || null;
+    const liAsOf = newest([...liBy.values()].map((x) => x.as_of));
+    const snAsOf = newest([...snBy.values()].map((d) => d.last));
+    const agedays = (d) => (d ? Math.round((dayMs(todayCT()) - dayMs(d)) / 864e5) : null);
+    const liAge = agedays(liAsOf);
+    const snAge = agedays(snAsOf);
+    const stale = [
+      liBy.size && liAge != null && liAge > LI_STALE_DAYS ? `Mack’s is ${intF(liAge)} days old` : null,
+      snBy.size && snAge != null && snAge > LI_STALE_DAYS ? `Shruti’s is ${intF(snAge)} days old` : null,
+    ].filter(Boolean);
+    const liFresh = [
+      liBy.size ? `Mack’s export ${liAsOf ? 'as of ' + dayF(liAsOf) : 'date unknown'}` : null,
+      snBy.size ? `Shruti’s ${snAsOf ? 'newest message ' + dayF(snAsOf) : 'date unknown'}` : 'Shruti’s LinkedIn is not in this build',
+    ].filter(Boolean).join('; ');
     const TW_COLS = [
       ['Name', (p) => link('Contacts', p.id, p.name)],
       ['Company', (p) => (p.account_id ? link('Accounts', p.account_id, p.account) : p.account || 'No company')],
@@ -2734,7 +2822,7 @@
       ['Assigned', (p) => assignedOf(p.id)],
       ['Reply on record', (p) => (p.proof.length ? p.proof.join('; ') : 'None found: no meeting, email or LinkedIn reply')],
     ];
-    const twNote = `A two-way conversation means they replied: a meeting held (Zoho, Outlook or Fireflies), an email from them, or a LinkedIn conversation (Mack’s export).${srcGap.length ? ` Not in this build: ${srcGap.join(', ')}, so some replies may be missing.` : ''} Calls, texts or WhatsApp the team didn’t log can’t be seen.`;
+    const twNote = `A two-way conversation means they replied: a meeting held (Zoho, Outlook or Fireflies), an email from them, or a reviewed LinkedIn conversation on Mack’s or Shruti’s account.${srcGap.length ? ` Not in this build: ${srcGap.join(', ')}, so some replies may be missing.` : ''} LinkedIn comes from hand-made exports, not a live feed — ${liFresh}${stale.length ? `, so a reply since then is not here yet` : ''}. Meetings and email refresh hourly. Calls, texts or WhatsApp the team didn’t log can’t be seen.`;
     const since = (pr('all') || {}).tracked;
     kpi({ key: 'twoway', theme: 'good', icon: 'twoway', label: 'Two-way conversations', big: intF(twoWay.length + p3Talking.length),
       sub: 'Priority 1 and 3 prospects who replied (meeting, email or LinkedIn)',
@@ -2746,7 +2834,13 @@
         ] },
         { title: since ? `New since ${dayF(since)} (Priority 3 to 1 while Connected)` : 'New (Priority 3 to 1 while Connected)', rows: evt('promoted') },
       ],
-      flag: unproven.length || p3Talking.length ? `${p3Talking.length ? `Move the ${intF(p3Talking.length)} at Priority 3 to 1. ` : ''}${unproven.length ? `${intF(unproven.length)} at Priority 1 show no reply: confirm or move back to 3.` : ''}` : null,
+      /* Two things can be wrong at once: records needing a Priority move, and LinkedIn evidence too old to trust the
+         count at all. The staleness warning comes first, because it changes how the number itself should be read. */
+      flag: [
+        stale.length ? `LinkedIn evidence is out of date (${stale.join(', ')}), so replies on LinkedIn since then are not in this count \u2014 download fresh exports before reading it as flat.` : null,
+        p3Talking.length ? `Move the ${intF(p3Talking.length)} at Priority 3 to 1.` : null,
+        unproven.length ? `${intF(unproven.length)} at Priority 1 show no reply: confirm or move back to 3.` : null,
+      ].filter(Boolean).join(' ') || null,
       flagGo: unproven.length ? () => showTable('Priority 1 with no reply found', TW_COLS, unproven, twNote + ' Confirm the conversation and log it in Zoho, or move them back to Priority 3.') : null,
       flagLabel: unproven.length ? `List the ${intF(unproven.length)}` : null,
       go: () => showTable('Two-way conversations: Priority 1 and 3 who replied', TW_COLS, [...twoWay, ...p3Talking],
@@ -3570,12 +3664,54 @@
     ['Priority', (r) => { const pp = rows('b2b_people').find((p) => p.id === r.id); return pp && pp.priority ? 'P' + pp.priority : 'Not set'; }],
     ['CRM Owner', (r) => r.assigned || 'Not assigned'],
     ['Referral Partner Deal', pmDealCell],
+    ['Why it is live', (r) => (r.motion && r.motion.length ? r.motion.join('; ') : 'nothing since the meeting')],
   ];
   const PM_PERIODS = [['week', 'This week'], ['month', 'This month'], ['year', 'This year'], ['all', 'All time']];
   /* Open work only (Mack, Oct 28, 2026): a deal at Closed, Closed Lost or Closed Lost to Competition isn't shown here, and a
      met partner whose deals are all closed or lost leaves the section; signed partners are in Closed Won below. A deal with
      no stage is treated as open. CRM Owner tabs (Zoho's Assigned field) filter the whole section. */
   const pmOpenDeal = (d) => !d.stage || CC_RULES.openStages.includes(d.stage);
+  /* Who belongs on the not-created list (Mack, Nov 12, 2026; rule picked by Hemang, Nov 13). Having met someone once
+     is not a reason to open a deal — Mack said so himself in the same breath he proposed it ("یہ سب کچرا ہو جائے گا
+     پھر"), because everyone we have ever met would sit there forever until a human cleared them, which is exactly the
+     "same reds every day" complaint. A deal is the container for chasing a signature, so the test is whether the
+     relationship is still moving: met at least once AND at least one sign of motion since. Nothing here is typed by
+     anyone into Zoho, so it needs no work from Shruti, and it is self-clearing — a partner who goes quiet drops off
+     the list on his own. Each row carries the reasons it qualified, so a wrong call is visible rather than plausible.
+     Mail and LinkedIn are used only when the build carries them (pmMotionGap names any that are missing). */
+  const PM_MOTION_TALK = new Set(['talking', 'they_wrote', 'said_yes']);
+  let pmMotionGap = [];
+  const pmMotion = () => {
+    const gap = [];
+    const mail = mailOk() ? new Map(rows('b2b_mail_people').map((r) => [String(r.id), r])) : (gap.push('email'), null);
+    const li = liHas() && state(['b2b_li_people']) === 'ok'
+      ? new Map(rows('b2b_li_people').filter((x) => x.in_export).map((x) => [String(x.id), x]))
+      : (gap.push('LinkedIn'), null);
+    const task = new Set();
+    if (state(['open_tasks']) === 'ok') rows('open_tasks').forEach((t) => { if (t.Who_Id_id) task.add(String(t.Who_Id_id)); });
+    else gap.push('open tasks');
+    const agr = new Map();
+    if (state(['agreements']) === 'ok') {
+      rows('agreements').filter((a) => a.kind !== 'MNDA').forEach((a) => { if (a.contact_id) agr.set(String(a.contact_id), a); });
+    } else gap.push('agreements');
+    pmMotionGap = gap;
+    return (p) => {
+      const why = [];
+      if (p.meetings > 1) why.push(`met ${intF(p.meetings)} times`);
+      /* p.next and last_in are UTC timestamps; slicing to 10 characters would read an evening Central meeting as the
+         next day, so both go through ctDay first. */
+      if (p.next) why.push(`next meeting ${fullDayF(ctDay(p.next))}`);
+      const a = agr.get(String(p.id));
+      if (a && a.state && a.state !== 'None in Zoho Sign') why.push(`agreement ${String(a.state).toLowerCase()}`);
+      if (task.has(String(p.id))) why.push('open task in Zoho');
+      const m = mail ? mail.get(String(p.id)) : null;
+      const inDay = m && m.last_in ? ctDay(m.last_in) : null;
+      if (inDay && (!p.last || inDay >= String(p.last).slice(0, 10))) why.push(`emailed us ${fullDayF(inDay)}`);
+      const l = li ? li.get(String(p.id)) : null;
+      if (l && PM_MOTION_TALK.has(l.status)) why.push(`LinkedIn: ${String(l.status).replace(/_/g, ' ')}`);
+      return why;
+    };
+  };
   const pmActive = (r) => {
     const deals = r.deals.filter(pmOpenDeal);
     const otherDeals = (r.other_deals || []).filter(pmOpenDeal);
@@ -3822,7 +3958,8 @@
       return;
     }
     const raw = rows('b2b_partner_deals');
-    const active = raw.map(pmActive).filter(Boolean);
+    const motionOf = pmMotion();
+    const active = raw.map(pmActive).filter(Boolean).map((r) => ({ ...r, motion: motionOf(r) }));
     const leftOut = raw.length - active.length;
     pmOwner = ownerTabs(pmOwners, active, pmOwner, (o) => { pmReopen = pmOpenNow(); pmOwner = o; pmSel = null; drawPm(); });
     const ownerTag = pmOwner === 'All' ? '' : pmOwner + ': ';
@@ -3843,7 +3980,10 @@
     const scope = from ? ` first met ${periodName.toLowerCase()} (since ${fullDayF(from)})` : '';
     const made = all.filter((r) => r.created);
     const others = all.filter((r) => !r.created && r.other);
-    const missing = all.filter((r) => !r.created && !r.other);
+    /* Not created counts only partners the relationship is still moving with (see pmMotion). The rest met us once and
+       went quiet: they are counted on their own line, never as red, so the number Mack acts on is work that is live. */
+    const missing = all.filter((r) => !r.created && !r.other && r.motion.length);
+    const quiet = all.filter((r) => !r.created && !r.other && !r.motion.length);
     if (!everyone.length) {
       pmTools.replaceChildren();
       if (pmReopen) { pmReopen = null; drill.hidden = true; }
@@ -3959,7 +4099,7 @@
       `Referral Partner deal created: ${intF(made.length)}. Open the list.`);
     const gap = tile(missing.length ? 'cc-pm-bad' : all.length ? 'cc-pm-ok' : 'cc-pm-none', 'Referral Partner Deal Not Created', missing.length, null,
       opener('miss', () => (missing.length
-        ? showTable(ownerTag + 'Referral Partner deal not created' + (from ? ', ' + periodName.toLowerCase() : ''), pmCols, pmSort(missing), `${from ? 'Partners' : 'Met partners'}${scope} with no Referral Partner deal linked to them.` + ' Create the deal in Zoho as SOP 002 sets out (Deal Type Reseller/ Referral Partner, Stage Identify, Amount $0.00, their company as Account Name and this person as Contact Name); they drop off this list at the next refresh. ' + PM_OWNER_NOTE)
+        ? showTable(ownerTag + 'Referral Partner deal not created' + (from ? ', ' + periodName.toLowerCase() : ''), pmCols, pmSort(missing), `${from ? 'Partners' : 'Met partners'}${scope} with no Referral Partner deal linked to them, where the relationship is still moving — a second meeting held or booked, an agreement, an open task, or a reply by email or LinkedIn since the meeting. The Why it is live column says which, and partners who met us once and went quiet are on their own line under the cards rather than here.${pmMotionGap.length ? ` Not in this build: ${pmMotionGap.join(', ')}.` : ''}` + ' Create the deal in Zoho as SOP 002 sets out (Deal Type Reseller/ Referral Partner, Stage Identify, Amount $0.00, their company as Account Name and this person as Contact Name); they drop off this list at the next refresh. ' + PM_OWNER_NOTE)
         : showTable(ownerTag + 'Referral Partner deal not created' + (from ? ', ' + periodName.toLowerCase() : ''), pmCols, [], null, from ? `All partners first met ${periodName.toLowerCase()} have Referral Partner Deals created.` : 'All met partners have Referral Partner Deals created.'))),
       `Referral Partner deal not created: ${intF(missing.length)}, target 0. Open the list.`);
     const tgt = el('p', 'cc-pm-target', 'Target: 0');
@@ -3975,6 +4115,16 @@
       otherLine.append(ob, document.createTextNode(' (Platform Provider, client work and so on), so ' + (others.length === 1 ? 'isn’t' : 'aren’t') + ' counted as missing a Referral Partner deal.'));
     }
     otherLine.hidden = !others.length;
+    /* Met once and quiet since. Not red, because there is nothing to chase and the row would never clear itself;
+       counted here so the number above is live work and this group is still one click away. */
+    const quietLine = el('p', 'cc-pm-period cc-pm-others');
+    if (quiet.length) {
+      const qb = el('button', 'cc-pm-prev', `${intF(quiet.length)} met ${quiet.length === 1 ? 'partner has' : 'partners have'} gone quiet`);
+      qb.type = 'button';
+      qb.addEventListener('click', opener('quiet', () => showTable(ownerTag + 'Met partners who have gone quiet' + (from ? ', ' + periodName.toLowerCase() : ''), pmCols, pmSort(quiet), `${from ? 'Partners' : 'Met partners'}${scope} with no Referral Partner deal and nothing since the meeting — no second meeting or one booked, no agreement, no open task, no reply by email or LinkedIn. A deal is for chasing a signature, so these aren’t counted as missing one. Reach out and they move to the red count on their own.${pmMotionGap.length ? ` Not in this build: ${pmMotionGap.join(', ')}, so some may have replied without it showing here.` : ''} ` + PM_OWNER_NOTE)));
+      quietLine.append(qb, document.createTextNode(' since the meeting, so ' + (quiet.length === 1 ? 'is' : 'are') + ' not counted as missing a Referral Partner deal.'));
+    }
+    quietLine.hidden = !quiet.length;
     if (!from) {
       [['made', ok], ['miss', gap], ['other', otherLine]].forEach(([key, node]) => {
         node.addEventListener('pointerenter', () => { hoverK = key; readout(); });
@@ -3993,7 +4143,7 @@
       b.addEventListener('click', opener('period', () => showTable(ownerTag + 'Partners met, ' + periodName.toLowerCase(), pmCols, pmSort(all), `Partners${scope}, most recent meeting first. ` + PM_OWNER_NOTE)));
       periodLine.append(b, document.createTextNode(` (since ${fullDayF(from)}). Their deals as they stand today:`));
     } else periodLine.textContent = 'Every partner met so far. Their deals as they stand today:';
-    right.append(pmTools, periodLine, pair, otherLine);
+    right.append(pmTools, periodLine, pair, otherLine, quietLine);
     pmBody.replaceChildren(metWrap, right);
     if (from) {
       const series = pmSeries(pmPeriod).map(([a, b, label], i, arr) => {
