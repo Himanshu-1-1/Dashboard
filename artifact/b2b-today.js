@@ -2731,11 +2731,36 @@
     const mailBy = mailOk() ? new Map(rows('b2b_mail_people').map((x) => [x.id, x])) : new Map();
     const liBy = state(['b2b_li_people']) === 'ok' ? new Map(rows('b2b_li_people').filter((x) => x.in_export).map((x) => [x.id, x])) : new Map();
     const LI_TWO = new Set(['talking', 'they_wrote', 'said_yes']);
+    /* Shruti's LinkedIn conversations (Hemang, Nov 13, 2026). `li_dm` is built from Mack's export alone, and Shruti runs
+       the B2B LinkedIn outreach, so until now her replies were invisible here: a prospect she had been talking to for
+       weeks sat under "Priority 1, no reply found" and the two-way count could not move on her work. Her reviewed DMs
+       already exist in `shruti_network` for Mack's Network tab; this joins them by LinkedIn profile (`liKey`) through
+       `b2b_added_rows`, which carries both the Zoho id and the profile URL, because `b2b_people` has no URL to match on
+       and `sn_rows` lives in network.js, which loads after this file. Done here in the view rather than inside
+       `b2b_li_people` so a build without her export behaves exactly as before. */
+    const snBy = new Map();
+    if (state(['shruti_network']) === 'ok' && state(['b2b_added_rows']) === 'ok') {
+      const bySlug = new Map();
+      rows('b2b_added_rows').forEach((r) => { const k = liKey(r.linkedin); if (k && !bySlug.has(k)) bySlug.set(k, String(r.id)); });
+      rows('shruti_network').forEach((r) => {
+        const k = liKey(r.url || r.linkedin);
+        const id = k ? bySlug.get(k) : null;
+        if (!id) return;
+        let dm = r.dm;
+        if (typeof dm === 'string') { try { dm = JSON.parse(dm); } catch (e) { dm = null; } }
+        /* A profile should appear once in her export, but if it ever appears twice, keep the newest conversation
+           rather than whichever row happened to be last — arbitrary order must not decide what the count shows. */
+        if (!dm || !dm.status) return;
+        const prev = snBy.get(id);
+        if (!prev || String(dm.last || '') > String(prev.last || '')) snBy.set(id, dm);
+      });
+    }
     const proof = (p) => {
       const out = [];
       const mt = mtgBy.get(p.id); if (mt && mt.n > 0) out.push(`${intF(mt.n)} ${mt.n === 1 ? 'meeting' : 'meetings'} held, last ${dayF(mt.last)}`);
       const ml = mailBy.get(p.id); if (ml && ml.n_in > 0) out.push(`${intF(ml.n_in)} ${ml.n_in === 1 ? 'email' : 'emails'} from them, last ${dayF(ctDay(ml.last_in))}`);
       const lk = liBy.get(p.id); if (lk && lk.theirs > 0 && LI_TWO.has(lk.status)) out.push(`LinkedIn: ${lk.label.toLowerCase()}${lk.last_in ? ', last ' + dayF(ctDay(lk.last_in)) : ''}`);
+      const sn = snBy.get(p.id); if (sn && LI_TWO.has(sn.status)) out.push(`LinkedIn (Shruti): ${String(LI_STATUS[sn.status] || sn.status).toLowerCase()}${sn.last ? ', last ' + dayF(ctDay(sn.last)) : ''}`);
       return out;
     };
     const p1all = ppl.filter((p) => p.priority === '1').map((p) => ({ ...p, proof: proof(p) }));
@@ -2743,6 +2768,25 @@
     const unproven = p1all.filter((p) => !p.proof.length);
     const p3Talking = ppl.filter((p) => p.priority === '3').map((p) => ({ ...p, proof: proof(p) })).filter((p) => p.proof.length);
     const srcGap = [mtgBy.size ? null : 'meetings', mailBy.size ? null : 'email', liBy.size ? null : 'LinkedIn'].filter(Boolean);
+    /* How current the LinkedIn evidence is (Hemang, Nov 13, 2026). Both LinkedIn sources are hand-made exports, so this
+       number silently stops moving when nobody downloads a new one — which is exactly how it read as a broken count for
+       days. The card now says how old each export is and goes amber past LI_STALE_DAYS, so a frozen input announces
+       itself instead of looking like a flat week. Meetings and email come from the hourly feed and need no such note. */
+    const LI_STALE_DAYS = 7;
+    const newest = (vals) => vals.filter(Boolean).map((v) => ctDay(v)).filter(Boolean).sort().pop() || null;
+    const liAsOf = newest([...liBy.values()].map((x) => x.as_of));
+    const snAsOf = newest([...snBy.values()].map((d) => d.last));
+    const agedays = (d) => (d ? Math.round((dayMs(todayCT()) - dayMs(d)) / 864e5) : null);
+    const liAge = agedays(liAsOf);
+    const snAge = agedays(snAsOf);
+    const stale = [
+      liBy.size && liAge != null && liAge > LI_STALE_DAYS ? `Mack’s is ${intF(liAge)} days old` : null,
+      snBy.size && snAge != null && snAge > LI_STALE_DAYS ? `Shruti’s is ${intF(snAge)} days old` : null,
+    ].filter(Boolean);
+    const liFresh = [
+      liBy.size ? `Mack’s export ${liAsOf ? 'as of ' + dayF(liAsOf) : 'date unknown'}` : null,
+      snBy.size ? `Shruti’s ${snAsOf ? 'newest message ' + dayF(snAsOf) : 'date unknown'}` : 'Shruti’s LinkedIn is not in this build',
+    ].filter(Boolean).join('; ');
     const TW_COLS = [
       ['Name', (p) => link('Contacts', p.id, p.name)],
       ['Company', (p) => (p.account_id ? link('Accounts', p.account_id, p.account) : p.account || 'No company')],
@@ -2751,7 +2795,7 @@
       ['Assigned', (p) => assignedOf(p.id)],
       ['Reply on record', (p) => (p.proof.length ? p.proof.join('; ') : 'None found: no meeting, email or LinkedIn reply')],
     ];
-    const twNote = `A two-way conversation means they replied: a meeting held (Zoho, Outlook or Fireflies), an email from them, or a LinkedIn conversation (Mack’s export).${srcGap.length ? ` Not in this build: ${srcGap.join(', ')}, so some replies may be missing.` : ''} Calls, texts or WhatsApp the team didn’t log can’t be seen.`;
+    const twNote = `A two-way conversation means they replied: a meeting held (Zoho, Outlook or Fireflies), an email from them, or a reviewed LinkedIn conversation on Mack’s or Shruti’s account.${srcGap.length ? ` Not in this build: ${srcGap.join(', ')}, so some replies may be missing.` : ''} LinkedIn comes from hand-made exports, not a live feed — ${liFresh}${stale.length ? `, so a reply since then is not here yet` : ''}. Meetings and email refresh hourly. Calls, texts or WhatsApp the team didn’t log can’t be seen.`;
     const since = (pr('all') || {}).tracked;
     kpi({ key: 'twoway', theme: 'good', icon: 'twoway', label: 'Two-way conversations', big: intF(twoWay.length + p3Talking.length),
       sub: 'Priority 1 and 3 prospects who replied (meeting, email or LinkedIn)',
@@ -2763,7 +2807,13 @@
         ] },
         { title: since ? `New since ${dayF(since)} (Priority 3 to 1 while Connected)` : 'New (Priority 3 to 1 while Connected)', rows: evt('promoted') },
       ],
-      flag: unproven.length || p3Talking.length ? `${p3Talking.length ? `Move the ${intF(p3Talking.length)} at Priority 3 to 1. ` : ''}${unproven.length ? `${intF(unproven.length)} at Priority 1 show no reply: confirm or move back to 3.` : ''}` : null,
+      /* Two things can be wrong at once: records needing a Priority move, and LinkedIn evidence too old to trust the
+         count at all. The staleness warning comes first, because it changes how the number itself should be read. */
+      flag: [
+        stale.length ? `LinkedIn evidence is out of date (${stale.join(', ')}), so replies on LinkedIn since then are not in this count \u2014 download fresh exports before reading it as flat.` : null,
+        p3Talking.length ? `Move the ${intF(p3Talking.length)} at Priority 3 to 1.` : null,
+        unproven.length ? `${intF(unproven.length)} at Priority 1 show no reply: confirm or move back to 3.` : null,
+      ].filter(Boolean).join(' ') || null,
       flagGo: unproven.length ? () => showTable('Priority 1 with no reply found', TW_COLS, unproven, twNote + ' Confirm the conversation and log it in Zoho, or move them back to Priority 3.') : null,
       flagLabel: unproven.length ? `List the ${intF(unproven.length)}` : null,
       go: () => showTable('Two-way conversations: Priority 1 and 3 who replied', TW_COLS, [...twoWay, ...p3Talking],
