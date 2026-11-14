@@ -1,0 +1,898 @@
+[
+ {
+  "at": "2026-10-29T19:55:56Z",
+  "contact_id": "6988700000011889004",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-02T18:35:58Z",
+  "contact_id": "6988700000011889004",
+  "field": "LI_Connect",
+  "from": "Requested",
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-02T18:35:58Z",
+  "contact_id": "6988700000011914004",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-03T15:19:07Z",
+  "contact_id": "6988700000012260717",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-03T18:50:04Z",
+  "contact_id": "6988700000012260793",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-03T18:50:31Z",
+  "contact_id": "6988700000012260759",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-03T18:50:57Z",
+  "contact_id": "6988700000012260721",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-03T18:51:35Z",
+  "contact_id": "6988700000012260738",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-03T18:52:01Z",
+  "contact_id": "6988700000012260779",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-03T18:53:38Z",
+  "contact_id": "6988700000012260737",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-03T18:54:04Z",
+  "contact_id": "6988700000012260749",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-03T18:54:34Z",
+  "contact_id": "6988700000012260803",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-03T18:55:02Z",
+  "contact_id": "6988700000012260730",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-03T18:55:24Z",
+  "contact_id": "6988700000012260814",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-04T13:59:01Z",
+  "contact_id": "6988700000012260740",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-04T14:01:40Z",
+  "contact_id": "6988700000012260724",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-04T14:02:42Z",
+  "contact_id": "6988700000012260757",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-04T14:03:33Z",
+  "contact_id": "6988700000012260791",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-04T14:08:12Z",
+  "contact_id": "6988700000012260733",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-04T14:30:18Z",
+  "contact_id": "6988700000012260786",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-04T14:31:30Z",
+  "contact_id": "6988700000012260809",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-04T14:32:15Z",
+  "contact_id": "6988700000012260798",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-04T14:36:55Z",
+  "contact_id": "6988700000012260750",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-04T14:37:01Z",
+  "contact_id": "6988700000012260758",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-04T14:37:06Z",
+  "contact_id": "6988700000012260789",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-04T14:37:11Z",
+  "contact_id": "6988700000012260792",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-04T14:38:03Z",
+  "contact_id": "6988700000012260782",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-04T14:38:15Z",
+  "contact_id": "6988700000012260775",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-04T14:38:27Z",
+  "contact_id": "6988700000012260745",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-04T14:38:46Z",
+  "contact_id": "6988700000012260773",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-05T14:25:30Z",
+  "contact_id": "6988700000012260803",
+  "field": "LI_Connect",
+  "from": "Requested",
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-09T11:37:15Z",
+  "contact_id": "6988700000002870150",
+  "field": "LI_Connect",
+  "from": "Requested",
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-09T11:37:19Z",
+  "contact_id": "6988700000002870424",
+  "field": "LI_Connect",
+  "from": "Requested",
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-09T14:27:33Z",
+  "contact_id": "6988700000012260814",
+  "field": "LI_Connect",
+  "from": "Requested",
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-09T14:28:30Z",
+  "contact_id": "6988700000012260793",
+  "field": "LI_Connect",
+  "from": "Requested",
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-09T22:19:18Z",
+  "contact_id": "6988700000012260733",
+  "field": "LI_Connect",
+  "from": "Requested",
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-09T22:25:33Z",
+  "contact_id": "6988700000012260716",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-09T22:27:14Z",
+  "contact_id": "6988700000012260760",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-09T22:27:46Z",
+  "contact_id": "6988700000012260776",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-09T22:28:22Z",
+  "contact_id": "6988700000012260771",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-09T22:28:51Z",
+  "contact_id": "6988700000012260732",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-09T22:29:16Z",
+  "contact_id": "6988700000012260788",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-09T22:29:35Z",
+  "contact_id": "6988700000012260815",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-09T22:30:10Z",
+  "contact_id": "6988700000012260799",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-09T22:30:57Z",
+  "contact_id": "6988700000012260725",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-09T22:31:36Z",
+  "contact_id": "6988700000012260728",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-09T22:32:39Z",
+  "contact_id": "6988700000012260731",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T12:42:18Z",
+  "contact_id": "6988700000012260772",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T12:42:36Z",
+  "contact_id": "6988700000012260747",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T12:42:55Z",
+  "contact_id": "6988700000012260765",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T12:43:22Z",
+  "contact_id": "6988700000012260718",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T12:43:41Z",
+  "contact_id": "6988700000012260752",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T12:44:49Z",
+  "contact_id": "6988700000012260784",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T12:45:08Z",
+  "contact_id": "6988700000012260787",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T12:45:28Z",
+  "contact_id": "6988700000012260751",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T12:45:46Z",
+  "contact_id": "6988700000012260778",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T12:46:14Z",
+  "contact_id": "6988700000012260748",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T12:46:34Z",
+  "contact_id": "6988700000012260777",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T12:53:16Z",
+  "contact_id": "6988700000012260719",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T12:54:18Z",
+  "contact_id": "6988700000012260735",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T12:54:43Z",
+  "contact_id": "6988700000012260734",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T12:55:07Z",
+  "contact_id": "6988700000012260723",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T12:55:30Z",
+  "contact_id": "6988700000012260770",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T12:55:53Z",
+  "contact_id": "6988700000012260774",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T12:56:12Z",
+  "contact_id": "6988700000012260781",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T12:56:32Z",
+  "contact_id": "6988700000012260767",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T12:56:59Z",
+  "contact_id": "6988700000012260807",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T12:57:20Z",
+  "contact_id": "6988700000012260783",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T13:01:03Z",
+  "contact_id": "6988700000012260811",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T13:01:14Z",
+  "contact_id": "6988700000012260717",
+  "field": "LI_Connect",
+  "from": "Requested",
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-10T13:01:33Z",
+  "contact_id": "6988700000012260794",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T13:17:13Z",
+  "contact_id": "6988700000012260780",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T13:17:40Z",
+  "contact_id": "6988700000012260720",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T13:18:03Z",
+  "contact_id": "6988700000012260802",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T13:21:16Z",
+  "contact_id": "6988700000012260742",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T13:56:49Z",
+  "contact_id": "6988700000012260744",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T13:57:07Z",
+  "contact_id": "6988700000012260801",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T13:57:26Z",
+  "contact_id": "6988700000012260785",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T13:57:45Z",
+  "contact_id": "6988700000012260797",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T13:58:31Z",
+  "contact_id": "6988700000012260795",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T14:31:24Z",
+  "contact_id": "6988700000012260727",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T14:41:29Z",
+  "contact_id": "6988700000012260722",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T14:41:48Z",
+  "contact_id": "6988700000012260764",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T14:42:11Z",
+  "contact_id": "6988700000012260729",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T14:42:36Z",
+  "contact_id": "6988700000012260806",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T14:43:03Z",
+  "contact_id": "6988700000012260804",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T14:43:44Z",
+  "contact_id": "6988700000012260808",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T14:44:26Z",
+  "contact_id": "6988700000012260743",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T14:44:38Z",
+  "contact_id": "6988700000012260741",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T14:50:18Z",
+  "contact_id": "6988700000012260813",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T14:50:57Z",
+  "contact_id": "6988700000012260810",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T14:51:28Z",
+  "contact_id": "6988700000012260766",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-10T14:54:27Z",
+  "contact_id": "6988700000012260763",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-12T15:00:03Z",
+  "contact_id": "6988700000012260808",
+  "field": "LI_Connect",
+  "from": "Requested",
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-12T15:01:11Z",
+  "contact_id": "6988700000012260794",
+  "field": "LI_Connect",
+  "from": "Requested",
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-12T15:02:15Z",
+  "contact_id": "6988700000012260772",
+  "field": "LI_Connect",
+  "from": "Requested",
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-12T15:06:32Z",
+  "contact_id": "6988700000012260760",
+  "field": "LI_Connect",
+  "from": "Requested",
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-12T15:06:50Z",
+  "contact_id": "6988700000012260774",
+  "field": "LI_Connect",
+  "from": "Requested",
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-12T15:07:08Z",
+  "contact_id": "6988700000012260729",
+  "field": "LI_Connect",
+  "from": "Requested",
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-12T15:07:33Z",
+  "contact_id": "6988700000012260767",
+  "field": "LI_Connect",
+  "from": "Requested",
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-12T15:07:52Z",
+  "contact_id": "6988700000012260735",
+  "field": "LI_Connect",
+  "from": "Requested",
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-12T15:08:50Z",
+  "contact_id": "6988700000012260722",
+  "field": "LI_Connect",
+  "from": "Requested",
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-12T15:09:06Z",
+  "contact_id": "6988700000012260787",
+  "field": "LI_Connect",
+  "from": "Requested",
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-12T15:10:38Z",
+  "contact_id": "6988700000012260728",
+  "field": "LI_Connect",
+  "from": "Requested",
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-12T15:11:03Z",
+  "contact_id": "6988700000012260788",
+  "field": "LI_Connect",
+  "from": "Requested",
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-12T15:11:59Z",
+  "contact_id": "6988700000012260799",
+  "field": "LI_Connect",
+  "from": "Requested",
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-12T15:16:57Z",
+  "contact_id": "6988700000012260749",
+  "field": "LI_Connect",
+  "from": "Requested",
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-12T16:06:48Z",
+  "contact_id": "6988700000011932070",
+  "field": "LI_Connect",
+  "from": "Connected",
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-12T16:08:07Z",
+  "contact_id": "6988700000011932091",
+  "field": "LI_Connect",
+  "from": "Connected",
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-12T16:08:24Z",
+  "contact_id": "6988700000011914004",
+  "field": "LI_Connect",
+  "from": "Connected",
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-12T16:08:55Z",
+  "contact_id": "6988700000011932133",
+  "field": "LI_Connect",
+  "from": "Connected",
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-12T16:10:28Z",
+  "contact_id": "6988700000011932028",
+  "field": "LI_Connect",
+  "from": "Connected",
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-12T16:10:54Z",
+  "contact_id": "6988700000011932119",
+  "field": "LI_Connect",
+  "from": "Connected",
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-12T16:11:42Z",
+  "contact_id": "6988700000011932063",
+  "field": "LI_Connect",
+  "from": "Connected",
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-12T16:12:05Z",
+  "contact_id": "6988700000011970018",
+  "field": "LI_Connect",
+  "from": "Connected",
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-12T16:12:53Z",
+  "contact_id": "6988700000011932035",
+  "field": "LI_Connect",
+  "from": "Connected",
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-12T16:13:59Z",
+  "contact_id": "6988700000011970053",
+  "field": "LI_Connect",
+  "from": "Connected",
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-12T16:15:02Z",
+  "contact_id": "6988700000011932140",
+  "field": "LI_Connect",
+  "from": "Connected",
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-12T16:15:32Z",
+  "contact_id": "6988700000011932161",
+  "field": "LI_Connect",
+  "from": "Connected",
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-12T16:16:24Z",
+  "contact_id": "6988700000011889041",
+  "field": "LI_Connect",
+  "from": "Connected",
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-12T16:16:57Z",
+  "contact_id": "6988700000011932126",
+  "field": "LI_Connect",
+  "from": "Connected",
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-13T14:43:06Z",
+  "contact_id": "6988700000008105065",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-13T15:00:01Z",
+  "contact_id": "6988700000008322020",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-13T15:36:25Z",
+  "contact_id": "6988700000011322005",
+  "field": "LI_Connect",
+  "from": null,
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-13T15:42:43Z",
+  "contact_id": "6988700000012260315",
+  "field": "LI_Connect",
+  "from": "Connected",
+  "to": "Requested"
+ },
+ {
+  "at": "2026-11-13T15:56:09Z",
+  "contact_id": "6988700000012260791",
+  "field": "LI_Connect",
+  "from": "Requested",
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-13T15:59:39Z",
+  "contact_id": "6988700000012260789",
+  "field": "LI_Connect",
+  "from": "Requested",
+  "to": "Connected"
+ },
+ {
+  "at": "2026-11-13T16:00:14Z",
+  "contact_id": "6988700000012260792",
+  "field": "LI_Connect",
+  "from": "Requested",
+  "to": "Connected"
+ }
+]
