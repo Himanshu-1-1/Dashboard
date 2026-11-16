@@ -1786,7 +1786,69 @@
     nextBody.append(left, dl);
   };
 
+  /* How old the Zoho data on this page is.
+     Confirmed Nov 16, 2026: on Nov 13 the Priority 5 backlog listed the 53 contacts that Zoho had bulk-moved
+     to Priority 3 on Nov 2 at 12:33 CT, and showed "Not assigned" for people assigned since. The calcs were
+     right; the data behind them was eleven days old and nothing on the page said so. The public site carries
+     the fetch time (generated_at) and rebuilds hourly. The private Claude Dashboard has no generated_at — its
+     datasets are query results held by the artifact runtime — so there we fall back to the newest record
+     timestamp in the build. That is a provable lower bound: the data cannot be newer than the newest edit it
+     contains. Only past-only fields count; a meeting start time can be in the future and would make stale
+     data look fresh. */
+  const FRESH_STALE_H = 6;
+  const FRESH_BOUND_D = 2;
+  const FRESH_SRC = [
+    ['qa_contacts', 'Modified_Time'], ['qa_contacts_2', 'Modified_Time'], ['qa_contacts_3', 'Modified_Time'],
+    ['qa_contacts_4', 'Modified_Time'], ['deals', 'Modified_Time'], ['rb_deals', 'Modified_Time'],
+    ['p3_hist', 'Modified_Time'], ['b2b_added', 'Created_Time'], ['b2b_all', 'Created_Time'],
+    ['open_tasks', 'Created_Time'],
+  ];
+  let freshCache = null;
+  const newestStamp = () => {
+    let n = 0, best = 0;
+    FRESH_SRC.forEach(([id, f]) => {
+      const rs = rows(id); n += rs.length;
+      rs.forEach((r) => { const v = r && r[f]; if (!v) return; const ms = Date.parse(v); if (ms && ms > best) best = ms; });
+    });
+    freshCache = { n, best };
+    return best || null;
+  };
+  const freshAge = (ms, now) => {
+    const h = (now - ms) / 36e5;
+    return h < 1 ? 'less than an hour ago' : h < 48 ? Math.round(h) + ' hours ago' : Math.round(h / 24) + ' days ago';
+  };
+  const freshWhen = (ms) => {
+    const d = new Date(ms);
+    const f = (tz) => d.toLocaleString('en-US', { timeZone: tz, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    return f('Asia/Kolkata') + ' IST (' + f('America/Chicago') + ' CT)';
+  };
+  window.CC_FRESH = (now, gen, newest) => {
+    const t = gen ? Date.parse(gen) : NaN;
+    if (t && !Number.isNaN(t)) {
+      const bad = (now - t) / 36e5 > FRESH_STALE_H;
+      return { bad, exact: true, at: t,
+        text: 'Zoho data fetched ' + freshWhen(t) + ', ' + freshAge(t, now) + '.'
+          + (bad ? ' This build is stale: every number below describes Zoho as it was then, not as it is now.' : '') };
+    }
+    if (!newest) return null;
+    const bad = (now - newest) / 864e5 > FRESH_BOUND_D;
+    return { bad, exact: false, at: newest,
+      text: 'This copy does not record when it last read Zoho. Nothing in it has changed since ' + freshWhen(newest)
+        + ', so the data is at least ' + freshAge(newest, now) + '.'
+        + (bad ? ' Treat every number below as out of date until the datasets are refreshed.' : '') };
+  };
+  const drawFresh = () => {
+    const node = document.getElementById('cc-refreshed');
+    if (!node) return;
+    const gen = window.__DASH_DATA__ && window.__DASH_DATA__.generated_at;
+    const f = window.CC_FRESH(Date.now(), gen, newestStamp());
+    if (!f) return;
+    node.textContent = f.text;
+    node.classList.toggle('cc-load-error', f.bad);
+  };
+
   const draw = () => {
+    try { drawFresh(); } catch (e) { /* freshness must never stop the tab */ }
     try { drawMt3(); } catch (e) { mt3Body.replaceChildren(el('p', 'cc-b2-bad', 'The meetings panel couldn’t be drawn: ' + e.message)); }
     drawPf();
     drawScore();
