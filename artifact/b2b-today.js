@@ -1837,6 +1837,26 @@
         + ', so the data is at least ' + freshAge(newest, now) + '.'
         + (bad ? ' Treat every number below as out of date until the datasets are refreshed.' : '') };
   };
+  /* How to pick up a new build (Hemang, Nov 19, 2026). GitHub Pages serves index.html and the scripts with
+     cache-control: max-age=600, so for up to ten minutes after a deploy a normal reload can run the old page
+     code. The data is never the problem: data.lock.json is fetched with cache: 'no-store', so any reload has
+     the current build's figures. The note says exactly that, because telling the team a hard reload fixes
+     stale numbers would have hidden the real fault found on Nov 16 — data that was eleven days old server
+     side, which no amount of reloading would have changed. */
+  const drawReload = () => {
+    const meta = document.querySelector('.cc-meta');
+    if (!meta || document.getElementById('cc-reload-hint')) return;
+    const mac = /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent || '');
+    const keys = mac ? '⇧⌘R' : 'Ctrl+Shift+R';
+    const s = document.createElement('span');
+    s.id = 'cc-reload-hint';
+    s.className = 'cc-reload-hint';
+    const b = document.createElement('b');
+    b.textContent = keys;
+    s.append('Press ', b, ' to pick up a new version of the dashboard. Data refreshes on any reload.');
+    meta.append(' ', s);
+  };
+
   const drawFresh = () => {
     const node = document.getElementById('cc-refreshed');
     if (!node) return;
@@ -1849,6 +1869,7 @@
 
   const draw = () => {
     try { drawFresh(); } catch (e) { /* freshness must never stop the tab */ }
+    try { drawReload(); } catch (e) { /* the reload hint must never stop the tab */ }
     try { drawMt3(); } catch (e) { mt3Body.replaceChildren(el('p', 'cc-b2-bad', 'The meetings panel couldn’t be drawn: ' + e.message)); }
     drawPf();
     drawScore();

@@ -801,3 +801,20 @@ tr.cc-days-row > td { padding: 0 12px 12px; background: color-mix(in oklab, var(
 
 /* Chief of Staff context line in the people lists */
 .cc-b2-ctx { display: block; min-width: 14rem; max-width: 30rem; color: var(--color-fg-muted); line-height: 1.4; }
+
+/* Reload hint in the page header (Hemang, Nov 19, 2026). Inherits .cc-meta's muted caption; the keys get a
+   keycap so the shortcut reads as something to press rather than emphasis. Only tokens that exist in both
+   light and dark :root blocks are used — --color-fg-default and --color-bg-subtle are not defined in this
+   page, and a var() with no fallback would have silently computed to inherit. Border, no fill: the page
+   background is the only bg token here, so a filled keycap would be invisible against it in both modes. */
+.cc-reload-hint b {
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.95em;
+  padding: 0.05em 0.35em;
+  border: 1px solid var(--cds-border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  color: var(--color-fg);
+  white-space: nowrap;
+}
