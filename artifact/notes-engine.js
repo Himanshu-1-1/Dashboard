@@ -24,9 +24,10 @@
   };
 
   const PRIORITY = {
-    urgent: { key: 'urgent', label: 'Urgent', tone: 'bad', rank: 0, why: 'Ours, and someone is waiting or the moment has passed' },
-    soon: { key: 'soon', label: 'Soon', tone: 'warn', rank: 1, why: 'Ours to move, nothing overdue yet' },
-    watch: { key: 'watch', label: 'Watching', tone: 'muted', rank: 2, why: 'Their move; nothing for us to do yet' },
+    urgent: { key: 'urgent', label: 'Urgent', tone: 'bad', rank: 0, why: 'Ours, and the note says they are waiting on us or the moment it names has passed' },
+    soon: { key: 'soon', label: 'Soon', tone: 'warn', rank: 1, why: 'Ours to move, raised this week' },
+    backlog: { key: 'backlog', label: 'Backlog', tone: 'muted', rank: 2, why: 'Ours, older than a week, with nothing saying anyone is waiting' },
+    watch: { key: 'watch', label: 'Watching', tone: 'muted', rank: 3, why: 'Their move; nothing for us to do yet' },
   };
 
   const str = (v) => (v == null ? '' : String(v));
@@ -109,16 +110,25 @@
   /* ---------- the derived priority ---------- */
   /* Nothing in a Zoho note carries a priority, so this is worked out from what the clause says and how old it is, and
      every item carries the reasons it landed where it did -- a wrong call has to be visible rather than plausible.
-     Red is the top of a scale, not every open item: painting three hundred rows the same red says nothing. */
+
+     Red means an explicit signal, never age alone (corrected Nov 20, 2026 against the real corpus). The first cut made
+     anything of ours open a week red, and on the live data that was 74 of 178 items red, of which only 9 said anyone was
+     waiting on us and 12 named a moment that had passed: 55 were red for being old. 140 of the 178 are 14 days or more
+     old, so the honest shape of this data is a backlog, not an emergency, and a red that never clears itself is the
+     "same reds every day" that Mack rejected on the partner-deals section on Nov 12. So age moves an item of ours out of
+     Soon and into Backlog -- counted, listed, filterable, and not shouting. */
   function priorityOf(item, today, settings) {
     const s = settings || DEFAULTS;
     const age = item.on ? daysBetween(item.on, today) : null;
     const reasons = [];
     const stale = age != null && age > s.staleDays;
+    const old = age != null && age >= s.urgentDays;
     if (item.direction === 'theirs') {
       if (age != null && age >= s.chaseDays) {
         reasons.push(`Their move ${age} days ago and nothing since, so the chase is ours now`);
-        return { priority: 'soon', reasons, age, stale };
+        if (stale) reasons.push(`Older than ${s.staleDays} days: close it or raise it again`);
+        /* chaseDays is longer than urgentDays, so a promoted item is always already in the backlog by age. */
+        return { priority: 'backlog', reasons, age, stale };
       }
       reasons.push(age == null ? 'Their move' : `Their move, ${age} ${age === 1 ? 'day' : 'days'} ago`);
       return { priority: 'watch', reasons, age, stale };
@@ -130,12 +140,18 @@
     if (item.timeBound && age != null && age >= 1) {
       reasons.push(`Pinned to a moment in a note ${age} ${age === 1 ? 'day' : 'days'} old, so that moment has passed`); urgent = true;
     }
-    if (age != null && age >= s.urgentDays) {
-      reasons.push(`Ours and open ${age} days`); urgent = true;
+    if (urgent) {
+      if (old) reasons.push(`Open ${age} days`);
+      if (stale) reasons.push(`Older than ${s.staleDays} days: close it or raise it again`);
+      return { priority: 'urgent', reasons, age, stale };
     }
-    if (!urgent) reasons.push(age == null ? 'Ours to move' : `Ours to move, raised ${age === 0 ? 'today' : age === 1 ? 'yesterday' : age + ' days ago'}`);
-    if (stale) reasons.push(`Older than ${s.staleDays} days: close it or re-raise it`);
-    return { priority: urgent ? 'urgent' : 'soon', reasons, age, stale };
+    if (old) {
+      reasons.push(`Ours, open ${age} days, and nothing says anyone is waiting`);
+      if (stale) reasons.push(`Older than ${s.staleDays} days: close it or raise it again`);
+      return { priority: 'backlog', reasons, age, stale };
+    }
+    reasons.push(age == null ? 'Ours to move' : `Ours to move, raised ${age === 0 ? 'today' : age === 1 ? 'yesterday' : age + ' days ago'}`);
+    return { priority: 'soon', reasons, age, stale };
   }
 
   /* ---------- one note, parsed ---------- */
@@ -228,16 +244,19 @@
   /* ---------- the roll-up the panel reads ---------- */
   function summary(items, settings) {
     const s = settings || DEFAULTS;
-    const live = items.filter((i) => !i.stale);
-    const count = (k) => live.filter((i) => i.priority === k).length;
+    const count = (k) => items.filter((i) => i.priority === k).length;
     return {
       urgent: count('urgent'),
       soon: count('soon'),
+      backlog: count('backlog'),
       watch: count('watch'),
-      stale: items.length - live.length,
+      /* Needs action is the pair worth looking at today; the backlog is a cleanup decision, not a morning list. */
+      act: count('urgent') + count('soon'),
+      stale: items.filter((i) => i.stale).length,
       people: new Set(items.map((i) => i.contactId)).size,
-      ours: live.filter((i) => i.direction === 'ours').length,
+      ours: items.filter((i) => i.direction === 'ours').length,
       staleDays: s.staleDays,
+      urgentDays: s.urgentDays,
     };
   }
 

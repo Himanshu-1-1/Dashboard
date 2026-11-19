@@ -83,10 +83,21 @@ test('priority: a moment-pinned clause is urgent once the note is a day old, not
   assert.match(past.reasons.join(' | '), /that moment has passed/);
 });
 
-test('priority: ours and open a week is urgent whatever the clause says', () => {
+test('priority: age alone is never red, it is the backlog', () => {
+  // Corrected against the real corpus: age-alone red was 55 of 74 reds, and a red that never clears itself is noise.
   const mk = (on) => ({ on, next: 'We owe them a set of case studies', direction: 'ours', timeBound: false });
-  assert.equal(N.priorityOf(mk('2026-11-14'), TODAY).priority, 'soon', 'six days is not yet red');
-  assert.equal(N.priorityOf(mk('2026-11-13'), TODAY).priority, 'urgent', 'seven days is');
+  assert.equal(N.priorityOf(mk('2026-11-14'), TODAY).priority, 'soon', 'six days is this week\u2019s work');
+  const old = N.priorityOf(mk('2026-11-13'), TODAY);
+  assert.equal(old.priority, 'backlog', 'seven days drops out of Soon, it does not become red');
+  assert.match(old.reasons.join(' | '), /nothing says anyone is waiting/);
+});
+
+test('priority: an explicit signal is red at any age, and still says how old it is', () => {
+  const waiting = N.priorityOf({ on: '2026-09-20', next: 'We owe them a reply. They are waiting on us.', direction: 'ours', timeBound: false }, TODAY);
+  assert.equal(waiting.priority, 'urgent', 'an old item someone is waiting on is still urgent');
+  assert.match(waiting.reasons.join(' | '), /waiting on us/);
+  assert.match(waiting.reasons.join(' | '), /Open 61 days/);
+  assert.equal(waiting.stale, true);
 });
 
 test('priority: their move is Watching, and becomes ours to chase after chaseDays', () => {
@@ -95,15 +106,15 @@ test('priority: their move is Watching, and becomes ours to chase after chaseDay
   assert.equal(fresh.priority, 'watch');
   assert.match(fresh.reasons.join(' '), /Their move, 2 days ago/);
   const old = N.priorityOf(mk('2026-11-05'), TODAY);
-  assert.equal(old.priority, 'soon');
+  assert.equal(old.priority, 'backlog', 'chaseDays is longer than urgentDays, so a promoted item is already old');
   assert.match(old.reasons.join(' '), /the chase is ours now/);
 });
 
-test('priority: past staleDays an item is flagged stale and says to close or re-raise it', () => {
+test('priority: past staleDays an item is flagged stale and says to close it or raise it again', () => {
   const p = N.priorityOf({ on: '2026-09-01', next: 'We owe them a reply', direction: 'ours', timeBound: false }, TODAY);
   assert.equal(p.stale, true);
-  assert.equal(p.priority, 'urgent');
-  assert.match(p.reasons.join(' | '), /close it or re-raise it/);
+  assert.equal(p.priority, 'backlog');
+  assert.match(p.reasons.join(' | '), /close it or raise it again/);
 });
 
 test('every priority carries the reasons it landed on, never an empty list', () => {
@@ -159,17 +170,18 @@ test('action items: a note with no Next: clause produces none, and neither does 
   assert.deepEqual(N.actionItems(rows, { today: TODAY }), []);
 });
 
-test('action items sort urgent first, then fresh before stale, then longest-waiting', () => {
+test('action items sort urgent first, then soon, then the backlog, with fresh before stale inside each', () => {
   const rows = [
     note('watch', '1', 'Nov 19, 2026: a. Next: Waiting on them to reply', '2026-11-19T08:00:00-06:00'),
     note('soon', '2', 'Nov 19, 2026: b. Next: We owe them a set of examples', '2026-11-19T08:00:00-06:00'),
-    note('urgent', '3', 'Nov 10, 2026: c. Next: We owe them a reply', '2026-11-10T08:00:00-06:00'),
-    note('stale', '4', 'Sep 1, 2026: d. Next: We owe them a reply', '2026-09-01T08:00:00-06:00'),
+    note('urgent', '3', 'Nov 10, 2026: c. Next: We owe them a reply. They are waiting on us.', '2026-11-10T08:00:00-06:00'),
+    note('backlog', '4', 'Nov 1, 2026: d. Next: We owe them a reply', '2026-11-01T08:00:00-06:00'),
+    note('stale', '5', 'Sep 1, 2026: e. Next: We owe them a reply', '2026-09-01T08:00:00-06:00'),
   ];
   const items = N.actionItems(rows, { today: TODAY });
-  assert.deepEqual(items.map((i) => i.id), ['urgent', 'stale', 'soon', 'watch']);
-  assert.equal(items[0].stale, false);
-  assert.equal(items[1].stale, true, 'stale items keep their priority but sort behind fresh ones');
+  assert.deepEqual(items.map((i) => i.id), ['urgent', 'soon', 'backlog', 'stale', 'watch']);
+  assert.equal(items[2].stale, false);
+  assert.equal(items[3].stale, true, 'stale keeps its priority but sorts behind fresh inside the same band');
 });
 
 test('a Zoho task is matched to the clause it covers, and only on the same contact', () => {
@@ -189,7 +201,7 @@ test('sameWork needs real overlap, not a shared word', () => {
   assert.equal(N.sameWork('Book the flights to Dallas for the team', 'We owe them a set of case studies'), false);
 });
 
-test('the summary counts live work by priority and keeps stale out of it', () => {
+test('the summary separates today\u2019s work from the backlog', () => {
   const rows = [
     note('a', '1', 'Nov 19, 2026: a. Next: We owe them a reply. They are waiting on us.', '2026-11-19T08:00:00-06:00'),
     note('b', '2', 'Nov 19, 2026: b. Next: We owe them a set of examples', '2026-11-19T08:00:00-06:00'),
@@ -199,10 +211,12 @@ test('the summary counts live work by priority and keeps stale out of it', () =>
   const s = N.summary(N.actionItems(rows, { today: TODAY }));
   assert.equal(s.urgent, 1);
   assert.equal(s.soon, 1);
+  assert.equal(s.backlog, 1);
   assert.equal(s.watch, 1);
+  assert.equal(s.act, 2, 'needs action is urgent plus soon, never the backlog');
   assert.equal(s.stale, 1);
   assert.equal(s.people, 4);
-  assert.equal(s.ours, 2, 'the watching item is not ours');
+  assert.equal(s.ours, 3, 'the watching item is not ours');
 });
 
 test('the engine never mutates the rows it is given', () => {

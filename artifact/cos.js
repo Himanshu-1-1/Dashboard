@@ -166,7 +166,7 @@
   /* ---------- state ---------- */
   const st = {
     view: 'actions', person: null, chat: null,
-    actions: { prio: 'live', q: '', shown: PAGE * 2 },
+    actions: { prio: 'act', q: '', shown: PAGE * 2 },
     people: { q: '', rel: 'all', shown: PAGE },
     chats: { q: '', src: 'all', shown: PAGE },
     latest: { q: '', src: 'all', shown: PAGE },
@@ -487,7 +487,7 @@
   const okRows = (id) => { const d = dataOf(id); return d.status === 'ok' ? d.data || [] : []; };
   const noteRows = () => okRows('contact_notes');
   const PRIO_CHIPS = [
-    ['live', 'Live'], ['urgent', 'Urgent'], ['soon', 'Soon'], ['watch', 'Watching'], ['stale', 'Gone quiet'], ['all', 'All'],
+    ['act', 'Needs action'], ['urgent', 'Urgent'], ['soon', 'Soon'], ['backlog', 'Backlog'], ['watch', 'Watching'], ['all', 'All'],
   ];
   const actionList = () => {
     const eng = NE();
@@ -554,27 +554,27 @@
     const { items, dnc, tasksLoaded, peopleLoaded, gap } = actionList();
     if (gap) { body.replaceChildren(el('p', 'cc-cos-bad', gap)); return; }
     const sum = NE().summary(items);
-    const n = { live: items.filter((i) => !i.stale).length, stale: items.length - items.filter((i) => !i.stale).length, all: items.length,
-      urgent: sum.urgent, soon: sum.soon, watch: sum.watch };
+    const n = { act: sum.act, urgent: sum.urgent, soon: sum.soon, backlog: sum.backlog, watch: sum.watch, all: items.length };
     const q = s.q.trim().toLowerCase();
-    const pick = (i) => (s.prio === 'all' ? true : s.prio === 'live' ? !i.stale : s.prio === 'stale' ? i.stale : (!i.stale && i.priority === s.prio));
+    const pick = (i) => (s.prio === 'all' ? true : s.prio === 'act' ? (i.priority === 'urgent' || i.priority === 'soon') : i.priority === s.prio);
     const list = items.filter((i) => pick(i) && (!q || [i.name, i.company, i.next, i.story].join(' ').toLowerCase().includes(q)));
     const tools = el('div', 'cc-cos-tools');
     tools.append(searchBox(s.q, 'Search action items', (v) => { s.q = v; s.shown = PAGE * 2; draw(); }),
       chips(PRIO_CHIPS.map(([k, label]) => [k, `${label} ${intF(n[k])}`]), s.prio, (k) => { s.prio = k; s.shown = PAGE * 2; draw(); }, 'Priority'));
     const verdictText = sum.urgent
-      ? `${plural(sum.urgent, 'item')} need a move from us now, and ${intF(sum.soon)} more soon.`
-      : sum.soon ? `Nothing urgent. ${plural(sum.soon, 'item')} to move soon.`
-        : sum.watch ? `Nothing waiting on us. ${plural(sum.watch, 'conversation')} sitting with them.` : 'Nothing open from the notes.';
+      ? `${plural(sum.urgent, 'item')} where someone is waiting on us or the moment has passed, and ${intF(sum.soon)} more raised this week.`
+      : sum.soon ? `Nothing where anyone is waiting on us. ${plural(sum.soon, 'item')} raised this week.`
+        : sum.backlog ? `Nothing raised this week and nobody waiting. ${plural(sum.backlog, 'older item')} sit in the backlog.`
+          : sum.watch ? `Nothing waiting on us. ${plural(sum.watch, 'conversation')} sitting with them.` : 'Nothing open from the notes.';
     const verdict = el('p', 'cc-cos-verdict' + (sum.urgent ? ' cc-cos-prio-bad' : ''), verdictText);
     const caveats = [
       `Worked out from ${plural(sum.people, 'person')} the bot has written a note about, newest note per person; an older note's action is history and shows on the person's brief instead.`,
-      'The priority is derived from what the note says and how old it is, because a Zoho note carries neither a priority nor a status. Hover a priority to see why it landed there.',
+      `The priority is derived from what the note says and how old it is, because a Zoho note carries neither a priority nor a status. Hover a priority to see why it landed there. Urgent means the note says they are waiting on us or names a moment that has passed, never age on its own: ${plural(sum.backlog, 'item')} older than ${sum.urgentDays} days with nothing saying anyone is waiting sit under Backlog, because a red that never clears itself stops being read.`,
       tasksLoaded ? 'In Zoho says whether a Zoho Task covers the item. It never says done: the task query carries open tasks only, so a finished task is indistinguishable from one that never existed. That becomes a real done state once the bot writes the tasks.' : 'Zoho tasks didn\u2019t load, so no item can be matched to one.',
     ];
     if (dnc) caveats.push(`${plural(dnc, 'item')} left out: the contact is marked Do Not Contact in Zoho.`);
     if (!peopleLoaded) caveats.push('Zoho contacts didn\u2019t load, so company and Do Not Contact aren\u2019t applied.');
-    if (sum.stale) caveats.push(`${plural(sum.stale, 'item')} older than ${sum.staleDays} days are under Gone quiet: close them or raise them again.`);
+    if (sum.stale) caveats.push(`${plural(sum.stale, 'item')} are older than ${sum.staleDays} days: close them in Zoho or raise them again.`);
     const parts = [verdict, tools, el('p', 'cc-cos-cap', caveats.join(' ')), actionTable(list.slice(0, s.shown), tasksLoaded)];
     if (!list.length) parts[3] = el('p', 'cc-cos-cap', 'Nothing matches that filter.');
     const more = moreBtn(Math.min(s.shown, list.length), list.length, () => { s.shown += PAGE * 2; draw(); }, PAGE * 2);
