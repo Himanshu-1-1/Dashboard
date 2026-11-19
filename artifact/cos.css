@@ -47,6 +47,11 @@ p.cc-cos-verdict.cc-cos-prio-bad { color: var(--color-bad); background: none; pa
 .cc-cos-nextcell { min-width: 20rem; max-width: 44rem; white-space: normal; line-height: 1.45; }
 .cc-cos-whycell { min-width: 12rem; max-width: 28rem; white-space: normal; font-size: 12px; color: var(--color-fg-muted); }
 .cc-cos-dim { color: var(--color-fg-muted); font-size: 12px; }
+.cc-cos-how { margin: -2px 0 2px; }
+.cc-cos-how summary { cursor: pointer; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); width: fit-content; }
+.cc-cos-how summary:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; border-radius: 3px; }
+.cc-cos-how[open] summary { margin-bottom: 6px; }
+.cc-cos-how .cc-cos-cap + .cc-cos-cap { margin-top: 6px; }
 .cc-cos-pbtn { appearance: none; border: 0; background: none; font: inherit; color: inherit; padding: 0; cursor: pointer;
   text-align: left; text-decoration: underline; text-decoration-color: var(--color-border-line); text-underline-offset: 3px; }
 .cc-cos-pbtn:hover { text-decoration-color: currentColor; }

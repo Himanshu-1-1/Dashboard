@@ -575,8 +575,12 @@
     if (dnc) caveats.push(`${plural(dnc, 'item')} left out: the contact is marked Do Not Contact in Zoho.`);
     if (!peopleLoaded) caveats.push('Zoho contacts didn\u2019t load, so company and Do Not Contact aren\u2019t applied.');
     if (sum.stale) caveats.push(`${plural(sum.stale, 'item')} are older than ${sum.staleDays} days: close them in Zoho or raise them again.`);
-    const parts = [verdict, tools, el('p', 'cc-cos-cap', caveats.join(' ')), actionTable(list.slice(0, s.shown), tasksLoaded)];
-    if (!list.length) parts[3] = el('p', 'cc-cos-cap', 'Nothing matches that filter.');
+    /* One line of method under the verdict, the rest folded away: five sentences of caveat between the verdict and the
+       table is the first thing a reader meets, and it buries the work. Everything still says itself, one click down. */
+    const how = el('details', 'cc-cos-how');
+    how.append(el('summary', null, 'How this is worked out'), ...caveats.slice(1).map((c) => el('p', 'cc-cos-cap', c)));
+    const parts = [verdict, tools, el('p', 'cc-cos-cap', caveats[0]), how, actionTable(list.slice(0, s.shown), tasksLoaded)];
+    if (!list.length) parts[4] = el('p', 'cc-cos-cap', 'Nothing matches that filter.');
     const more = moreBtn(Math.min(s.shown, list.length), list.length, () => { s.shown += PAGE * 2; draw(); }, PAGE * 2);
     if (more) parts.push(more);
     body.replaceChildren(...parts);
