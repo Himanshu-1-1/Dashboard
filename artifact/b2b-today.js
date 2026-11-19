@@ -994,7 +994,7 @@
   const rbStatus = (stage) => (stage === 'Closed' ? 'won' : RB_LOST.includes(stage) ? 'lost' : 'open');
   dash.calc('rb_rows', {
     title: 'Client deals and who referred them',
-    description: 'One row per client deal (every Deal Type except Reseller/ Referral Partner and Platform Provider Agreement): name, type, stage, status (open = any stage but Closed, Closed Lost or Closed Lost to Competition; won = Closed; lost = Closed Lost or Closed Lost to Competition), amount where set, the dates Zoho created it and last changed it (Central time), its Closing Date and the effective date it was won (Closing Date when Zoho holds one, otherwise the date the deal entered Closed in Zoho’s own Stage History, otherwise the last-changed date, with won_on_src naming which was used and won_on_est true only for that last resort), the deal’s Commission Details text, account, contact, the Referred By Contact and Referred By Account from the deal’s Commission Details, whether the referrer is Founder Network (the referring contact’s Relationship Type), and whether a referrer is recorded at all.',
+    description: 'One row per client deal (every Deal Type except Reseller/ Referral Partner and Platform Provider Agreement): name, type, stage, status (open = any stage but Closed, Closed Lost or Closed Lost to Competition; won = Closed; lost = Closed Lost or Closed Lost to Competition), amount where set, the dates Zoho created it and last changed it (Central time), its Closing Date and the effective date it was won (Closing Date when Zoho holds one, otherwise the date the deal entered Closed in Zoho’s own Stage History, otherwise the last-changed date, with won_on_src naming which was used and won_on_est true only for that last resort), the deal’s Commission Details text, its Next Step, account, contact, the Referred By Contact and Referred By Account from the deal’s Commission Details, whether the referrer is Founder Network (the referring contact’s Relationship Type), and whether a referrer is recorded at all.',
     inputs: ['rb_deals', 'deal_stage_history'],
     fn: (rb_deals, deal_stage_history) => {
       /* When a deal entered Closed, from Zoho's own Stage History (module DealHistory). Each history row is one stage
@@ -1025,6 +1025,7 @@
         closing, won_on: closing || entered || modified, won_on_est: !closing && !entered,
         won_on_src: closing ? 'Closing Date' : entered ? 'Zoho Stage History' : 'last changed (no stage history)',
         amount: Number(d.Amount) > 0 ? Number(d.Amount) : null, created: d.Created_Time ? ctDate(d.Created_Time) : null, modified, commission_terms: String(d.Commission_Details || '').trim() || null,
+        next_step: String(d.Next_Step || '').trim() || null,
         account: d.Account_Name || null, account_id: d.Account_Name_id ? String(d.Account_Name_id) : null,
         contact: d.Contact_Name || null, contact_id: d.Contact_Name_id ? String(d.Contact_Name_id) : null,
         by, by_id: d.Referred_By_Contact_id ? String(d.Referred_By_Contact_id) : null,

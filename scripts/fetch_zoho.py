@@ -63,7 +63,7 @@ QUERIES = {
     'b2b_all': {"sql": f"select Full_Name, Account_Name, Priority, LI_Connect, Assigned, Created_Time from Contacts where Tag like '%{B2B_TAG}%' order by id asc", "paged": True},
     'p3_hist': {"sql": "select Full_Name, Priority, Moved_To__s, Modified_Time from Priority_History where id is not null order by id asc", "paged": True},
     'other_links': {"sql": "select Other_Contacts, Other_Accounts from Contacts_X_Accounts where id is not null order by id asc", "paged": True},
-    'rb_deals': {"sql": "select Deal_Name, Deal_Type, Stage, Amount, Account_Name, Contact_Name, Referred_By_Contact, Referred_By_Contact.Relationship_Type, Referred_By_Account, Commission_Details, Closing_Date, Created_Time, Modified_Time from Deals where (Deal_Type is null or (Deal_Type not like '%Referral Partner%' and Deal_Type not like '%Platform Provider%')) order by id asc", "paged": True},
+    'rb_deals': {"sql": "select Deal_Name, Deal_Type, Stage, Amount, Account_Name, Contact_Name, Referred_By_Contact, Referred_By_Contact.Relationship_Type, Referred_By_Account, Commission_Details, Next_Step, Closing_Date, Created_Time, Modified_Time from Deals where (Deal_Type is null or (Deal_Type not like '%Referral Partner%' and Deal_Type not like '%Platform Provider%')) order by id asc", "paged": True},
     # Zoho's own Stage History for Deals (built-in field_tracker module, the Stage History related list on a Deal).
     # One row per stage the deal has occupied: Modified_Time is when it ENTERED that Stage, Moved_To__s is where it
     # went next (null while it is still there). This is how a deal's real won date is known: no later edit to the

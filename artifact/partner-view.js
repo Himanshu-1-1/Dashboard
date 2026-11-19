@@ -45,6 +45,8 @@
               /* Carried through so the Introduced By section can drop people already tracked here (Mack, Nov 9, 2026). */
               contact_id: d.contact_id || null, stage: STAGE_LABEL[status] || d.stage || 'No stage',
               status, created: d.created, modified: d.modified || null, amount: d.amount,
+              /* Next Step from the deal (Mack, Oct 31, 2026: he asked to see next steps beside the statuses). */
+              next_step: d.next_step || null,
               commission_terms: d.commission_terms || null, commission_pct: c.pct, commission: c.value, commission_why: c.why,
             };
           });
@@ -119,6 +121,8 @@
               id: d.id, deal: d.deal, client: d.account, client_contact: capName(d.contact),
               contact_id: d.contact_id || null, stage: STAGE_LABEL[status] || d.stage || 'No stage',
               status, created: d.created, modified: d.modified || null, amount: d.amount,
+              /* Next Step from the deal (Mack, Oct 31, 2026: he asked to see next steps beside the statuses). */
+              next_step: d.next_step || null,
               commission_terms: d.commission_terms || null, commission_pct: c.pct, commission: c.value, commission_why: c.why,
             };
           }),
@@ -432,7 +436,7 @@
     const table = el('table', 'cc-pv-table');
     const thead = el('thead');
     const hr = el('tr');
-    [['Deal'], ['Client company'], ['Client contact'], ['Stage'], ['Created'], ['Last updated'], ['Amount', 'num'], ['Commission terms'], ['Commission', 'num']].forEach(([t, c]) => { const th = el('th', c ? 'cc-pv-' + c : null, t); th.scope = 'col'; hr.append(th); });
+    [['Deal'], ['Client company'], ['Client contact'], ['Stage'], ['Next step'], ['Created'], ['Last updated'], ['Amount', 'num'], ['Commission terms'], ['Commission', 'num']].forEach(([t, c]) => { const th = el('th', c ? 'cc-pv-' + c : null, t); th.scope = 'col'; hr.append(th); });
     thead.append(hr);
     const tb = el('tbody');
     deals.forEach((d) => {
@@ -441,13 +445,13 @@
       stage.append(el('span', 'cc-pv-stage cc-pv-stage-' + d.status, d.stage));
       const dealTd = el('td', 'cc-pv-deal');
       dealTd.append(zLink('a', d.deal, 'Potentials', d.id, 'Open this deal in Zoho CRM'));
-      tr.append(dealTd, el('td', null, d.client || '—'), el('td', null, d.client_contact || '—'), stage, el('td', null, fmtDate(d.created)), el('td', null, fmtDate(d.modified)), el('td', 'cc-pv-num', fmtMoney(d.amount)), el('td', 'cc-pv-terms', d.commission_terms || '—'), commCell(d));
+      tr.append(dealTd, el('td', null, d.client || '—'), el('td', null, d.client_contact || '—'), stage, el('td', 'cc-pv-nextstep', d.next_step || '—'), el('td', null, fmtDate(d.created)), el('td', null, fmtDate(d.modified)), el('td', 'cc-pv-num', fmtMoney(d.amount)), el('td', 'cc-pv-terms', d.commission_terms || '—'), commCell(d));
       tb.append(tr);
     });
     table.append(thead, tb);
     wrap.append(table);
     card.append(wrap);
-    card.append(el('p', 'cc-pv-note', 'Amounts and commission terms show where Zoho has them. Dates are Central time. Updated daily.'));
+    card.append(el('p', 'cc-pv-note', 'Amounts, next steps and commission terms show where Zoho has them. Dates are Central time. Updated daily.'));
     body.append(card);
     if (intro) body.append(intro);
   };
