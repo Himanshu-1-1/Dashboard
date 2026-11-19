@@ -47,6 +47,15 @@ p.cc-cos-verdict.cc-cos-prio-bad { color: var(--color-bad); background: none; pa
 .cc-cos-nextcell { min-width: 20rem; max-width: 44rem; white-space: normal; line-height: 1.45; }
 .cc-cos-whycell { min-width: 12rem; max-width: 28rem; white-space: normal; font-size: 12px; color: var(--color-fg-muted); }
 .cc-cos-dim { color: var(--color-fg-muted); font-size: 12px; }
+/* A ticked row keeps its place in the table, at the bottom, in green (Hemang, Nov 20, 2026). A left rule and a muted
+   row rather than a green fill: a filled row would outweigh the Urgent pills above it, and done work should recede. */
+.cc-cos-tickcell { width: 1%; text-align: center; }
+.cc-cos-tick { width: 18px; height: 18px; margin: 0; cursor: pointer; accent-color: var(--color-ok); }
+.cc-cos-tick:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+.cc-cos-rowdone { background: color-mix(in oklab, var(--color-ok) 9%, transparent); }
+.cc-cos-rowdone td { color: var(--color-fg-muted); }
+.cc-cos-rowdone td:first-child { box-shadow: inset 2px 0 0 var(--color-ok); }
+.cc-cos-rowdone .cc-cos-nextcell { text-decoration: line-through; text-decoration-color: color-mix(in oklab, var(--color-fg-muted) 60%, transparent); }
 .cc-cos-how { margin: -2px 0 2px; }
 .cc-cos-how summary { cursor: pointer; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); width: fit-content; }
 .cc-cos-how summary:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; border-radius: 3px; }

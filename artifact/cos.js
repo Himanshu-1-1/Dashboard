@@ -74,8 +74,9 @@
     heads.forEach((h) => { const c = el('th', /^(Conversations|Messages|Open|People)$/.test(h) ? 'cc-num' : null, h); c.scope = 'col'; hr.append(c); });
     th.append(hr);
     const tb = el('tbody');
-    rowsOut.forEach((cells) => {
-      const tr = el('tr');
+    rowsOut.forEach((row) => {
+      const cells = Array.isArray(row) ? row : row.cells;
+      const tr = el('tr', Array.isArray(row) ? null : row.cls || null);
       cells.forEach((v) => {
         const td = el('td');
         if (v && typeof v === 'object' && v.cls) { td.className = v.cls; v = v.v; }
@@ -513,6 +514,47 @@
     }
     return { items: out, dnc, tasksLoaded: dataOf('open_tasks').status === 'ok', peopleLoaded: dataOf('qa_contact_rows').status === 'ok' };
   };
+  /* Done ticks (Hemang, Nov 20, 2026), the same mechanism as B2B Today's queue: they live in this browser only, never
+     in Zoho, and never reach another teammate. A tick lasts the Central-time day it was made; on a later day an item
+     still in the list comes back unticked and flagged, because work must not disappear quietly. The ticked rows stay
+     in the table at the bottom in green rather than leaving it, which is what Hemang asked for; the chips count the
+     work left, and the line under them says how many are done, so the chip and the row count never look contradictory.
+     The verdict above still describes Zoho and is not moved by a tick. */
+  const ACT_TICK_KEY = 'cc-cos-actions-ticks-v1';
+  const tickLoad = () => {
+    try {
+      const v = JSON.parse(localStorage.getItem(ACT_TICK_KEY) || '{}') || {};
+      const obj = (o) => (o && typeof o === 'object' && !Array.isArray(o) ? o : {});
+      return { done: obj(v.done), flag: obj(v.flag) };
+    } catch (e) { return { done: {}, flag: {} }; }
+  };
+  let ticks = tickLoad();
+  const tickSave = () => { try { localStorage.setItem(ACT_TICK_KEY, JSON.stringify(ticks)); } catch (e) { /* storage blocked: ticks last for this visit */ } };
+  const tickSync = (items) => {
+    const today = todayCT();
+    const live = new Set(items.map((i) => i.key));
+    let changed = false;
+    Object.keys(ticks.done).forEach((k) => {
+      if (!live.has(k)) { delete ticks.done[k]; changed = true; return; }
+      if (String(ticks.done[k]) < today) { ticks.flag[k] = ticks.done[k]; delete ticks.done[k]; changed = true; }
+    });
+    Object.keys(ticks.flag).forEach((k) => { if (!live.has(k)) { delete ticks.flag[k]; changed = true; } });
+    if (changed) tickSave();
+  };
+  const setTick = (it, on) => {
+    ticks = tickLoad();
+    if (on) { ticks.done[it.key] = todayCT(); delete ticks.flag[it.key]; } else delete ticks.done[it.key];
+    tickSave();
+    draw();
+  };
+  const doneCell = (it) => {
+    const box = el('input', 'cc-cos-tick');
+    box.type = 'checkbox';
+    box.checked = Boolean(it.done);
+    box.setAttribute('aria-label', (it.done ? 'Mark not done: ' : 'Mark done: ') + String(it.next || '').slice(0, 80));
+    box.addEventListener('change', () => setTick(it, box.checked));
+    return box;
+  };
   const prioCell = (it) => {
     const eng = NE();
     const p = (eng && eng.PRIORITY[it.priority]) || { label: it.priority, tone: 'muted' };
@@ -536,11 +578,16 @@
     return a;
   };
   const actionTable = (list, tasksLoaded) => table(
-    ['Priority', 'Person', 'Company', 'What is next', 'Raised', 'Why', 'In Zoho'],
-    list.map((it) => [
-      prioCell(it), personCell(it), it.company, { cls: 'cc-cos-nextcell', v: it.next },
-      it.on ? dayOnlyF(it.on) : null, { cls: 'cc-cos-whycell', v: (it.reasons || [])[0] || '' }, zohoCell(it, tasksLoaded),
-    ]),
+    ['Done', 'Priority', 'Person', 'Company', 'What is next', 'Raised', 'Why', 'In Zoho'],
+    list.map((it) => ({
+      cls: it.done ? 'cc-cos-rowdone' : null,
+      cells: [
+        { cls: 'cc-cos-tickcell', v: doneCell(it) }, prioCell(it), personCell(it), it.company,
+        { cls: 'cc-cos-nextcell', v: it.next }, it.on ? dayOnlyF(it.on) : null,
+        { cls: 'cc-cos-whycell', v: it.done ? 'Ticked today in this browser' : (it.flagged ? `Ticked on ${dayOnlyF(it.flagged)}, still open` : (it.reasons || [])[0] || '') },
+        zohoCell(it, tasksLoaded),
+      ],
+    })),
   );
   const drawActions = () => {
     const s = st.actions;
@@ -551,13 +598,18 @@
         : 'The bot\u2019s conversation notes aren\u2019t in this build, so there are no action items to show. They come from Zoho with the hourly fetch.'));
       return;
     }
-    const { items, dnc, tasksLoaded, peopleLoaded, gap } = actionList();
+    const { items: raw, dnc, tasksLoaded, peopleLoaded, gap } = actionList();
     if (gap) { body.replaceChildren(el('p', 'cc-cos-bad', gap)); return; }
-    const sum = NE().summary(items);
-    const n = { act: sum.act, urgent: sum.urgent, soon: sum.soon, backlog: sum.backlog, watch: sum.watch, all: items.length };
+    tickSync(raw);
+    const items = raw.map((i) => Object.assign({}, i, { done: Boolean(ticks.done[i.key]), flagged: ticks.flag[i.key] || null }));
+    /* The chips count the work left, so a ticked item leaves them while staying in the table at the bottom. */
+    const sum = NE().summary(items.filter((i) => !i.done));
+    const doneCount = items.filter((i) => i.done).length;
+    const n = { act: sum.act, urgent: sum.urgent, soon: sum.soon, backlog: sum.backlog, watch: sum.watch, all: items.length - doneCount };
     const q = s.q.trim().toLowerCase();
     const pick = (i) => (s.prio === 'all' ? true : s.prio === 'act' ? (i.priority === 'urgent' || i.priority === 'soon') : i.priority === s.prio);
-    const list = items.filter((i) => pick(i) && (!q || [i.name, i.company, i.next, i.story].join(' ').toLowerCase().includes(q)));
+    const list = items.filter((i) => pick(i) && (!q || [i.name, i.company, i.next, i.story].join(' ').toLowerCase().includes(q)))
+      .sort((a, b) => Number(a.done) - Number(b.done));
     const tools = el('div', 'cc-cos-tools');
     tools.append(searchBox(s.q, 'Search action items', (v) => { s.q = v; s.shown = PAGE * 2; draw(); }),
       chips(PRIO_CHIPS.map(([k, label]) => [k, `${label} ${intF(n[k])}`]), s.prio, (k) => { s.prio = k; s.shown = PAGE * 2; draw(); }, 'Priority'));
@@ -575,11 +627,15 @@
     if (dnc) caveats.push(`${plural(dnc, 'item')} left out: the contact is marked Do Not Contact in Zoho.`);
     if (!peopleLoaded) caveats.push('Zoho contacts didn\u2019t load, so company and Do Not Contact aren\u2019t applied.');
     if (sum.stale) caveats.push(`${plural(sum.stale, 'item')} are older than ${sum.staleDays} days: close them in Zoho or raise them again.`);
+    caveats.push('Ticking Done moves a row to the bottom in green and takes it out of the chip counts for the rest of the day. The tick is kept in this browser only, never in Zoho and never shared, so a teammate still sees the item open; if it is still open tomorrow it comes back unticked and says when it was ticked.');
     /* One line of method under the verdict, the rest folded away: five sentences of caveat between the verdict and the
        table is the first thing a reader meets, and it buries the work. Everything still says itself, one click down. */
     const how = el('details', 'cc-cos-how');
     how.append(el('summary', null, 'How this is worked out'), ...caveats.slice(1).map((c) => el('p', 'cc-cos-cap', c)));
-    const parts = [verdict, tools, el('p', 'cc-cos-cap', caveats[0]), how, actionTable(list.slice(0, s.shown), tasksLoaded)];
+    const lead = doneCount
+      ? `${caveats[0]} ${plural(doneCount, 'item')} ticked done today ${doneCount === 1 ? 'sits' : 'sit'} at the bottom in green and ${doneCount === 1 ? 'is' : 'are'} out of the counts above.`
+      : caveats[0];
+    const parts = [verdict, tools, el('p', 'cc-cos-cap', lead), how, actionTable(list.slice(0, s.shown), tasksLoaded)];
     if (!list.length) parts[4] = el('p', 'cc-cos-cap', 'Nothing matches that filter.');
     const more = moreBtn(Math.min(s.shown, list.length), list.length, () => { s.shown += PAGE * 2; draw(); }, PAGE * 2);
     if (more) parts.push(more);
