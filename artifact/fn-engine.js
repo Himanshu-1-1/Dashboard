@@ -260,7 +260,7 @@
         f.linkedinConn = { connected: c.connected, position: c.position, company: c.company, url: c.url, ties: c.ties || [],
           fit: c.fit || null, type: c.type || null, why: c.why || '', refer: c.refer || '', client: c.client === true, net: c.net || 'Mack' };
         f.identities.push({ source: 'LinkedIn export', record: c.url || c.name, method: how, confidence: how === 'Same LinkedIn profile' ? 'confirmed' : 'likely', verified: how === 'Same LinkedIn profile' });
-        if (c.connected) f.activities.push({ source: 'LinkedIn', type: 'Connected on LinkedIn', day: c.connected, at: c.connected, text: `Connected with Mack on LinkedIn${(c.ties || []).length ? '; ' + c.ties.join(', ').toLowerCase() : ''}`, kind: 'imported' });
+        if (c.connected) f.activities.push({ source: 'LinkedIn', type: 'Connected on LinkedIn', day: c.connected, at: c.connected, text: `Connected with ${c.net || 'Mack'} on LinkedIn${(c.ties || []).length ? '; ' + c.ties.join(', ').toLowerCase() : ''}`, kind: 'imported' });
         if (!f.title && c.position) f.title = c.position;
         if (!f.company && c.company) f.company = c.company;
         if (!f.linkedin && c.url) { f.linkedin = c.url; f.issues = f.issues.filter((i) => i.type !== 'No LinkedIn URL' || !f.zoho); if (f.zoho && !slugOf(f.zoho.LinkedIn)) f.issues.push({ type: 'No LinkedIn URL', detail: 'Mack’s LinkedIn export has this person; Zoho doesn’t have the URL', fix: 'Add ' + c.url + ' in Zoho', severity: 'low' }); }
@@ -465,22 +465,34 @@
     const o = f.outlook && f.outlook.identity === 'same person' && num(f.outlook.email_count) ? f.outlook : null;
     const li = f.linkedinConn;
     const ties = li ? li.ties.join(' ').toLowerCase() : '';
+    /* Signed with the contact's Zoho Assigned owner, not a hard-coded name: a founder Shruti owns must not get a
+       draft signed by Mack. Unsigned when Zoho records no owner, as the contact search brief does. */
+    const owner = f.owner ? String(f.owner).trim().split(/\s+/)[0] : null;
+    const signOff = (ch) => (ch === 'Email' ? (owner ? `\n\nBest,\n${owner}` : '\n\nBest,') : owner ? `\n\n${owner}` : '');
+    /* Whose network the connection came from: both exports feed linkedinConn, so "Mack" is not always right. */
+    const net = li && li.net ? li.net : 'Mack';
     const thanks = /they recommended|recommendation from/.test(ties) ? ' Thank you again for the recommendation.' : /they endorsed/.test(ties) ? ' Thank you again for the endorsement.' : '';
     const at = co ? ` at ${co}` : '';
     if (o) {
       const when = monthYear(o.last_email);
       const body = o.two_way
-        ? `Hi ${first},\n\nIt’s been a while since we last traded emails${when ? ' back in ' + when : ''}. I’d like to hear how things are going${at} and what you’re focused on for the rest of the year.\n\nWould you have 20 minutes for a call or a coffee in the next couple of weeks?\n\nBest,\nMack`
-        : `Hi ${first},\n\nOur last email was${when ? ' back in ' + when : ' a while ago'}, and I’d like to pick the conversation up again. I’d value hearing what you’re working on${at} these days.\n\nWould a 20-minute call in the next couple of weeks work for you?\n\nBest,\nMack`;
+        ? `Hi ${first},\n\nIt’s been a while since we last traded emails${when ? ' back in ' + when : ''}. I’d like to hear how things are going${at} and what you’re focused on for the rest of the year.\n\nWould you have 20 minutes for a call or a coffee in the next couple of weeks?${signOff('Email')}`
+        : `Hi ${first},\n\nOur last email was${when ? ' back in ' + when : ' a while ago'}, and I’d like to pick the conversation up again. I’d value hearing what you’re working on${at} these days.\n\nWould a 20-minute call in the next couple of weeks work for you?${signOff('Email')}`;
       return { channel: 'Email', subject: o.two_way ? 'Catching up' : 'Picking up where we left off', body, basis: `Email, because the team’s Outlook has ${o.two_way ? 'mail both ways' : 'earlier mail'} with them${when ? ', last in ' + when : ''}.` };
     }
     if (li) {
       const since = li.connected ? ` since ${li.connected.slice(0, 4)}` : '';
-      const body = `Hi ${first}, I hope all is well${at}.${thanks} I’d like to catch up and hear what you’re working on these days. Would you be open to a 20-minute call or a coffee in the next few weeks?\n\nMack`;
-      return { channel: 'LinkedIn message', subject: null, body, basis: `LinkedIn message, because they’re connected with Mack${since} and there’s no email with them on record.` };
+      const body = `Hi ${first}, I hope all is well${at}.${thanks} I’d like to catch up and hear what you’re working on these days. Would you be open to a 20-minute call or a coffee in the next few weeks?${signOff('LinkedIn')}`;
+      return { channel: 'LinkedIn message', subject: null, body, basis: `LinkedIn message, because they’re connected with ${net}${since} and there’s no email with them on record.` };
     }
-    let body = `Hi ${first}, I’ve been meaning to reach out. I’d like to connect and hear what you’re building${at}.\n\nMack`;
-    if (body.length > 300) body = `Hi ${first}, I’d like to connect and hear what you’re working on.\n\nMack`;
+    const sign = signOff('LinkedIn');
+    let body = `Hi ${first}, I’ve been meaning to reach out. I’d like to connect and hear what you’re building${at}.${sign}`;
+    if (body.length > 300) body = `Hi ${first}, I’d like to connect and hear what you’re working on.${sign}`;
+    /* A long owner name can still overrun the cap; the note matters more than the sign-off. */
+    if (body.length > 300) body = `Hi ${first}, I’d like to connect and hear what you’re working on.`;
+    /* Nothing bounds a name in Zoho, so clip as a last resort: LinkedIn rejects anything over 300, and a visibly
+       truncated draft gets fixed by the person sending it, where an over-long one just fails on paste. */
+    if (body.length > 300) body = body.slice(0, 299).trimEnd() + '…';
     return { channel: 'LinkedIn connection note', subject: null, body, basis: 'A LinkedIn connection note (300 characters at most), because there’s no email or LinkedIn connection on record.' };
   }
   /* Telegram notes that show a conversation or meeting already happened, or a relationship that isn't a prospect. Used
@@ -511,8 +523,8 @@
       if (p === '1') add(40, `Priority 1${f.priority ? ' in Zoho' : ' in the team’s chat'}`);
       else if (p === '3') add(25, `Priority 3${f.priority ? ' in Zoho' : ' in the team’s chat'}`);
       else if (p === '5') add(10, 'Priority 5 in Zoho');
-      if (f.linkedinConn) add(15, 'Connected with Mack on LinkedIn');
-      if (f.linkedinConn && f.linkedinConn.ties.length) add(10, 'Endorsements or recommendations with Mack');
+      if (f.linkedinConn) add(15, `Connected with ${f.linkedinConn.net || 'Mack'} on LinkedIn`);
+      if (f.linkedinConn && f.linkedinConn.ties.length) add(10, `Endorsements or recommendations with ${f.linkedinConn.net || 'Mack'}`);
       if (o && o.two_way) add(10, 'Has written back to us before');
       else if (o && num(o.email_count)) add(5, 'Earlier email on record');
       const tgDays = f.activities.filter((a) => a.source === 'Telegram' && a.day).map((a) => a.day).sort();
