@@ -32,6 +32,48 @@
   const rows = (id) => D(id).data || [];
   const ok = (id) => D(id).status === 'ok';
   const okRows = (id) => (ok(id) ? rows(id) : []);
+  /* The bot's conversation notes, straight from Zoho rather than through the Chief of Staff feed: the note is in
+     Zoho either way, and the hourly fetch runs on a schedule where the feed runs only while the laptop is awake. */
+  dash.loader('contact_notes', {
+    description: 'Zoho\u2019s COQL answer as rows: a lookup becomes its name (and _id), a multi-select becomes text.',
+    fn: ({ answer }) => {
+      const a = typeof answer === 'string' ? (answer.trim() ? JSON.parse(answer) : {}) : (answer || {});
+      if (a.status === 'error' || (a.code && !a.data)) throw new Error(a.message || a.code || 'Zoho CRM refused the query');
+      const body = a.data && !Array.isArray(a.data) ? a.data : a;
+      const list = Array.isArray(body.data) ? body.data : [];
+      const out = list.map((r) => {
+        const o = {};
+        for (const [k, v] of Object.entries(r)) {
+          if (Array.isArray(v)) o[k] = v.map((x) => (x && typeof x === 'object' ? x.name : x)).filter((x) => x != null && x !== '').join(', ');
+          else if (v && typeof v === 'object') { o[k] = v.name ?? null; o[k + '_id'] = v.id ?? null; }
+          else o[k] = v;
+        }
+        return o;
+      });
+      return { columns: out.length ? Object.keys(out[0]) : [], rows: out, cut: Boolean(body.info && body.info.more_records) };
+    },
+  });
+
+  /* The newest conversation note for a contact, with its Next: clause split out. The bot writes "Next: We owe \u2026"
+     when the move is ours and "Next: Waiting on \u2026" when it is theirs; a note describing a screenshot that was
+     not a conversation carries no Next: at all, so its absence is normal and never an error. */
+  const NEXT_RE = /(?:^|\n|\.\s+)Next:\s*([\s\S]+)$/;
+  const noteFor = (id) => {
+    if (!ok('contact_notes')) return null;
+    let best = null;
+    for (const r of rows('contact_notes')) {
+      if (String(r.Parent_Id_id || '') !== String(id)) continue;
+      if (!best || String(r.Created_Time || '') > String(best.Created_Time || '')) best = r;
+    }
+    if (!best) return null;
+    const text = String(best.Note_Content || '').trim();
+    const m = NEXT_RE.exec(text);
+    const next = m ? m[1].replace(/\s+/g, ' ').trim() : '';
+    /* "Waiting on <them>" is theirs to move; anything else the bot phrases as ours. */
+    const waiting = /^waiting on/i.test(next) && !/^waiting on (us|our|mack|shruti|hemang|the team)\b/i.test(next);
+    return { at: best.Created_Time || null, text, next: next || null, waiting, owed: Boolean(next) && !waiting };
+  };
+
   const intF = (n) => Number(n || 0).toLocaleString('en-US');
   const plural = (n, one, many) => `${intF(n)} ${n === 1 ? one : many || one + 's'}`;
   const clip = (s, n) => { const t = String(s || '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n - 1).trimEnd() + '…' : t; };
@@ -175,6 +217,7 @@
     b.mail = okRows('b2b_mail_people').find((m) => String(m.id) === id) || null;
     b.li = okRows('b2b_li_people').find((m) => String(m.id) === id && m.in_export) || null;
     b.brief = okRows('b2b_briefs').find((x) => String(x.zoho_id) === id) || null;
+    b.note = noteFor(id);
     b.digest = okRows('cos_digest').find((c) => String(c.zoho_id) === id) || null;
 
     /* Meetings. For a B2B prospect `mtg_people` has already reconciled Zoho, Outlook and Fireflies; for everyone else
@@ -238,6 +281,10 @@
     if (overdue) return { text: `Close or re-date the overdue task: ${clip(overdue.Subject, 90)}`, tone: 'now' };
     const loose = b.openCommits.find((c) => !b.tasks.some((t) => sameWork(t.Subject, c.text)));
     if (loose) return { text: `Settle the open commitment: ${clip(loose.text, 110)}`, tone: 'now' };
+    /* The bot's own next action, where no CRM fact above it is more specific. It sits here rather than above the
+       Zoho branches because a reply owed or an unsigned agreement is the harder commitment; both stay visible in the
+       brief either way, which is what treating the note as intelligence means in practice. */
+    if (b.note && b.note.next) return { text: clip(b.note.next, 130), tone: b.note.waiting ? 'ok' : 'now' };
     if (!b.n) return { text: b.z.li === 'Requested' ? 'The LinkedIn request is still pending: follow it up, or try email' : 'Ask for a first meeting', tone: 'ok' };
     if (openDeal && openDeal.next_step) return { text: `${clip(openDeal.next_step, 110)} (from the deal ${openDeal.deal})`, tone: 'ok' };
     if (b.since != null && b.since >= QUIET_DAYS) return { text: `Suggest a follow-up call; last met ${dayF(b.last)}${ask ? `. Ask next: ${ask}` : ''}`, tone: 'ok' };
@@ -292,6 +339,10 @@
     const owner = b.z.assigned ? String(b.z.assigned).trim().split(/\s+/)[0] : null;
     /* The sign-off is added per channel at the end, so a LinkedIn message never carries an email's "Best,". */
     const signOff = (ch) => (ch === 'Email' ? (owner ? `\n\nBest,\n${owner}` : '\n\nBest,') : owner ? `\n\n${owner}` : '');
+    /* The note's Next: clause decides WHICH wording is used and never appears in the message. It is written about
+       the contact and for us ("We owe Tavo a ping"), so pasting it into a message addressed to them talks about the
+       recipient in the third person and leaks an internal note. The meeting brief's ask_next is different: it was
+       written as a point to raise with them, so it still carries into the body. */
     const ask = b.brief && Array.isArray(b.brief.ask_next) && b.brief.ask_next.length ? clip(b.brief.ask_next[0], 140) : '';
     const hasMail = Boolean(b.z.email) && Boolean((b.mail && (b.mail.n_in || b.mail.n_out)) || (b.digest && b.digest.last && b.digest.last.m365_mail));
     const connected = b.z.li === 'Connected' || (b.li && b.li.actual === 'connected');
@@ -309,6 +360,16 @@
       subject = 'Before we meet';
       body = `Hi ${first},\n\nLooking forward to our meeting on ${dayF(b.next)}.${ask ? ` I’d like to cover ${ask.charAt(0).toLowerCase() + ask.slice(1)}` : ''}\n\nIs there anything you’d like on the agenda?`;
       why = `A meeting is booked for ${dayF(b.next)}.`;
+    } else if (b.note && b.note.waiting) {
+      /* They owe us the move, so this is a nudge and never a chase. */
+      subject = 'Checking in';
+      body = `Hi ${first}, I hope all is well${at}. No rush at all — just keeping this on your radar.${ask ? ` ${ask}` : ''}\n\nAnything I can do to help it along?`;
+      why = 'The latest conversation note says the next move is theirs.';
+    } else if (b.note && b.note.owed) {
+      subject = 'Following up';
+      /* No date here: b.note.at is when the bot filed the note, not when the exchange happened, and the two differ. */
+      body = `Hi ${first},\n\nPicking this back up where we left it.${ask ? ` ${ask}` : ''}\n\nWould a short call in the next few days work?`;
+      why = 'The latest conversation note records something we owe them.';
     } else if (!b.n) {
       subject = 'A short call?';
       body = `Hi ${first}, I hope all is well${at}. I’d like to hear what you’re working on these days and see where we might be useful to each other.\n\nWould you be open to 20 minutes in the next couple of weeks?`;
@@ -332,6 +393,9 @@
     }
     let note = `Hi ${first}, I’d like to connect and hear what you’re working on${at}.${signOff('LinkedIn')}`;
     if (note.length > 300) note = `Hi ${first}, I’d like to connect and hear what you’re working on.${signOff('LinkedIn')}`;
+    /* Nothing bounds a name in Zoho, and LinkedIn rejects anything over 300 on paste. */
+    if (note.length > 300) note = `Hi ${first}, I’d like to connect and hear what you’re working on.`;
+    if (note.length > 300) note = note.slice(0, 299).trimEnd() + '…';
     return { channel: 'LinkedIn connection note', subject: null, body: note, to: safeUrl(b.z.linkedin), basis: `${why} A connection note of 300 characters at most, because there’s no email and no connection on record.` };
   };
 

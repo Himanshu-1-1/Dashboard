@@ -275,7 +275,7 @@ span.dash-skeleton, b.dash-skeleton { display: inline-block; min-width: 2.5ch; }
     showGate(lock);
   };
   /* Datasets a build may not carry at all: seeded empty so a calc that reads one gets rows, not an error. */
-  const DS_DEFAULTS = { wi_research: [], wi_mack: [], li_sync: [], b2b_cal: [], b2b_ff: [], p3_log: [], li_dm: [], li_outreach: [], cos_digest: [], deal_stage_history: [] };
+  const DS_DEFAULTS = { wi_research: [], wi_mack: [], li_sync: [], b2b_cal: [], b2b_ff: [], p3_log: [], li_dm: [], li_outreach: [], cos_digest: [], deal_stage_history: [], contact_notes: [] };
   /* Merge every source into one set of datasets. A later source wins, as it always has, so the opened sealed file
      overrides a snapshot branch for the same dataset. The one exception: an empty list never replaces rows an
      earlier source already supplied. That matters while two pipelines feed the same dataset — the Chief of Staff

@@ -80,6 +80,10 @@ QUERIES = {
     'meetings': {"sql": "select Event_Title, Start_DateTime, Who_Id, Who_Id.Relationship_Type, Who_Id.Priority, Who_Id.Tag from Events where Start_DateTime >= '2026-08-17T00:00:00-05:00' order by Start_DateTime asc", "paged": True},
     # Who introduced us to whom (Contacts field "Introduced By (Contact)"): the Partner view lists the people each
     # signed partner introduced, with how to reach them (Hemang, Nov 7, 2026).
+    # Only the bot's conversation notes, filtered in the COQL and never in the page: a blanket Notes pull would
+    # drag the LinkedIn DM threads and the Fireflies notes (whose Participants line carries raw addresses) into
+    # data.js, which the lock step encrypts wholesale.
+    'contact_notes': {"sql": "select Note_Title, Note_Content, Parent_Id, Created_Time from Notes where Note_Title like 'Conversation note:%' order by id asc", "paged": True},
     'introductions': {"sql": "select Full_Name, Account_Name, Title, Email, Phone, LinkedIn, Relationship_Type, Tag, Priority, Introduced_By_Contact, Created_Time from Contacts where Introduced_By_Contact is not null order by Created_Time desc", "paged": True}
 }
 
