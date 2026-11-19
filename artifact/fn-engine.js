@@ -26,6 +26,7 @@
     prepDays: 2,
     taskStaleDays: 45,
     callActionDays: 60,
+    replyDays: 120, /* a reviewed LinkedIn reply still owed this long after their message; LI_REPLY_DAYS on B2B Today */
     b2bTag: 'May 2026 - 100 B2B', /* contacts with this tag belong to the B2B campaign and are left off this tab */
     hiddenPriorities: ['9', '11', '99'], /* left off every list; P99 signed partners still count in the scorecard */
     outreachQuietDays: 14, /* someone emailed in the last two weeks isn't suggested again yet */ /* action items from recorded calls older than this stay on the timeline only */
@@ -152,7 +153,7 @@
     const founders = new Map();
     const make = (id, base) => {
       const f = Object.assign({ id, name: '', company: '', title: '', linkedin: '', zoho: null, inFN: false, priority: null, owner: null,
-        dnc: false, identities: [], activities: [], notes: [], telegramPriority: null, photos: [], issues: [], tgActions: [], outlook: null, linkedinConn: null }, base);
+        dnc: false, identities: [], activities: [], notes: [], telegramPriority: null, photos: [], issues: [], tgActions: [], outlook: null, linkedinConn: null, liDm: null }, base);
       founders.set(id, f);
       return f;
     };
@@ -258,7 +259,8 @@
         /* The hand grade travels with the connection: what kind of partner they would be, what they could refer,
            and whether they were marked a possible client. `commercial` reads these; nothing else does. */
         f.linkedinConn = { connected: c.connected, position: c.position, company: c.company, url: c.url, ties: c.ties || [],
-          fit: c.fit || null, type: c.type || null, why: c.why || '', refer: c.refer || '', client: c.client === true, net: c.net || 'Mack' };
+          fit: c.fit || null, type: c.type || null, why: c.why || '', refer: c.refer || '', client: c.client === true, net: c.net || 'Mack',
+          dm: c.dm || null };
         f.identities.push({ source: 'LinkedIn export', record: c.url || c.name, method: how, confidence: how === 'Same LinkedIn profile' ? 'confirmed' : 'likely', verified: how === 'Same LinkedIn profile' });
         if (c.connected) f.activities.push({ source: 'LinkedIn', type: 'Connected on LinkedIn', day: c.connected, at: c.connected, text: `Connected with ${c.net || 'Mack'} on LinkedIn${(c.ties || []).length ? '; ' + c.ties.join(', ').toLowerCase() : ''}`, kind: 'imported' });
         if (!f.title && c.position) f.title = c.position;
@@ -273,6 +275,10 @@
     /* Zoho events, tasks, deals, agreements */
     const byZoho = new Map();
     for (const f of founders.values()) if (f.zoho) byZoho.set(str(f.zoho.id), f);
+    /* Mack's reviewed LinkedIn conversations (dataset li_dm), keyed by Zoho contact id, which is the only key that file
+       carries: a founder with no Zoho record cannot be joined to it, and `replyOwed` names that. Shruti's ride on her
+       connection instead (`linkedinConn.dm`), because her export is joined by profile like the rest of it. */
+    for (const r of src.liDm || []) { const f = byZoho.get(str(r.contact_id)); if (f) f.liDm = r; }
     for (const e of src.events || []) {
       const f = byZoho.get(str(e.Who_Id_id)); if (!f) continue;
       const day = ctDay(e.Start_DateTime, settings.tz);
@@ -359,7 +365,8 @@
 
   /* ---------- actions: Zoho tasks, meetings, Telegram asks, Fireflies commitments, rules ---------- */
   /* kind: commitment (recorded in a source with an owner or a date), proposal (found in a source, needs review), rule (the
-     dashboard's own recommendation). Never invents an owner or a due date. */
+     dashboard's own recommendation), reply (they wrote and nothing has gone back; a reviewed fact, not a recommendation).
+     Never invents an owner or a due date. */
   const TEAM_RE = (settings) => new RegExp('^(' + settings.team.join('|') + ')\\b', 'i');
   function actionsFor(f, F, today, settings = DEFAULTS) {
     const out = [];
@@ -397,6 +404,31 @@
       const after = f.activities.some((a) => a.day && a.day > lastMeeting && (a.type === 'Email' || a.type === 'Task' || (a.type === 'Meeting')));
       const gap = daysBetween(lastMeeting, today);
       if (!after && gap >= settings.followUpDays && gap <= 60 && !F.openTasks.length) add({ key: 'followup:' + f.id + ':' + lastMeeting, category: 'Follow up after a meeting', kind: 'rule', text: `No follow-up recorded since the meeting on ${shortDay(lastMeeting)}`, evidence: [{ source: 'Rule', text: `Meeting ${gap} days ago; no later email, task or meeting on record` }], status: 'Open', next: 'Send a follow-up and record the next step in Zoho' });
+    }
+    /* A reply owed on LinkedIn (Hemang, Nov 19, 2026). Partners and founders waiting on us appeared in no queue: the B2B
+       queue only covers contacts carrying the B2B tag, which this tab leaves out by Mack's rule, and nothing here read a
+       conversation. `reply_needed` is a reviewed judgment made at import -- their last message asked or offered something
+       and nobody answered it -- so this reports a labeled fact rather than guessing from counts. Mack's rows carry
+       `last_in`; Shruti's carry `last`, which is their message whenever a reply is owed, since that is what the flag
+       means. Mirrors B2B Today's rule: dropped past `replyDays`, and dropped once a meeting was held after their message
+       or any meeting is booked. Email is not covered: `fn_outlook` records counts and dates but not who wrote last, so a
+       thread owed by email is invisible here, and `planGap`-style honesty belongs in the view, not a guess here. */
+    const owedDms = [
+      f.liDm ? { dm: f.liDm, net: 'Mack' } : null,
+      f.linkedinConn && f.linkedinConn.dm ? { dm: f.linkedinConn.dm, net: f.linkedinConn.net || 'Shruti' } : null,
+    ].filter((x) => x && x.dm && x.dm.reply_needed === true);
+    for (const o of owedDms) {
+      const theirs = str(o.dm.last_in || o.dm.last) || null;
+      if (!theirs || theirs > today) continue;
+      const since = daysBetween(theirs, today);
+      if (since > settings.replyDays) continue;
+      if (F.upcoming || F.meetingDays.some((d) => d > theirs)) continue;
+      const counts = num(o.dm.theirs || o.dm.n_in) || null;
+      add({ key: 'lireply:' + f.id + ':' + o.net.toLowerCase(), category: 'Reply owed on LinkedIn', kind: 'reply',
+        text: `They wrote to ${o.net} on LinkedIn ${shortDay(theirs)} and nothing has gone back`,
+        owner: o.net, due: theirs, status: 'Overdue', overdueDays: since, stale: since > settings.taskStaleDays,
+        evidence: [{ source: 'LinkedIn', text: `${o.net}'s reviewed conversation: reply owed since ${theirs}${counts ? ', ' + counts + ' message' + (counts === 1 ? '' : 's') + ' from them' : ''}${o.dm.note ? '. ' + str(o.dm.note) : ''}` }],
+        next: str(o.dm.respond) || `Reply on LinkedIn from ${o.net}'s account, then record it in Zoho` });
     }
     for (const a of f.tgActions) {
       const txt = str(a.text);

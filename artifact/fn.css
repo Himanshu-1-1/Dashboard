@@ -99,6 +99,10 @@
 .cc-fx-tile.cc-fx-bad { --k: var(--fx-t-crit); --surf: var(--fx-t-crit-bg); }
 .cc-fx-tile-overdue.cc-fx-bad { --surf: var(--fx-t-crit-bg2); border-color: color-mix(in oklab, var(--fx-t-crit) 22%, var(--fx-t-border)); border-top-color: var(--k); }
 .cc-fx-tile-overdue.cc-fx-bad b { font-weight: 500; }
+/* Waiting on us carries the overdue tile's red: a reply owed to a partner is work owed, not a warning. The flag in the
+   tile says it in words, so the color is never what tells you. */
+.cc-fx-tile-reply.cc-fx-bad { --surf: var(--fx-t-crit-bg2); border-color: color-mix(in oklab, var(--fx-t-crit) 22%, var(--fx-t-border)); border-top-color: var(--k); }
+.cc-fx-tile-reply.cc-fx-bad b { font-weight: 500; }
 .cc-fx-tile-review.cc-fx-warn { --k: var(--fx-t-amber); --surf: var(--fx-t-amber-bg); }
 .cc-fx-tile-fix.cc-fx-warn { --k: var(--fx-t-orange); --surf: var(--fx-t-orange-bg); }
 .cc-fx-tile-meet.cc-fx-info { --k: var(--fx-t-indigo); --surf: var(--fx-t-indigo-bg); }

@@ -457,3 +457,106 @@ test('reconnect gives each card a list exactly as long as the number on it', () 
   assert.ok(row.commercial && row.commercial.verdict, 'a B2B row carries the same read as the rest, so the list shows the same columns');
   assert.equal(row.touch, null, 'and the same last-contact read');
 });
+
+// A reply owed on LinkedIn (Hemang, Nov 19, 2026). The gap these cover: before this, a partner who wrote and got no
+// answer appeared in no queue at all, because the B2B queue only reads B2B-tagged contacts and this tab leaves those out.
+const owedOf = (founders, id) => (founders.find((f) => f.id === 'z:' + id) || { actions: [] }).actions.filter((a) => a.kind === 'reply');
+
+test('a reviewed reply owed becomes an action, owned by the account it was owed from, dated to their message', () => {
+  const f = fixture();
+  f.liDm = [{ contact_id: '50', status: 'they_wrote', reply_needed: true, last_in: '2026-10-12', theirs: 3, note: 'Asked for pricing on the HIPAA piece' }];
+  const a = owedOf(E.run(f).founders, '50');
+  assert.equal(a.length, 1);
+  assert.equal(a[0].category, 'Reply owed on LinkedIn');
+  assert.equal(a[0].owner, 'Mack');
+  assert.equal(a[0].due, '2026-10-12');
+  assert.equal(a[0].overdueDays, 11);
+  assert.match(a[0].text, /wrote to Mack on LinkedIn Oct 12 and nothing has gone back/);
+  assert.match(a[0].evidence[0].text, /reply owed since 2026-10-12, 3 messages from them\. Asked for pricing/);
+});
+
+test('a conversation nobody flagged as owing a reply produces no action', () => {
+  const f = fixture();
+  f.liDm = [{ contact_id: '50', status: 'talking', reply_needed: false, last_in: '2026-10-12' }];
+  assert.equal(owedOf(E.run(f).founders, '50').length, 0);
+});
+
+const quiet = () => { const f = fixture(); f.events = []; f.ffMeetings = []; f.ffLinks = []; f.outlook = []; return f; };
+
+test('a reply owed longer than replyDays is dropped, and the day before the cutoff is kept', () => {
+  const f = quiet();
+  f.liDm = [{ contact_id: '50', reply_needed: true, last_in: '2026-06-01' }, { contact_id: '52', reply_needed: true, last_in: '2026-06-25' }];
+  assert.equal(owedOf(E.run(f).founders, '50').length, 0, '144 days is past the 120-day cutoff');
+  assert.equal(owedOf(E.run(f).founders, '52').length, 1, '120 days exactly is still owed');
+});
+
+test('a meeting already booked clears the reply, and so does a meeting held after their message', () => {
+  const f = fixture();
+  f.liDm = [
+    { contact_id: '51', reply_needed: true, last_in: '2026-10-10' }, // Omar has a meeting booked for tomorrow
+    { contact_id: '52', reply_needed: true, last_in: '2026-09-20' }, // Lena met us on Sep 28, after writing
+  ];
+  assert.equal(owedOf(E.run(f).founders, '51').length, 0);
+  assert.equal(owedOf(E.run(f).founders, '52').length, 0);
+});
+
+test('a meeting held before their message does not clear it: the message came after', () => {
+  const f = fixture();
+  f.liDm = [{ contact_id: '52', reply_needed: true, last_in: '2026-10-05' }]; // Lena's meeting was Sep 28
+  assert.equal(owedOf(E.run(f).founders, '52').length, 1);
+});
+
+test('Shruti’s reviewed conversation rides on her connection and carries her wording as the next step', () => {
+  const f = fixture();
+  f.linkedin = [{ first: 'Priya', last: 'Vandermolen', url: 'https://linkedin.com/in/priya-v', connected: '2026-03-01', net: 'Shruti',
+    dm: { status: 'they_wrote', reply_needed: true, last: '2026-10-15', n_in: 2, respond: 'Answer her question about the pilot and offer two times' } }];
+  const a = owedOf(E.run(f).founders, '50');
+  assert.equal(a.length, 1);
+  assert.equal(a[0].owner, 'Shruti');
+  assert.equal(a[0].due, '2026-10-15');
+  assert.equal(a[0].next, 'Answer her question about the pilot and offer two times');
+});
+
+test('both accounts owing the same person gives two actions with keys that do not collide', () => {
+  const f = fixture();
+  f.liDm = [{ contact_id: '50', reply_needed: true, last_in: '2026-10-12' }];
+  f.linkedin = [{ first: 'Priya', last: 'Vandermolen', url: 'https://linkedin.com/in/priya-v', connected: '2026-03-01', net: 'Shruti',
+    dm: { reply_needed: true, last: '2026-10-18' } }];
+  const a = owedOf(E.run(f).founders, '50');
+  assert.equal(a.length, 2);
+  assert.equal(new Set(a.map((x) => x.key)).size, 2);
+  assert.deepEqual(a.map((x) => x.owner).sort(), ['Mack', 'Shruti']);
+});
+
+test('Mack’s conversations join by Zoho id only, so a founder with no Zoho record gets no reply action', () => {
+  const f = fixture();
+  f.tgPeople = [{ name: 'Rosalind Achterberg', actions: [] }];
+  f.liDm = [{ contact_id: 'tg:rosalind-achterberg', reply_needed: true, last_in: '2026-10-12' }];
+  const all = E.run(f).founders.flatMap((x) => x.actions).filter((a) => a.kind === 'reply');
+  assert.equal(all.length, 0);
+});
+
+test('a reply owed is Below target and never Urgent: only commitments and imminent prep are urgent', () => {
+  const f = fixture();
+  f.liDm = [{ contact_id: '50', reply_needed: true, last_in: '2026-10-12' }];
+  const a = owedOf(E.run(f).founders, '50')[0];
+  assert.equal(a.statusLabel, E.STATUS.BELOW);
+  assert.equal(E.isUrgentAction(a), false);
+  assert.equal(a.stale, false);
+});
+
+test('a reply owed past the stale window is marked stale so it ranks behind the fresh ones', () => {
+  const f = quiet();
+  f.liDm = [{ contact_id: '50', reply_needed: true, last_in: '2026-10-12' }, { contact_id: '52', reply_needed: true, last_in: '2026-08-01' }];
+  const fresh = owedOf(E.run(f).founders, '50')[0];
+  const old = owedOf(E.run(f).founders, '52')[0];
+  assert.equal(old.stale, true);
+  assert.ok(E.rankAction(fresh) < E.rankAction(old), 'the fresh reply is worth chasing first');
+});
+
+test('email alone never produces a reply owed: fn_outlook records no direction', () => {
+  const f = fixture();
+  f.liDm = [];
+  f.outlook = [{ key: '50', identity: 'same person', email_count: 9, first_email: '2026-09-01', last_email: '2026-10-20', two_way: true }];
+  assert.equal(owedOf(E.run(f).founders, '50').length, 0);
+});

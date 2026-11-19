@@ -134,6 +134,16 @@
 .cc-b2-mk { color: var(--color-fg); }
 .cc-b2-mfoot { color: var(--color-fg-muted); font-size: 12px; }
 .cc-b2-lihead { margin: var(--cds-gap-lg, 20px) 0 4px; font-size: 15px; }
+/* Connection targets (Hemang, Nov 19, 2026). The bar is the scorecard's, so the two read as one language; the number is
+   a step down from the scorecard's hero so it cannot be mistaken for the month's headline figure. */
+.cc-b2-litg { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--cds-gap-lg, 20px); margin: 8px 0 var(--cds-gap-lg, 20px); }
+.cc-b2-litgrow { display: grid; gap: 2px; align-content: start; }
+.cc-b2-litglabel { margin: 0; color: var(--color-fg-muted); }
+.cc-b2-litgbig { display: flex; align-items: baseline; gap: 8px; margin: 0; }
+.cc-b2-litgbig b { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: clamp(30px, 4vw, 40px); line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.cc-b2-litgbig span { font-family: var(--font-anthropic-serif); font-size: clamp(15px, 2vw, 18px); color: var(--color-fg-muted); }
+.cc-b2-litgrow .cc-b2-scorebar { margin-top: 6px; height: 10px; }
+.cc-b2-litgrow small { color: var(--color-fg-muted); font-size: 12px; }
 .cc-b2-litbl td:not(:first-child), .cc-b2-litbl th:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 640px) { .cc-b2-mnums { display: none; } .cc-b2-mcol small { font-size: 9px; } }
 .cc-b2-mstats:empty, .cc-b2-mweeks:empty, .cc-b2-mkey:empty, .cc-b2-chips:empty, .cc-b2-mfoot:empty { display: none; }

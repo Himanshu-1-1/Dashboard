@@ -13,7 +13,7 @@
   const PAGE = 25;
   const CONTACT_IDS = ['qa_contacts', 'qa_contacts_2', 'qa_contacts_3', 'qa_contacts_4'];
   const LIVE = ['fn_events', 'fn_tasks', 'deals', 'sign_docs'];
-  const FILES = ['fn_reach', 'fn_tg_people', 'fn_tg_photos', 'fn_tg_log', 'fn_ff_meetings', 'fn_ff_links', 'fn_outlook', 'mack_network', 'shruti_network', 'fn_sources'];
+  const FILES = ['fn_reach', 'fn_tg_people', 'fn_tg_photos', 'fn_tg_log', 'fn_ff_meetings', 'fn_ff_links', 'fn_outlook', 'mack_network', 'shruti_network', 'li_dm', 'fn_sources'];
 
   /* ---------- loaders for the two Founder Network queries (same shape as the page's other Zoho queries) ---------- */
   const coql = ({ answer }) => {
@@ -73,8 +73,10 @@
       linkedin: [['Mack', d.mack_network], ['Shruti', d.shruti_network]].flatMap(([net, rows]) => (rows || []).map((c) => ({
         first: c.first, last: c.last, url: c.url, position: c.position, company: c.company, connected: c.connected,
         ties: parse(c.ties, []), fit: c.fit || null, type: c.type || null, why: c.why || '', refer: c.refer || '',
-        client: c.client === true || c.client === 'true', net,
+        client: c.client === true || c.client === 'true', net, dm: parse(c.dm, null),
       }))),
+      /* Mack's reviewed conversations come as their own dataset keyed by Zoho contact id, not on his connection rows. */
+      liDm: d.li_dm || [],
       tgPeople: (d.fn_tg_people || []).map((t) => Object.assign({}, t, { relationship: parse(t.relationship, []), actions: parse(t.actions, []), mentions: parse(t.mentions, []), needs_name: t.needs_name === true || t.needs_name === 'true' })),
       ffMeetings: d.fn_ff_meetings || [],
       ffLinks: d.fn_ff_links || [],
@@ -88,7 +90,7 @@
   const flatAction = (a) => ({ key: a.key, founder: a.founder, name: a.name, category: a.category, kind: a.kind, text: a.text, owner: a.owner, due: a.due, status: a.status, status_label: a.statusLabel, next: a.next });
 
   /* The calcs readers can open in Sources. Every input is listed, so a source that fails shows there. */
-  const INPUTS = [...CONTACT_IDS, 'fn_events', 'fn_tasks', 'deals', 'sign_docs', 'mack_network', 'shruti_network', 'fn_tg_people', 'fn_ff_meetings', 'fn_ff_links', 'fn_outlook'];
+  const INPUTS = [...CONTACT_IDS, 'fn_events', 'fn_tasks', 'deals', 'sign_docs', 'mack_network', 'shruti_network', 'li_dm', 'fn_tg_people', 'fn_ff_meetings', 'fn_ff_links', 'fn_outlook'];
   const calcModel = (args) => { const d = {}; INPUTS.forEach((id, i) => { d[id] = args[i]; }); return E.run(buildSrc(d, new Date())); };
   dash.calc('fn_founders', {
     title: 'Founder Network founders', description: 'One row per founder: priority band and score, pipeline stage, identity check, last interaction, next meeting and next action, from Zoho, Telegram, Fireflies, Outlook and LinkedIn by the rules in fn-engine.js.',
@@ -513,6 +515,7 @@
     const overdue = open.filter((a) => a.kind === 'commitment' && a.status === 'Overdue');
     const soon = m.founders.filter((f) => f.upcoming && E.daysBetween(today, f.upcoming) <= 7);
     const review = open.filter((a) => a.kind === 'proposal').length;
+    const owed = open.filter((a) => a.kind === 'reply');
     const fixes = m.issues.filter((i) => i.severity === 'high');
     const urgentActs = open.filter(E.isUrgentAction);
 
@@ -527,9 +530,13 @@
       return b;
     };
     const outlookIn = statusOf('fn_outlook') === 'ok';
+    const liIn = statusOf('li_dm') === 'ok' || statusOf('shruti_network') === 'ok';
     tiles.append(
       tile(urgentActs.length ? 'bad' : 'ok', 'urgent', 'Urgent actions', urgentActs.length, 'overdue up to 45 days, or meeting prep within 2 days', urgentActs.length ? 'Critical' : 'Clear', () => go('actions', { urgent: true, status: null, done: false })),
       tile(overdue.length ? 'bad' : 'ok', 'overdue', 'Overdue commitments', overdue.length, 'Zoho tasks and meetings', overdue.length ? 'Overdue' : 'Clear', () => go('actions', { status: 'Overdue', done: false })),
+      /* Waiting on us (Hemang, Nov 19, 2026): the list Mack was keeping by hand. LinkedIn only for now, and the hint
+         says so, because `fn_outlook` records no direction and a thread owed by email cannot be seen from here. */
+      tile(owed.length ? 'bad' : (liIn ? 'ok' : 'muted'), 'reply', 'Waiting on us', owed.length, liIn ? 'they wrote on LinkedIn, nothing back; email not covered' : 'LinkedIn conversations not loaded', owed.length ? 'Reply owed' : (liIn ? 'Clear' : 'Partial'), () => go('actions', { kind: 'reply', status: null, done: false })),
       tile(outlookIn ? 'info' : 'muted', 'meet', 'Meeting in the next 7 days', soon.length, outlookIn ? 'founders, Zoho and calendars' : 'Zoho only; calendars not loaded', outlookIn ? 'Schedule' : 'Partial', () => go('founders', { soon: true, band: null, stage: '', sort: 'meeting' })),
       tile(review ? 'warn' : (statusOf('fn_tg_people') === 'ok' ? 'ok' : 'muted'), 'review', 'Waiting for review', review, 'asks from Telegram and calls', review ? 'Pending' : (statusOf('fn_tg_people') === 'ok' ? 'Clear' : 'Partial'), () => go('actions', { status: 'Needs review', done: false })),
       tile(fixes.length ? 'warn' : 'ok', 'fix', 'Zoho fixes', fixes.length, 'missing or not marked in Zoho', fixes.length ? 'Data to fix' : 'Clear', () => go('quality', { type: '', sev: 'high' })),
@@ -586,7 +593,7 @@
 
   /* ---------- Action Center ---------- */
   const ACTION_STATUS = ['Overdue', 'Due soon', 'Open', 'Waiting', 'Needs review', 'Done'];
-  const KIND_NAME = { commitment: 'Recorded commitment', proposal: 'Proposed, needs review', rule: 'Recommendation' };
+  const KIND_NAME = { commitment: 'Recorded commitment', proposal: 'Proposed, needs review', rule: 'Recommendation', reply: 'Reply owed' };
   const actionRow = (a, today) => {
     const tr = el('tr', 'cc-fx-row-' + toneOf(a.statusLabel));
     const s = el('td'); s.append(pill(a.status, toneOf(a.status === 'Needs review' ? 'Needs verification' : a.statusLabel)));
@@ -626,7 +633,7 @@
     const filters = el('div', 'cc-fx-filters');
     filters.append(
       search(a.q, 'Search actions or founders', (v) => { a.q = v; a.page = 0; render(); }),
-      select('Kind', [['', 'Any'], ['commitment', KIND_NAME.commitment], ['proposal', KIND_NAME.proposal], ['rule', KIND_NAME.rule]], a.kind, (v) => { a.kind = v; a.page = 0; render(); }),
+      select('Kind', [['', 'Any'], ['commitment', KIND_NAME.commitment], ['reply', KIND_NAME.reply], ['proposal', KIND_NAME.proposal], ['rule', KIND_NAME.rule]], a.kind, (v) => { a.kind = v; a.page = 0; render(); }),
       select('Type', [['', 'Any'], ...cats.map((c) => [c, c])], a.category, (v) => { a.category = v; a.page = 0; render(); }),
       select('Owner', [['', 'Anyone'], ...owners.map((o) => [o, o]), ['-', 'Not recorded']], a.owner, (v) => { a.owner = v; a.page = 0; render(); }),
       select('Sort', [['urgency', 'Most urgent first'], ['due', 'Due date'], ['founder', 'Founder']], a.sort, (v) => { a.sort = v; a.page = 0; render(); }),
@@ -793,6 +800,7 @@
     { id: 'fn_ff_meetings', label: 'Fireflies calls', kind: 'imported', how: 'Matched by email or exact name', limits: 'No Asinpa calls or interviews', count: () => (rowsOf('fn_ff_meetings') || []).length, unit: 'calls' },
     { id: 'fn_outlook', label: 'Outlook mail and calendar', kind: 'imported', how: 'Checked by hand', limits: 'Dates and counts only', count: () => (rowsOf('fn_outlook') || []).length, unit: 'people checked' },
     { id: 'mack_network', label: 'Mack’s LinkedIn export', kind: 'imported', how: 'Mack’s data export', limits: 'Emails dropped', count: () => (rowsOf('mack_network') || []).length, unit: 'connections' },
+    { id: 'li_dm', label: 'Reviewed LinkedIn conversations', kind: 'imported', how: 'Mack’s data export, labeled by hand', limits: 'Message text never leaves the scratch folder; a reply owed by email is not covered', count: () => (rowsOf('li_dm') || []).length, unit: 'conversations' },
   ];
   const drawSources = (m) => {
     const wrap = el('section', 'cc-fx-card');
@@ -802,7 +810,8 @@
     const now = new Date();
     for (const r of SRC_ROWS) {
       const s0 = statusOf(r.id);
-      const at = r.kind === 'live' ? (s0 === 'ok' ? now.toISOString() : null) : r.id === 'mack_network' ? ((rowsOf('mack_network') || [])[0] || {}).export_date : built.get(r.id);
+      const at = r.kind === 'live' ? (s0 === 'ok' ? now.toISOString() : null) : r.id === 'mack_network' ? ((rowsOf('mack_network') || [])[0] || {}).export_date
+        : r.id === 'li_dm' ? ((rowsOf('li_dm') || [])[0] || {}).as_of : built.get(r.id);
       const state = s0 === 'ok' ? 'ok' : s0 === 'loading' ? 'loading' : s0 === 'connect' || s0 === 'declined' ? 'connect' : s0 === 'missing' ? 'missing' : 'error';
       /* the public site carries the imported files only once they are sealed for it */
       const ss = state !== 'ok' && r.kind === 'imported' && window.CC_MAIL_PRIVATE ? { status: 'Not in this build', tone: 'muted' } : E.sourceStatus({ kind: r.kind, state, at }, now);

@@ -472,6 +472,16 @@
   /* Mack's connection requests by month (dataset li_outreach): sent, accepted, with and without a note, and replies to the
      standard first message. */
   const LI_OPENER = 'ERP/MSP/consulting space';
+  /* Connection-count targets from the Partners Dashboard sheet, photographed 31 Aug 2026: Mack to 7,500, Shruti to 1,000.
+     Until now they lived on that sheet alone, so nothing on this page could check them (Hemang, Nov 19, 2026). Counted
+     from the hand-made exports, where `mack_network` and `shruti_network` are one row per connection, so each number is
+     only as current as its export and never live. The sheet's third row, "Requested, not connected with Mack" against
+     1,000, is shown below as a count with no target: nothing records whether 1,000 meant requests in flight or requests
+     sent in total, and a target nobody can state is worse than no target. */
+  const LI_CONN_TARGETS = [
+    { net: 'Mack', ds: 'mack_network', target: 7500 },
+    { net: 'Shruti', ds: 'shruti_network', target: 1000 },
+  ];
 
   /* Monthly acquisition scorecard: new partner prospects added to Zoho (dataset b2b_added). */
   const ADD_TARGET = 50;
@@ -1370,13 +1380,17 @@
   const liNote = el('p', 'cc-b2-insight');
   const liTools = el('div', 'cc-tools cc-b2-chips');
   const liBody = el('div', 'cc-b2-wrap');
-  const liOutHead = el('h3', 'cc-b2-lihead', 'Connection requests by month');
+  const liOutHead = el('h3', 'cc-b2-lihead', 'Connections and connection requests');
+  const liTargets = el('div', 'cc-b2-litg');
   const liOut = el('div', 'cc-b2-wrap');
   const liOutNote = el('p', 'cc-b2-insight');
   const liFoot = el('p', 'cc-b2-mfoot');
-  /* Connection requests by month is hidden (Hemang, Oct 29, 2026); li_outreach still loads for its insight if it returns. */
-  liOutHead.hidden = true; liOutNote.hidden = true; liOut.hidden = true;
-  liCard.append(liPeriodBar, liStats, liNote, liTools, liBody, liFoot);
+  /* Shown again, with the connection targets beside it (Hemang, Nov 19, 2026). Hidden on Oct 29, 2026 -- and because
+     these nodes were never appended to the card either, the table was being built into a detached node on every redraw.
+     Each part hides itself when its own dataset is absent: the targets come from the network exports, the table from
+     `li_outreach`, so one missing build does not take the other down with it. */
+  liOutHead.hidden = true; liOutNote.hidden = true; liOut.hidden = true; liTargets.hidden = true;
+  liCard.append(liPeriodBar, liStats, liNote, liTools, liBody, liOutHead, liTargets, liOut, liOutNote, liFoot);
   const mtg = el('section', 'cc-card cc-mt');
   mtg.id = 'b2-mtg';
   mtg.setAttribute('aria-labelledby', 'b2-mtg-title');
@@ -2384,14 +2398,39 @@
     ['Note', (p) => p.note || '—'],
   ];
   const showLiPeople = (title, list, note) => showTable(title, LI_COLS, list.slice().sort((a, b) => String(b.last || '').localeCompare(String(a.last || ''))), note);
+  /* The connection targets. Drawn before the conversation guards below, and from its own datasets, so a build without
+     `li_dm` still shows them. Neither number opens a list: the people behind them are 6,880 and 992 rows, which belongs
+     on Mack's Network, and the line says so rather than offering a drill nobody can read. */
+  const drawLiTargets = () => {
+    const have = LI_CONN_TARGETS.map((t) => (state([t.ds]) === 'ok' && rows(t.ds).length ? Object.assign({}, t, { list: rows(t.ds) }) : null)).filter(Boolean);
+    liOutHead.hidden = !(have.length || state(['li_outreach']) === 'ok');
+    liTargets.hidden = !have.length;
+    if (!have.length) { liTargets.replaceChildren(); return; }
+    liTargets.replaceChildren(...have.map((t) => {
+      const n = t.list.length;
+      const met = n >= t.target;
+      const asOfEx = t.list.reduce((m, r) => (String(r.export_date || '') > m ? String(r.export_date) : m), '');
+      const row = el('div', 'cc-b2-litgrow');
+      const big = el('p', 'cc-b2-litgbig' + (met ? ' cc-b2-scoremet' : ''));
+      big.append(el('b', null, intF(n)), el('span', null, 'of ' + intF(t.target)));
+      const bar = el('div', 'cc-b2-scorebar');
+      const fill = el('i'); fill.style.width = Math.min(100, (n / t.target) * 100) + '%'; bar.append(fill);
+      row.append(el('p', 'cc-b2-litglabel', t.net + '’s LinkedIn connections'), big, bar,
+        el('small', null, (met ? 'Target met. ' : intF(t.target - n) + ' to go. ')
+          + 'One row per connection in ' + t.net + '’s export' + (asOfEx ? ' of ' + dayF(asOfEx) : '')
+          + ', so it moves only when a new export is downloaded. The people are on Mack’s Network.'));
+      return row;
+    }));
+  };
   const drawLi = () => {
     const clear = () => { [liStats, liTools, liBody, liOut].forEach((n) => n.replaceChildren()); liOutNote.textContent = ''; liFoot.textContent = ''; };
+    drawLiTargets();
     const st = state(['li_dm', 'li_outreach', 'b2b_li_people']);
     if (st === 'loading') { clear(); liNote.textContent = 'Loading Mack’s LinkedIn data…'; return; }
     if (!liHas() || st !== 'ok') {
       clear();
       liPeriodBar.replaceChildren();
-      liOutHead.hidden = true;
+      liOut.hidden = true; liOutNote.hidden = true;
       liNote.textContent = liHas() || state(['li_dm']) === 'error' && !window.CC_MAIL_PRIVATE
         ? 'Mack’s LinkedIn data didn’t load, so LinkedIn conversations aren’t shown. The rest of this page doesn’t depend on it.'
         : 'LinkedIn conversations aren’t in this build of the page.';
@@ -2528,6 +2567,7 @@
     });
     ot.append(ob);
     liOut.replaceChildren(ot);
+    liOut.hidden = false; liOutNote.hidden = false;
     const both = mo.filter((r) => N(r.sent_note) >= 20 && N(r.sent) - N(r.sent_note) >= 20);
     const sum = (list, k) => list.reduce((t, r) => t + N(r[k]), 0);
     const op = mo.filter((r) => N(r.opener_sent));
@@ -2537,6 +2577,8 @@
       const ps = sum(both, 'sent') - ns; const pa = sum(both, 'accepted') - na;
       parts.push(`In ${both.map((r) => monthF(r.month)).join(' and ')}, ${pct(na, ns)} of requests with a note were accepted against ${pct(pa, ps)} without one${na / ns < pa / ps ? ': the note isn’t helping' : ''}.`);
     }
+    const pend = sum(mo, 'sent') - sum(mo, 'accepted');
+    if (pend > 0) parts.push(`${intF(pend)} of the ${intF(sum(mo, 'sent'))} requests Mack has sent have not been accepted yet. The Partners Dashboard sheet set a target of 1,000 against this row; it isn’t shown as one here because nothing records whether that meant requests in flight or requests sent in total.`);
     if (op.length) parts.push(`The standard first message (the one about the ERP/MSP/consulting space) went to ${intF(sum(op, 'opener_sent'))} new connections from ${monthF(op[0].month)} to ${monthF(op[op.length - 1].month)}, and ${pct(sum(op, 'opener_replied'), sum(op, 'opener_sent'))} replied; it hasn’t been sent since.`);
     liOutNote.textContent = parts.join(' ');
     liFoot.textContent = `LinkedIn as of ${asOf ? dayF(ctDay(asOf)) + ' (CT)' : 'the last export'}, from Mack’s account only: requests and messages sent from another teammate’s account aren’t in it. Refreshed when Mack downloads a new export.`;
