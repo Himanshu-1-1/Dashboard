@@ -1844,6 +1844,9 @@
      stale numbers would have hidden the real fault found on Nov 16 — data that was eleven days old server
      side, which no amount of reloading would have changed. */
   const drawReload = () => {
+    /* The hint is about GitHub Pages' ten-minute asset cache, which only the static build has. The private Claude
+       Dashboard is served by the artifact runtime and has no generated_at, so the shortcut means nothing there. */
+    if (!(window.__DASH_DATA__ && window.__DASH_DATA__.generated_at)) return;
     const meta = document.querySelector('.cc-meta');
     if (!meta || document.getElementById('cc-reload-hint')) return;
     const mac = /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent || '');
