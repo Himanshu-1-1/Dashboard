@@ -226,3 +226,25 @@ test('the engine never mutates the rows it is given', () => {
   N.timelineFor(rows, '77');
   assert.equal(JSON.stringify(rows), before);
 });
+
+test('a clause saying we owe nothing is not ours, and "nothing owed by him" still is', () => {
+  // Both shapes are in the live corpus; the first was wrongly red for naming a weekday.
+  assert.equal(N.directionOf('Friday booking made by them, nothing owed. We are also due to connect soon.'), 'theirs');
+  assert.equal(N.directionOf('Waiting on them to book a time; nothing owed by us.'), 'theirs');
+  assert.equal(N.directionOf('We follow up around Q1 (no date given). Nothing owed by him.'), 'ours', 'owed by him means it is on us');
+  assert.equal(N.directionOf('No reply is needed from us here.'), 'theirs');
+});
+
+test('a moment that passed decays: urgent inside the week, backlog after it', () => {
+  const mk = (on) => ({ on, next: 'We owe them a call tomorrow, or a confirmed time.', direction: 'ours', timeBound: true });
+  assert.equal(N.priorityOf(mk('2026-11-19'), TODAY).priority, 'urgent', 'passed yesterday');
+  assert.equal(N.priorityOf(mk('2026-11-13'), TODAY).priority, 'urgent', 'seven days is still inside the window');
+  assert.equal(N.priorityOf(mk('2026-11-12'), TODAY).priority, 'backlog', 'eight days past the moment is a reconnect');
+  assert.equal(N.priorityOf(mk('2026-10-20'), TODAY).priority, 'backlog');
+});
+
+test('waiting on us does not decay, however old the note is', () => {
+  const mk = (on) => ({ on, next: 'We owe them a reply. They are waiting on us.', direction: 'ours', timeBound: false });
+  assert.equal(N.priorityOf(mk('2026-11-19'), TODAY).priority, 'urgent');
+  assert.equal(N.priorityOf(mk('2026-10-07'), TODAY).priority, 'urgent', '44 days unanswered is still unanswered');
+});

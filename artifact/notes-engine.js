@@ -90,9 +90,16 @@
      clause that is purely about their move is theirs. "Waiting on us" is ours however it is phrased. */
   const OURS_RE = /\b(we|our side|i)\s+(owe|need|must|should|have to|still|will|owe them)\b|\bwe\s+\w+\s+(to send|to reply|to confirm)\b|\bno reply (to|from us)\b|\bour move\b|\bwaiting on (us|our side|the team)\b/i;
   const THEIRS_RE = /^\s*(waiting|pending|they|he|she|it)\b|\bwaiting (on|for)\b/i;
+  /* Some clauses say outright that we owe nothing ("Friday booking made by them, nothing owed"), and the first cut
+     still read them as ours and then called one of them Urgent for naming a weekday -- a list that tells you to act on
+     something whose own text says nothing is owed is how a panel loses its reader. "Nothing owed by him" is the
+     opposite statement and must not be caught: it means the ball is with us. */
+  const NOTHING_BY_US = /\bnothing (?:is )?(?:owed|owing|outstanding|needed|required|to do|pending)\b|\bno (?:reply|action|response) (?:is )?(?:needed|required)\b|\bnothing on us\b/i;
+  const NOTHING_BY_THEM = /\bnothing (?:is )?(?:owed|owing|outstanding|pending)\s+by\s+(?!us\b|our\b|the team\b)/i;
   function directionOf(next) {
     const t = squash(next);
     if (!t) return null;
+    if (NOTHING_BY_US.test(t) && !NOTHING_BY_THEM.test(t)) return 'theirs';
     if (OURS_RE.test(t)) return 'ours';
     if (THEIRS_RE.test(t)) return 'theirs';
     return 'ours';
@@ -137,7 +144,10 @@
     if (/\bwaiting on (us|our side|the team)\b|\bis waiting on us\b/i.test(item.next || '')) {
       reasons.push('The note says they are waiting on us'); urgent = true;
     }
-    if (item.timeBound && age != null && age >= 1) {
+    /* A moment that passed yesterday is urgent; one that passed a month ago has decayed into a reconnect, and on the
+       live corpus 6 of the 10 time-bound reds were 22 to 30 days past their moment. Being waiting-on-us does not decay
+       the same way -- an unanswered person stays unanswered -- so only this trigger carries a window. */
+    if (item.timeBound && age != null && age >= 1 && age <= s.urgentDays) {
       reasons.push(`Pinned to a moment in a note ${age} ${age === 1 ? 'day' : 'days'} old, so that moment has passed`); urgent = true;
     }
     if (urgent) {
