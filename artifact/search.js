@@ -513,6 +513,9 @@
   };
 
   const draw = () => {
+    /* A data event clears the cached index (see the onData handler below), so rebuild it before deciding the
+       contact is gone — otherwise a rebuild landing while a brief is open replaces it with "not in today's data". */
+    if (openId && !byId) index();
     if (!openId || !byId || !byId.get(openId)) { panel.replaceChildren(el('p', 'cc-fd-dim', 'That contact isn’t in today’s data.')); return; }
     const b = gather(openId);
     const z = b.z;
