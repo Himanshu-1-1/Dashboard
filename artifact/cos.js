@@ -577,13 +577,64 @@
     a.title = String(it.task.Subject || '') + (it.task.Due_Date ? ` (due ${dueF(it.task.Due_Date)})` : '');
     return a;
   };
+  /* Evidence (Hemang, Nov 20, 2026): where the row came from, opened under it rather than widening the table, the same
+     mechanism and the same classes B2B Today uses for meeting dates (`cc-days-row`), so CC_SORT keeps the detail with
+     its row and the styling already exists. Shows the note the clause was taken from, in full and unedited: an action
+     the page derived has to be checkable against what the bot actually recorded. */
+  const DAYS_ROW = 'cc-days-row';
+  const evidenceBox = (it) => {
+    const box = el('div', 'cc-days');
+    box.append(el('p', 'cc-days-title', `Conversation note on ${it.person || it.name}${it.on ? ', ' + dayOnlyF(it.on) : ''}`));
+    if (it.story) box.append(el('p', 'cc-cos-evtext', it.story));
+    const nx = el('p', 'cc-cos-evnext');
+    nx.append(el('b', null, 'Next: '), document.createTextNode(it.next || ''));
+    box.append(nx);
+    const facts = el('ul', 'cc-days-list');
+    const line = (k, v) => { const li = el('li'); li.append(el('b', null, k), el('span', null, v)); facts.append(li); };
+    line('Dated', it.onSrc === 'body'
+      ? `${dayOnlyF(it.on)}, from the note's own opening line`
+      : `${it.on ? dayOnlyF(it.on) : 'unknown'}, the day the bot filed it — the note names no date`);
+    if (it.filed) line('Filed', atF(it.filed));
+    line('Why this priority', (it.reasons || []).join('. '));
+    if (it.task) line('Zoho task', String(it.task.Subject || '') + (it.task.Due_Date ? `, due ${dueF(it.task.Due_Date)}` : ''));
+    line('Zoho note id', it.id || 'unknown');
+    box.append(facts);
+    if (it.contactId) {
+      const a = zohoLink('Contacts', it.contactId, 'Open the contact in Zoho, where this note sits');
+      const p2 = el('p', 'cc-days-note'); p2.append(a); box.append(p2);
+    }
+    return box;
+  };
+  const evidenceBtn = (it) => {
+    const b = el('button', 'cc-rw-link cc-days-btn');
+    b.type = 'button';
+    b.append(document.createTextNode(it.on ? dayOnlyF(it.on) : 'Note'), el('span', 'cc-days-chev'));
+    b.setAttribute('aria-expanded', 'false');
+    b.setAttribute('aria-label', `Show the note behind this item for ${it.name}`);
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const tr = b.closest('tr');
+      if (!tr) return;
+      const nx = tr.nextElementSibling;
+      if (nx && nx.classList.contains(DAYS_ROW)) { nx.remove(); tr.classList.remove('cc-days-open'); b.setAttribute('aria-expanded', 'false'); return; }
+      const row = el('tr', DAYS_ROW);
+      const td = el('td');
+      td.colSpan = tr.children.length;
+      td.append(evidenceBox(it));
+      row.append(td);
+      tr.after(row);
+      tr.classList.add('cc-days-open');
+      b.setAttribute('aria-expanded', 'true');
+    });
+    return b;
+  };
   const actionTable = (list, tasksLoaded) => table(
-    ['Done', 'Priority', 'Person', 'Company', 'What is next', 'Raised', 'Why', 'In Zoho'],
+    ['Done', 'Priority', 'Person', 'Company', 'What is next', 'Evidence', 'Why', 'In Zoho'],
     list.map((it) => ({
       cls: it.done ? 'cc-cos-rowdone' : null,
       cells: [
         { cls: 'cc-cos-tickcell', v: doneCell(it) }, prioCell(it), personCell(it), it.company,
-        { cls: 'cc-cos-nextcell', v: it.next }, it.on ? dayOnlyF(it.on) : null,
+        { cls: 'cc-cos-nextcell', v: it.next }, evidenceBtn(it),
         { cls: 'cc-cos-whycell', v: it.done ? 'Ticked today in this browser' : (it.flagged ? `Ticked on ${dayOnlyF(it.flagged)}, still open` : (it.reasons || [])[0] || '') },
         zohoCell(it, tasksLoaded),
       ],

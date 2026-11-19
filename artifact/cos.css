@@ -56,6 +56,11 @@ p.cc-cos-verdict.cc-cos-prio-bad { color: var(--color-bad); background: none; pa
 .cc-cos-rowdone td { color: var(--color-fg-muted); }
 .cc-cos-rowdone td:first-child { box-shadow: inset 2px 0 0 var(--color-ok); }
 .cc-cos-rowdone .cc-cos-nextcell { text-decoration: line-through; text-decoration-color: color-mix(in oklab, var(--color-fg-muted) 60%, transparent); }
+/* The evidence panel. cc-days-* comes from b2b-today.css, which loads on the same page, so the open row, the chevron
+   and the inset panel are already styled; only the note's own text needs rules of its own. */
+.cc-cos-evtext { margin: 0; font-size: 13px; line-height: 1.55; max-width: 92ch; color: var(--color-fg); white-space: pre-line; }
+.cc-cos-evnext { margin: 0; font-size: 13px; line-height: 1.5; max-width: 92ch; }
+.cc-cos-evnext b { font-weight: var(--cds-font-weight-medium); }
 .cc-cos-how { margin: -2px 0 2px; }
 .cc-cos-how summary { cursor: pointer; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); width: fit-content; }
 .cc-cos-how summary:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; border-radius: 3px; }
