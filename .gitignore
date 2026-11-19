@@ -28,6 +28,7 @@ site/*.lock.json
 site/*.json.gz
 site/cos.js
 site/cos.css
+site/notes-engine.js
 site/search.js
 site/search.css
 site/campaign90.js

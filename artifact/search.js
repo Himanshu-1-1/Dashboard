@@ -16,6 +16,8 @@
   const ZOHO = 'https://crm.zoho.com/crm/org899412015/tab/';
   const MAX_HITS = 8;
   const PAGE = 12;
+  /* Fewer notes than feed conversations at a time: each one carries a paragraph of narrative. */
+  const NOTE_PAGE = 5;
   /* A reply is still worth owing inside this many days; after that it's a follow-up, not a reply. */
   const REPLY_DAYS = 30;
   const QUIET_DAYS = 30;
@@ -54,24 +56,32 @@
     },
   });
 
-  /* The newest conversation note for a contact, with its Next: clause split out. The bot writes "Next: We owe \u2026"
-     when the move is ours and "Next: Waiting on \u2026" when it is theirs; a note describing a screenshot that was
-     not a conversation carries no Next: at all, so its absence is normal and never an error. */
-  const NEXT_RE = /(?:^|\n|\.\s+)Next:\s*([\s\S]+)$/;
+  /* The contact's conversation notes, newest conversation first, through the shared engine (artifact/notes-engine.js)
+     so this and the Chief of Staff tab's action items read one implementation of the same rules. The engine dates each
+     note by the day the exchange happened rather than the day the bot filed it, which is what "latest first" has to
+     mean (Hemang, Nov 20, 2026); before this the brief showed the newest note alone and nothing else.
+     `noteFor` keeps the shape `stepFor` and `draftFor` already expect: the newest note, its Next: clause, and whose
+     move it is. A note describing a screenshot that was not a conversation carries no Next: at all, so its absence is
+     normal and never an error. */
+  const NE = () => (typeof window !== 'undefined' ? window.CC_NOTES : null);
+  const timelineFor = (id) => {
+    const eng = NE();
+    if (!eng || !ok('contact_notes')) return [];
+    try {
+      const today = todayCT();
+      /* The same derived priority the Chief of Staff tab shows, so one note never reads Urgent in one place and Soon
+         in the other. Only the newest note's clause is live work; the rest are marked superseded where they render. */
+      return eng.timelineFor(rows('contact_notes'), id).map((n) => (n.next
+        ? Object.assign({}, n, { prio: eng.priorityOf(n, today).priority })
+        : n));
+    } catch (err) { return []; }
+  };
   const noteFor = (id) => {
-    if (!ok('contact_notes')) return null;
-    let best = null;
-    for (const r of rows('contact_notes')) {
-      if (String(r.Parent_Id_id || '') !== String(id)) continue;
-      if (!best || String(r.Created_Time || '') > String(best.Created_Time || '')) best = r;
-    }
-    if (!best) return null;
-    const text = String(best.Note_Content || '').trim();
-    const m = NEXT_RE.exec(text);
-    const next = m ? m[1].replace(/\s+/g, ' ').trim() : '';
-    /* "Waiting on <them>" is theirs to move; anything else the bot phrases as ours. */
-    const waiting = /^waiting on/i.test(next) && !/^waiting on (us|our|mack|shruti|hemang|the team)\b/i.test(next);
-    return { at: best.Created_Time || null, text, next: next || null, waiting, owed: Boolean(next) && !waiting };
+    const tl = timelineFor(id);
+    if (!tl.length) return null;
+    const n = tl[0];
+    const waiting = n.direction === 'theirs';
+    return { at: n.filed, on: n.on, onSrc: n.onSrc, text: n.text, story: n.story, next: n.next || null, waiting, owed: Boolean(n.next) && !waiting };
   };
 
   const intF = (n) => Number(n || 0).toLocaleString('en-US');
@@ -218,6 +228,7 @@
     b.li = okRows('b2b_li_people').find((m) => String(m.id) === id && m.in_export) || null;
     b.brief = okRows('b2b_briefs').find((x) => String(x.zoho_id) === id) || null;
     b.note = noteFor(id);
+    b.timeline = timelineFor(id);
     b.digest = okRows('cos_digest').find((c) => String(c.zoho_id) === id) || null;
 
     /* Meetings. For a B2B prospect `mtg_people` has already reconciled Zoho, Outlook and Fireflies; for everyone else
@@ -522,9 +533,11 @@
 
   let openId = null;
   let shownItems = PAGE;
+  let shownNotes = NOTE_PAGE;
   const open = (id) => {
     openId = id;
     shownItems = PAGE;
+    shownNotes = NOTE_PAGE;
     closeHits();
     input.blur();
     if (!dlg.open) dlg.showModal();
@@ -722,6 +735,41 @@
       parts.push(sec);
     }
 
+    /* The bot's conversation notes, newest conversation first (Hemang, Nov 20, 2026). Above the feed history on
+       purpose: these come out of the locked bundle with the rest of the page, so they are on screen while the 10 MB
+       feed is still fetching, and they are the dated record of what happened. */
+    if (b.timeline && b.timeline.length) {
+      const sec = el('section', 'cc-fd-sec');
+      sec.append(el('h3', null, `Conversation notes (${intF(b.timeline.length)})`));
+      sec.append(el('p', 'cc-fd-dim', `What the Chief of Staff bot recorded, newest first. ${b.timeline.length > 1 ? 'The top one is the live note; the others are history.' : ''}`));
+      const box = el('div', 'cc-fd-cnotes');
+      b.timeline.slice(0, shownNotes).forEach((n, i) => {
+        const row = el('article', 'cc-fd-cnote' + (i === 0 ? ' cc-fd-cnote-live' : ''));
+        const head = el('div', 'cc-fd-cnhead');
+        const when = el('time', null, n.on ? dayF(n.on) : 'Date unknown');
+        /* Say which date this is wherever the note names none, so a date the page asserts can be checked. */
+        if (n.onSrc === 'filed') when.title = 'The note names no date, so this is the day the bot filed it';
+        else if (n.on) when.title = 'The day the conversation happened, from the note itself';
+        head.append(when);
+        if (n.next) {
+          const pr = (NE() && NE().PRIORITY[n.prio]) || null;
+          head.append(el('span', 'cc-fd-dim', n.direction === 'theirs' ? 'Their move' : 'Ours to move'));
+          if (i > 0) head.append(el('span', 'cc-fd-dim', 'superseded'));
+          if (pr) head.append(el('span', null, pr.label));
+        }
+        row.append(head);
+        if (n.story) row.append(el('p', 'cc-fd-cntext', n.story));
+        if (n.next) row.append(el('p', 'cc-fd-cnnext', n.next));
+        box.append(row);
+      });
+      sec.append(box);
+      if (b.timeline.length > shownNotes) {
+        const leftN = b.timeline.length - shownNotes;
+        sec.append(btn('cc-fd-go', leftN > NOTE_PAGE ? `Show ${intF(NOTE_PAGE)} more (${intF(leftN)} left)` : `Show the last ${intF(leftN)}`, () => { shownNotes += NOTE_PAGE; draw(); }));
+      }
+      parts.push(sec);
+    }
+
     /* What we talked about */
     const conv = el('section', 'cc-fd-sec');
     conv.append(el('h3', null, 'What we talked about'));
@@ -751,6 +799,7 @@
       ['Team calendars', Boolean(b.mtg && b.mtg.cal_checked)],
       ['Fireflies calls', b.days.some((d) => d.srcs.has('Fireflies'))],
       ['Partner meeting brief', Boolean(b.brief)],
+      ['Conversation notes', Boolean(b.timeline && b.timeline.length)],
       ['LinkedIn messages', Boolean(b.li)],
       ['Chief of Staff feed', feedState === 'ok' && Boolean(b.person)],
     ];

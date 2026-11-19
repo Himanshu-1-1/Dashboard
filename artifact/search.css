@@ -108,6 +108,18 @@
 .cc-fd-todo li { display: grid; gap: 1px; padding: 8px 12px; border-radius: var(--cds-radius); border: 1px solid var(--color-border-line); border-left: 3px solid var(--color-border-line); background: var(--color-panel); }
 .cc-fd-todo li.cc-fd-late { border-left-color: var(--color-bad); }
 .cc-fd-what { font-size: 13.5px; line-height: 1.45; }
+/* The bot's conversation notes, newest first (Hemang, Nov 20, 2026). The live note carries a left rule rather than a
+   fill, so the eye finds it without a second surface colour inside an already-layered modal. */
+/* cn, not note: `.cc-fd-note` is already the search drop-down's match-count line above. */
+.cc-fd-cnotes { display: grid; gap: 10px; }
+.cc-fd-cnote { display: grid; gap: 4px; padding-left: 10px; border-left: 2px solid var(--cds-border, var(--color-border-line)); }
+.cc-fd-cnote-live { border-left-color: var(--color-fg-muted); }
+.cc-fd-cnhead { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: var(--cds-font-size-caption); }
+.cc-fd-cnhead time { font-weight: var(--cds-font-weight-medium); }
+.cc-fd-cnhead > span:last-child { color: var(--color-fg-muted); }
+.cc-fd-cntext { margin: 0; font-size: 13.5px; line-height: 1.5; max-width: 88ch; }
+.cc-fd-cnnext { margin: 0; font-size: 13.5px; line-height: 1.45; max-width: 88ch; color: var(--color-fg); font-weight: var(--cds-font-weight-medium); }
+.cc-fd-cnote:not(.cc-fd-cnote-live) .cc-fd-cnnext { color: var(--color-fg-muted); font-weight: inherit; }
 .cc-fd-bul { margin: 0 0 4px; padding-left: 18px; font-size: 13.5px; line-height: 1.5; }
 
 /* Conversations */
