@@ -115,7 +115,7 @@
         const bare = String(full).split(',')[0];
         out.push({
           id, name: full || '—', first: r.First_Name || null, last: r.Last_Name || null, nname: normName(bare), ntitle: words(r.Title).join(' '),
-          email: e1, email2: e2, raw_email: r.Email || null, phone: digits(r.Phone), title: r.Title || null,
+          email: e1, email2: e2, raw_email: r.Email || null, phone: digits(r.Phone), raw_phone: r.Phone || null, title: r.Title || null,
           account: r.Account_Name || null, account_id: r.Account_Name_id ? String(r.Account_Name_id) : null,
           linkedin: r.LinkedIn || null, li_slug: liSlug(r.LinkedIn), tags: r.Tag || '', rel: r.Relationship_Type || '',
           priority: r.Priority != null && r.Priority !== '' ? String(r.Priority) : null, li: r.LI_Connect || null, type: r.Contact_Types || null,

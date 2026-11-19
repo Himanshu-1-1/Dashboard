@@ -108,6 +108,13 @@
 .cc-fd-todo li { display: grid; gap: 1px; padding: 8px 12px; border-radius: var(--cds-radius); border: 1px solid var(--color-border-line); border-left: 3px solid var(--color-border-line); background: var(--color-panel); }
 .cc-fd-todo li.cc-fd-late { border-left-color: var(--color-bad); }
 .cc-fd-what { font-size: 13.5px; line-height: 1.45; }
+/* Contact details (Hemang, Nov 20, 2026). An address or a profile is there to be used, so it is a link; a field Zoho
+   does not hold is muted and says so, rather than being left out of the list. */
+.cc-fd-mail { color: var(--color-fg); text-decoration: underline; text-decoration-color: var(--color-border-line); text-underline-offset: 3px; word-break: break-word; }
+.cc-fd-mail:hover { text-decoration-color: currentColor; }
+.cc-fd-miss { color: var(--color-fg-muted); }
+.cc-fd-dim2 { color: var(--color-fg-muted); font-size: 12px; }
+.cc-fd-nogo { color: var(--color-fg-muted); cursor: default; }
 /* The bot's conversation notes, newest first (Hemang, Nov 20, 2026). The live note carries a left rule rather than a
    fill, so the eye finds it without a second surface colour inside an already-layered modal. */
 /* cn, not note: `.cc-fd-note` is already the search drop-down's match-count line above. */

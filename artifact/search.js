@@ -614,19 +614,47 @@
     const acts = el('div', 'cc-fd-acts');
     acts.append(zohoLink('Contacts', z.id, 'Open in Zoho ↗', 'cc-fd-go'));
     if (safeUrl(z.linkedin)) { const a = el('a', 'cc-fd-go', 'LinkedIn ↗'); a.href = z.linkedin; a.target = '_blank'; a.rel = 'noopener'; acts.append(a); }
+    else acts.append(el('span', 'cc-fd-go cc-fd-nogo', 'No LinkedIn in Zoho'));
     acts.append(btn('cc-fd-go cc-fd-close', 'Close', () => dlg.close()));
     head.append(acts);
     parts.push(head);
 
-    /* Where we stand */
+    /* How to reach them, before anything derived (Hemang, Nov 20, 2026). The brief used to show an email *status* and
+       the LI Connect value under a row labelled LinkedIn, so the two things a person actually wants when they look
+       someone up -- the address and the profile -- were either absent or mislabelled. A field Zoho does not hold says
+       so rather than being left out, because "not in Zoho" is the thing worth seeing on a record you are about to use. */
     const facts = el('dl', 'cc-fd-facts');
+    const mailTo = (addr, label) => { const a = el('a', 'cc-fd-mail', label || addr); a.href = 'mailto:' + addr; return a; };
+    const addr = z.raw_email || z.email;
+    if (addr || z.email2) {
+      const box = el('span');
+      if (addr) box.append(mailTo(addr));
+      if (z.email2 && z.email2 !== z.email) {
+        if (addr) box.append(document.createTextNode(' · '));
+        box.append(mailTo(z.email2), el('span', 'cc-fd-dim2', ' personal'));
+      }
+      kv(facts, 'Email', box);
+    } else kv(facts, 'Email', el('span', 'cc-fd-miss', 'Not in Zoho'));
+    const tel = z.raw_phone || z.phone;
+    if (tel) { const a = el('a', 'cc-fd-mail', tel); a.href = 'tel:' + String(tel).replace(/[^+\d]/g, ''); kv(facts, 'Phone', a); }
+    else kv(facts, 'Phone', el('span', 'cc-fd-miss', 'Not in Zoho'));
+    if (safeUrl(z.linkedin)) {
+      const a = el('a', 'cc-fd-mail', z.li_slug ? 'linkedin.com/in/' + z.li_slug : 'Profile');
+      a.href = z.linkedin; a.target = '_blank'; a.rel = 'noopener';
+      kv(facts, 'LinkedIn', a);
+    } else kv(facts, 'LinkedIn', el('span', 'cc-fd-miss', 'Not in Zoho'));
+    if (z.rel) kv(facts, 'Relationship', z.rel);
+    if (z.type) kv(facts, 'Contact type', z.type);
+    if (z.created) kv(facts, 'In Zoho since', dayF(z.created));
+
+    /* Where we stand */
     kv(facts, 'Meetings', b.n ? `${intF(b.n)} held, last ${dayF(b.last)}${b.since != null ? ` (${plural(b.since, 'day')} ago)` : ''}` : 'None held');
     kv(facts, 'Next meeting', b.next ? atF(b.next) : 'None booked');
     kv(facts, 'CRM owner', z.assigned || 'Not assigned');
-    kv(facts, 'LinkedIn', z.li || 'Not set');
-    if (b.mail) kv(facts, 'Email', `${b.mail.status}${b.mail.last_in ? `, they wrote ${dayF(b.mail.last_in)}` : ''}${b.mail.last_out ? `, we wrote ${dayF(b.mail.last_out)}` : ''}`);
-    else if (b.digest && b.digest.last && b.digest.last.m365_mail) kv(facts, 'Email', `Last ${b.digest.last.m365_mail.dir === 'inbound' ? 'from them' : 'exchanged'} ${dayF(b.digest.last.m365_mail.at)}`);
-    else if (z.email) kv(facts, 'Email', `${z.email} — nothing on record`);
+    kv(facts, 'LI Connect', z.li || 'Not set');
+    if (b.mail) kv(facts, 'Email history', `${b.mail.status}${b.mail.last_in ? `, they wrote ${dayF(b.mail.last_in)}` : ''}${b.mail.last_out ? `, we wrote ${dayF(b.mail.last_out)}` : ''}`);
+    else if (b.digest && b.digest.last && b.digest.last.m365_mail) kv(facts, 'Email history', `Last ${b.digest.last.m365_mail.dir === 'inbound' ? 'from them' : 'exchanged'} ${dayF(b.digest.last.m365_mail.at)}`);
+    else kv(facts, 'Email history', 'Nothing on record');
     if (b.li && b.li.label) kv(facts, 'LinkedIn messages', `${b.li.label}${b.li.note ? ` — ${b.li.note}` : ''}`);
     if (b.ag) kv(facts, 'Agreement', `${b.ag.state}${b.ag.completed ? `, signed ${dayF(b.ag.completed)}` : b.ag.sent ? `, sent ${dayF(b.ag.sent)}` : ''}`);
     if (b.deals.length) {
