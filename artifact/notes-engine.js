@@ -26,7 +26,7 @@
   const PRIORITY = {
     urgent: { key: 'urgent', label: 'Urgent', tone: 'bad', rank: 0, why: 'Ours, and someone is waiting or the moment has passed' },
     soon: { key: 'soon', label: 'Soon', tone: 'warn', rank: 1, why: 'Ours to move, nothing overdue yet' },
-    watch: { key: 'watch', label: 'Watching', tone: 'info', rank: 2, why: 'Their move; nothing for us to do yet' },
+    watch: { key: 'watch', label: 'Watching', tone: 'muted', rank: 2, why: 'Their move; nothing for us to do yet' },
   };
 
   const str = (v) => (v == null ? '' : String(v));

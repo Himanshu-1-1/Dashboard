@@ -29,6 +29,7 @@
     ['unknown', 'Not labeled', ['unknown']],
   ];
   const VIEWS = [
+    ['actions', 'Action items'],
     ['people', 'People'],
     ['chats', 'Groups and chats'],
     ['latest', 'Latest'],
@@ -54,6 +55,12 @@
     const y = d.toLocaleString('en-US', { timeZone: 'America/Chicago', year: 'numeric' });
     return d.toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', ...(y === yearNow ? {} : { year: 'numeric' }) });
   };
+  /* A Central-time day from the note engine is a calendar date, not a moment: `new Date('2026-11-18')` is UTC
+     midnight, which renders as Nov 17 in Chicago, so it is read at midday instead. */
+  const dayOnlyF = (d) => (/^\d{4}-\d{2}-\d{2}$/.test(String(d || ''))
+    ? new Date(String(d) + 'T12:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', ...(String(d).slice(0, 4) === yearNow ? {} : { year: 'numeric' }) })
+    : dayF(d));
+  const todayCT = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
   /* A due date stored as midnight UTC is a calendar date, not a moment: show it as written. */
   const dueF = (iso) => (/T00:00:00(?:\.0+)?Z$/.test(String(iso || '')) ? new Date(String(iso).slice(0, 10) + 'T12:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', ...(String(iso).slice(0, 4) === yearNow ? {} : { year: 'numeric' }) }) : dayF(iso));
   const words = (s, n) => { const w = String(s || '').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean); return w.length > n ? w.slice(0, n).join(' ') + '…' : w.join(' '); };
@@ -158,7 +165,8 @@
 
   /* ---------- state ---------- */
   const st = {
-    view: 'people', person: null, chat: null,
+    view: 'actions', person: null, chat: null,
+    actions: { prio: 'live', q: '', shown: PAGE * 2 },
     people: { q: '', rel: 'all', shown: PAGE },
     chats: { q: '', src: 'all', shown: PAGE },
     latest: { q: '', src: 'all', shown: PAGE },
@@ -189,7 +197,9 @@
       b.setAttribute('aria-selected', String(st.view === k && !st.person && !st.chat));
       return b;
     }));
-    views.hidden = !F;
+    /* The action items read `contact_notes` from the locked bundle, so the tabs are usable before the 10 MB feed
+       arrives; without the feed every other tab says so when it is opened. */
+    views.hidden = !F && !noteRows().length;
   };
 
   /* ---------- one conversation item ---------- */
@@ -459,6 +469,119 @@
     body.replaceChildren(...parts);
   };
 
+  /* ---------- action items (Hemang, Nov 20, 2026) ---------- */
+  /* Built from the bot's Zoho notes through the shared engine (artifact/notes-engine.js), not from the feed: the notes
+     ride in the locked bundle, so this list is on screen immediately and works in a build where the feed has not been
+     pushed. The priority is derived -- a Zoho note carries no priority field and no status field -- and every row
+     prints both the words and the reasons, so the colour is never what tells you and a wrong call is visible.
+
+     Red is the top of a scale rather than every open item (Hemang asked for red when not done and colour by priority;
+     three hundred identical red rows answer neither). Urgent is ours and someone is waiting or the moment has passed;
+     Soon is ours with nothing overdue; Watching is their move, and turns into ours to chase after chaseDays.
+
+     The done state is a Zoho Task by Hemang's decision, and the bot does not write them yet, so the In Zoho column
+     reads "Still open" or "No task" and never "Done": `open_tasks` pulls Status != Completed, so a completed task is
+     absent from the dataset and cannot be told apart from one that never existed. */
+  const NE = () => (typeof window !== 'undefined' ? window.CC_NOTES : null);
+  const dataOf = (id) => { try { return dash.data(id); } catch (err) { return { status: 'error', data: [] }; } };
+  const okRows = (id) => { const d = dataOf(id); return d.status === 'ok' ? d.data || [] : []; };
+  const noteRows = () => okRows('contact_notes');
+  const PRIO_CHIPS = [
+    ['live', 'Live'], ['urgent', 'Urgent'], ['soon', 'Soon'], ['watch', 'Watching'], ['stale', 'Gone quiet'], ['all', 'All'],
+  ];
+  const actionList = () => {
+    const eng = NE();
+    if (!eng) return { items: [], gap: 'The note engine is not in this build.' };
+    let items;
+    try { items = eng.actionItems(noteRows(), { today: todayCT() }); } catch (err) { return { items: [], gap: 'The notes could not be read: ' + (err && err.message ? err.message : err) }; }
+    const people = new Map(okRows('qa_contact_rows').map((r) => [String(r.id), r]));
+    const tasks = okRows('open_tasks');
+    let dnc = 0;
+    const out = [];
+    for (const it of items) {
+      const z = people.get(String(it.contactId)) || null;
+      /* A record marked Do Not Contact never gets an action to contact them, however the note is phrased. */
+      if (z && z.dnc) { dnc += 1; continue; }
+      out.push(Object.assign({}, it, {
+        name: (z && z.name) || it.person || 'Unknown contact',
+        company: (z && z.account) || null,
+        zpriority: (z && z.priority) || null,
+        assigned: (z && z.assigned) || null,
+        inZoho: Boolean(z),
+        task: eng.taskFor(it, tasks),
+      }));
+    }
+    return { items: out, dnc, tasksLoaded: dataOf('open_tasks').status === 'ok', peopleLoaded: dataOf('qa_contact_rows').status === 'ok' };
+  };
+  const prioCell = (it) => {
+    const eng = NE();
+    const p = (eng && eng.PRIORITY[it.priority]) || { label: it.priority, tone: 'muted' };
+    const b = el('span', 'cc-cos-prio cc-cos-prio-' + p.tone, p.label + (it.stale ? ' · quiet' : ''));
+    b.title = (it.reasons || []).join('. ');
+    return b;
+  };
+  const personCell = (it) => {
+    if (!it.contactId || !it.inZoho) return el('span', null, it.name);
+    const b = btn('cc-cos-pbtn', it.name, () => {
+      if (typeof window.CC_BRIEF === 'function') window.CC_BRIEF(it.contactId);
+      else window.open(ZOHO + 'Contacts/' + it.contactId, '_blank', 'noopener');  /* no brief on this build */
+    }, `Open the brief for ${it.name}`);
+    return b;
+  };
+  const zohoCell = (it, tasksLoaded) => {
+    if (!tasksLoaded) return el('span', 'cc-cos-dim', 'Tasks not loaded');
+    if (!it.task) return el('span', 'cc-cos-dim', 'No task');
+    const a = zohoLink('Tasks', it.task.id || '', 'Still open');
+    a.title = String(it.task.Subject || '') + (it.task.Due_Date ? ` (due ${dueF(it.task.Due_Date)})` : '');
+    return a;
+  };
+  const actionTable = (list, tasksLoaded) => table(
+    ['Priority', 'Person', 'Company', 'What is next', 'Raised', 'Why', 'In Zoho'],
+    list.map((it) => [
+      prioCell(it), personCell(it), it.company, { cls: 'cc-cos-nextcell', v: it.next },
+      it.on ? dayOnlyF(it.on) : null, { cls: 'cc-cos-whycell', v: (it.reasons || [])[0] || '' }, zohoCell(it, tasksLoaded),
+    ]),
+  );
+  const drawActions = () => {
+    const s = st.actions;
+    const notes = noteRows();
+    if (!notes.length) {
+      body.replaceChildren(el('p', 'cc-cos-cap', dataOf('contact_notes').status === 'loading'
+        ? 'Loading the bot\u2019s notes from Zoho\u2026'
+        : 'The bot\u2019s conversation notes aren\u2019t in this build, so there are no action items to show. They come from Zoho with the hourly fetch.'));
+      return;
+    }
+    const { items, dnc, tasksLoaded, peopleLoaded, gap } = actionList();
+    if (gap) { body.replaceChildren(el('p', 'cc-cos-bad', gap)); return; }
+    const sum = NE().summary(items);
+    const n = { live: items.filter((i) => !i.stale).length, stale: items.length - items.filter((i) => !i.stale).length, all: items.length,
+      urgent: sum.urgent, soon: sum.soon, watch: sum.watch };
+    const q = s.q.trim().toLowerCase();
+    const pick = (i) => (s.prio === 'all' ? true : s.prio === 'live' ? !i.stale : s.prio === 'stale' ? i.stale : (!i.stale && i.priority === s.prio));
+    const list = items.filter((i) => pick(i) && (!q || [i.name, i.company, i.next, i.story].join(' ').toLowerCase().includes(q)));
+    const tools = el('div', 'cc-cos-tools');
+    tools.append(searchBox(s.q, 'Search action items', (v) => { s.q = v; s.shown = PAGE * 2; draw(); }),
+      chips(PRIO_CHIPS.map(([k, label]) => [k, `${label} ${intF(n[k])}`]), s.prio, (k) => { s.prio = k; s.shown = PAGE * 2; draw(); }, 'Priority'));
+    const verdictText = sum.urgent
+      ? `${plural(sum.urgent, 'item')} need a move from us now, and ${intF(sum.soon)} more soon.`
+      : sum.soon ? `Nothing urgent. ${plural(sum.soon, 'item')} to move soon.`
+        : sum.watch ? `Nothing waiting on us. ${plural(sum.watch, 'conversation')} sitting with them.` : 'Nothing open from the notes.';
+    const verdict = el('p', 'cc-cos-verdict' + (sum.urgent ? ' cc-cos-prio-bad' : ''), verdictText);
+    const caveats = [
+      `Worked out from ${plural(sum.people, 'person')} the bot has written a note about, newest note per person; an older note's action is history and shows on the person's brief instead.`,
+      'The priority is derived from what the note says and how old it is, because a Zoho note carries neither a priority nor a status. Hover a priority to see why it landed there.',
+      tasksLoaded ? 'In Zoho says whether a Zoho Task covers the item. It never says done: the task query carries open tasks only, so a finished task is indistinguishable from one that never existed. That becomes a real done state once the bot writes the tasks.' : 'Zoho tasks didn\u2019t load, so no item can be matched to one.',
+    ];
+    if (dnc) caveats.push(`${plural(dnc, 'item')} left out: the contact is marked Do Not Contact in Zoho.`);
+    if (!peopleLoaded) caveats.push('Zoho contacts didn\u2019t load, so company and Do Not Contact aren\u2019t applied.');
+    if (sum.stale) caveats.push(`${plural(sum.stale, 'item')} older than ${sum.staleDays} days are under Gone quiet: close them or raise them again.`);
+    const parts = [verdict, tools, el('p', 'cc-cos-cap', caveats.join(' ')), actionTable(list.slice(0, s.shown), tasksLoaded)];
+    if (!list.length) parts[3] = el('p', 'cc-cos-cap', 'Nothing matches that filter.');
+    const more = moreBtn(Math.min(s.shown, list.length), list.length, () => { s.shown += PAGE * 2; draw(); }, PAGE * 2);
+    if (more) parts.push(more);
+    body.replaceChildren(...parts);
+  };
+
   /* ---------- header and routing ---------- */
   const stat = (n, label, onClick) => {
     const b = btn('cc-cos-stat', '', onClick);
@@ -480,6 +603,7 @@
   const draw = () => {
     drawViews();
     drawHead();
+    if (st.view === 'actions' && !st.person && !st.chat) { drawActions(); return; }
     if (!F) {
       const parts = [el('p', loadState === 'error' ? 'cc-cos-bad' : 'cc-cos-cap', loadMsg || 'Loading the Chief of Staff feed…')];
       if (loadState === 'error') parts.push(btn('cc-go', 'Try again', () => { loadState = 'idle'; ensure(); }));
@@ -516,6 +640,6 @@
   /* Wait for the unlock: before it, the lazy file list isn't known yet. */
   const visible = () => !section.hidden && dash.data('cos_digest').status !== 'loading';
   new MutationObserver(() => { if (visible()) ensure(); }).observe(section, { attributes: true, attributeFilter: ['hidden'] });
-  dash.onData(() => { if (visible()) ensure(); });
+  dash.onData(() => { if (visible()) ensure(); draw(); });
   draw();
 })();

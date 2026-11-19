@@ -32,6 +32,25 @@
 .cc-cos-tbl td { line-height: 1.4; }
 .cc-cos-gistcell { min-width: 16rem; max-width: 34rem; color: var(--color-fg-muted); }
 .cc-cos-notecell { min-width: 18rem; max-width: 40rem; white-space: pre-line; }
+/* Action items (Hemang, Nov 20, 2026). The priority is a pill carrying its own word, so the colour reinforces the
+   label and never carries the status by itself; the tooltip holds the reasons it landed there. Red for ours and
+   overdue, amber for ours, grey for their move: this page defines only bad, warn, ok, fg, fg-muted, bg, panel and
+   border-line, so there is no blue to reach for, and red against green would be the one pair deutan viewers cannot
+   separate. Grey also reads correctly here, since Watching means nothing is on us. */
+.cc-cos-verdict { margin: 0 0 2px; font-size: 15px; line-height: 1.4; font-weight: var(--cds-font-weight-medium); }
+.cc-cos-prio { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; white-space: nowrap;
+  color: var(--k, var(--color-fg-muted)); background: color-mix(in oklab, var(--k, var(--color-fg-muted)) 12%, transparent); }
+.cc-cos-prio-bad { --k: var(--color-bad); }
+.cc-cos-prio-warn { --k: var(--color-warn, #a86100); }
+.cc-cos-prio-muted { --k: var(--color-fg-muted); }
+p.cc-cos-verdict.cc-cos-prio-bad { color: var(--color-bad); background: none; padding: 0; border-radius: 0; }
+.cc-cos-nextcell { min-width: 20rem; max-width: 44rem; white-space: normal; line-height: 1.45; }
+.cc-cos-whycell { min-width: 12rem; max-width: 28rem; white-space: normal; font-size: 12px; color: var(--color-fg-muted); }
+.cc-cos-dim { color: var(--color-fg-muted); font-size: 12px; }
+.cc-cos-pbtn { appearance: none; border: 0; background: none; font: inherit; color: inherit; padding: 0; cursor: pointer;
+  text-align: left; text-decoration: underline; text-decoration-color: var(--color-border-line); text-underline-offset: 3px; }
+.cc-cos-pbtn:hover { text-decoration-color: currentColor; }
+.cc-cos-pbtn:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; border-radius: 3px; }
 .cc-cos-late { color: var(--color-bad); white-space: nowrap; }
 .cc-cos-pcell { display: inline-flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 

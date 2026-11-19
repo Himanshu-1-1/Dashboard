@@ -823,4 +823,8 @@
     if (input.value.trim().length >= 2 && document.activeElement === input) render();
     if (openId) draw();
   });
+
+  /* So another tab can open a person's brief by Zoho contact id (the Chief of Staff action items do, Nov 20, 2026).
+     `cos.js` loads before this file, so it calls through this global at click time rather than holding a reference. */
+  window.CC_BRIEF = (id) => { if (id) open(String(id)); };
 })();
